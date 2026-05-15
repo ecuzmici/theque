@@ -1,0 +1,229 @@
+# Bookmarkly — Data Model
+
+Postgres on Supabase. All user tables in `public` with **RLS enabled**. Use `auth.uid()` for policies; never trust client-only filtering.
+
+## Enums
+
+```sql
+create type item_category as enum (
+  'books',
+  'movies_and_tv',
+  'restaurants',
+  'products',
+  'gifts',
+  'travel',
+  'recipes',
+  'articles'
+);
+
+create type item_status as enum (
+  'inbox',
+  'want',
+  'planned',
+  'done',
+  'dismissed'
+);
+
+create type item_source as enum (
+  'chrome_extension',
+  'ios_shortcut',
+  'manual',
+  'mobile_share_extension'  -- reserved for future
+);
+
+create type processing_status as enum (
+  'pending',
+  'processing',
+  'ready',
+  'failed'
+);
+
+create type category_source as enum (
+  'domain',
+  'schema_org',
+  'heuristic',
+  'manual'
+);
+```
+
+## Tables
+
+### `items`
+
+Central entity. One row per saved URL per user (deduped by fingerprint).
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` PK | `gen_random_uuid()` — aligns with `auth.uid()` |
+| `user_id` | `uuid` NOT NULL | FK → `auth.users(id)` ON DELETE CASCADE |
+| `url` | `text` NOT NULL | As submitted |
+| `canonical_url` | `text` NOT NULL | Normalized for dedup/display |
+| `url_fingerprint` | `text` NOT NULL | Hash of canonical URL |
+| `domain` | `text` NOT NULL | e.g. `www.imdb.com` |
+| `title` | `text` | Nullable until enrichment |
+| `subtitle` | `text` | e.g. year, author one-liner |
+| `description` | `text` | |
+| `image_url` | `text` | Remote URL |
+| `image_storage_path` | `text` | Supabase Storage path if proxied |
+| `category` | `item_category` | Nullable until classified |
+| `category_confidence` | `real` | 0–1 |
+| `category_source` | `category_source` | |
+| `status` | `item_status` NOT NULL | Default `inbox` |
+| `source` | `item_source` NOT NULL | |
+| `note` | `text` | User note at capture or later |
+| `processing_status` | `processing_status` NOT NULL | Default `pending` |
+| `enrichment_error` | `text` | Last error message |
+| `enrichment_attempts` | `smallint` NOT NULL | Default 0, max 3 |
+| `enriched_at` | `timestamptz` | |
+| `structured` | `jsonb` NOT NULL | Default `{}` — category fields |
+| `raw_metadata` | `jsonb` NOT NULL | Default `{}` — OG, JSON-LD snapshot |
+| `display` | `jsonb` NOT NULL | Default `{}` — UI overrides |
+| `created_at` | `timestamptz` NOT NULL | Default `now()` |
+| `updated_at` | `timestamptz` NOT NULL | Default `now()` |
+
+**Constraints**
+
+```sql
+unique (user_id, url_fingerprint)
+```
+
+**Indexes**
+
+```sql
+create index items_user_id_status_idx on items (user_id, status);
+create index items_user_id_category_idx on items (user_id, category);
+create index items_user_id_created_at_idx on items (user_id, created_at desc);
+create index items_processing_pending_idx on items (processing_status)
+  where processing_status in ('pending', 'processing');
+```
+
+### `tags`
+
+| Column | Type |
+|--------|------|
+| `id` | `uuid` PK |
+| `user_id` | `uuid` NOT NULL |
+| `name` | `text` NOT NULL — normalized lowercase |
+| `created_at` | `timestamptz` |
+
+```sql
+unique (user_id, name)
+```
+
+### `item_tags`
+
+| Column | Type |
+|--------|------|
+| `item_id` | `uuid` FK → items ON DELETE CASCADE |
+| `tag_id` | `uuid` FK → tags ON DELETE CASCADE |
+
+Primary key `(item_id, tag_id)`.
+
+### `collections`
+
+| Column | Type |
+|--------|------|
+| `id` | `uuid` PK |
+| `user_id` | `uuid` NOT NULL |
+| `name` | `text` NOT NULL |
+| `description` | `text` |
+| `cover_image_url` | `text` |
+| `created_at` | `timestamptz` |
+| `updated_at` | `timestamptz` |
+
+```sql
+unique (user_id, name)
+```
+
+### `collection_items`
+
+| Column | Type |
+|--------|------|
+| `collection_id` | `uuid` FK |
+| `item_id` | `uuid` FK |
+| `added_at` | `timestamptz` |
+
+Primary key `(collection_id, item_id)`.
+
+### `capture_tokens`
+
+For Chrome extension and iOS Shortcut. **Store hash only.**
+
+| Column | Type |
+|--------|------|
+| `id` | `uuid` PK |
+| `user_id` | `uuid` NOT NULL |
+| `name` | `text` NOT NULL — e.g. "iPhone Shortcut" |
+| `token_hash` | `text` NOT NULL — SHA-256 of secret |
+| `token_prefix` | `text` NOT NULL — first 8 chars for UI identification |
+| `last_used_at` | `timestamptz` |
+| `revoked_at` | `timestamptz` |
+| `created_at` | `timestamptz` |
+
+```sql
+unique (token_hash)
+```
+
+Token format: `bmly_<32 random bytes base64url>`. Show plaintext once on create.
+
+## RLS policies
+
+Enable RLS on all tables. Pattern for user-owned rows:
+
+```sql
+-- items: SELECT, INSERT, UPDATE, DELETE
+create policy items_select_own on items for select to authenticated
+  using (user_id = auth.uid());
+
+create policy items_insert_own on items for insert to authenticated
+  with check (user_id = auth.uid());
+
+create policy items_update_own on items for update to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+create policy items_delete_own on items for delete to authenticated
+  using (user_id = auth.uid());
+```
+
+Apply the same `user_id = auth.uid()` pattern to `tags`, `collections`, `capture_tokens`.
+
+For `item_tags` and `collection_items`, use EXISTS subquery on parent `items` / `collections` owned by `auth.uid()`.
+
+**Capture API note:** Route handlers use **service role** only inside server code to insert on behalf of token-validated user. Do not expose service role to clients. Alternative: use `security definer` RPC in private schema — PoC uses service role in Next.js server only.
+
+## Triggers
+
+```sql
+-- updated_at on items, collections
+create trigger items_updated_at before update on items
+  for each row execute function moddatetime(updated_at);
+```
+
+## Storage
+
+Bucket: `item-images` (private)
+
+- Path: `{user_id}/{item_id}/cover.{ext}`
+- RLS: user can read/write only their prefix
+- Used when proxying remote images
+
+## Dedup behavior
+
+On capture, compute `url_fingerprint` from `canonical_url`. If row exists for `(user_id, url_fingerprint)`:
+
+- Return existing item (`200`, `created: false`)
+- Optionally append note to existing (PoC: ignore duplicate note, return message)
+
+## Status defaults after enrichment
+
+| Condition | Default `status` |
+|-----------|------------------|
+| `category_confidence >= 0.6` | `want` |
+| else | `inbox` |
+
+User can always override.
+
+## Realtime
+
+Subscribe to `items` changes for `user_id = auth.uid()` so cards update when `processing_status` → `ready`.
