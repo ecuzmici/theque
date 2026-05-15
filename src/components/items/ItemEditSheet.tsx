@@ -120,7 +120,7 @@ function ItemEditForm({
           <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => v && setStatus(v as ItemStatus)}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-11 w-full min-h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -135,7 +135,7 @@ function ItemEditForm({
           <div className="grid gap-2">
             <Label>Category</Label>
             <Select value={categoryValue} onValueChange={(v) => v && setCategoryValue(v)}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-11 w-full min-h-11">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,6 +157,7 @@ function ItemEditForm({
             value={tagsDraft}
             onChange={(e) => setTagsDraft(e.target.value)}
             placeholder="sci-fi, for-mom"
+            className="h-11 rounded-xl text-base"
           />
           <p className="text-xs text-muted-foreground">Comma-separated</p>
         </div>
@@ -187,7 +188,7 @@ function ItemEditForm({
           </div>
         </fieldset>
 
-        <Button type="button" className="w-full" disabled={busy} onClick={() => void saveAll()}>
+        <Button type="button" className="h-11 w-full min-h-11" disabled={busy} onClick={() => void saveAll()}>
           {busy ? "Saving…" : "Done"}
         </Button>
       </div>

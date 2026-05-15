@@ -87,7 +87,7 @@ export default function SearchPage() {
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Category</Label>
           <Select value={category} onValueChange={(v) => setCategory(v ?? ANY)}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="h-11 w-full min-h-11">
               <SelectValue placeholder="Any" />
             </SelectTrigger>
             <SelectContent>
@@ -103,7 +103,7 @@ export default function SearchPage() {
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select value={status} onValueChange={(v) => setStatus(v ?? ANY)}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="h-11 w-full min-h-11">
               <SelectValue placeholder="Any" />
             </SelectTrigger>
             <SelectContent>
@@ -125,12 +125,13 @@ export default function SearchPage() {
             value={tag}
             onChange={(e) => setTag(e.target.value)}
             placeholder="sci-fi"
+            className="h-11 rounded-xl text-base"
           />
         </div>
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Collection</Label>
           <Select value={collectionId} onValueChange={(v) => setCollectionId(v ?? ANY)}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="h-11 w-full min-h-11">
               <SelectValue placeholder="Any" />
             </SelectTrigger>
             <SelectContent>

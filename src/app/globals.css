@@ -142,6 +142,12 @@
   animation: ks-shimmer 1.35s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ks-shimmer::after {
+    animation: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   .ks-shimmer::after {
     background: linear-gradient(

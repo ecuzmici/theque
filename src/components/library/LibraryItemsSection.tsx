@@ -47,7 +47,7 @@ export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryIt
             <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
               {empty.description}
             </p>
-            <Button nativeButton={false} render={<Link href="/add" />} className="mt-6">
+            <Button nativeButton={false} render={<Link href="/add" />} className="mt-6 min-h-11">
               Add a link
             </Button>
           </div>

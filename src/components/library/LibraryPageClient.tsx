@@ -142,7 +142,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
                 aria-selected={selected}
                 onClick={() => selectShelf(s.id)}
                 className={cn(
-                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition",
+                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition",
                   selected
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted text-muted-foreground ring-1 ring-border hover:bg-card hover:text-foreground",
