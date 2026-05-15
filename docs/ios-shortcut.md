@@ -1,0 +1,95 @@
+# Keepswell — iOS Shortcut (Share sheet)
+
+Send URLs from Safari or any app’s Share sheet to **`POST /api/capture`** using your personal Bearer token. Auth matches [`docs/api-contract.md`](./api-contract.md).
+
+## Prerequisites
+
+- **Shortcut app** on iPhone or iPad.
+- A capture token created in Keepswell (**Settings → Capture tokens**). You only see the full secret once — store it in **Shortcuts → … → Sensitive data** or equivalent (never commit tokens).
+
+## Configure once
+
+Create a Shortcut named **Keepswell capture** with:
+
+1. **Receive** — turn on **Show in Share Sheet**, accepted types **URLs** (and optionally **Rich text** if you want to paste URLs manually).
+2. **URL** — set to your deployed API endpoint:  
+   `https://YOUR_DOMAIN/api/capture`  
+   For local testing on the same Wi‑Fi you’d need a tunnel (e.g. ngrok); Shortcuts cannot reach `localhost` on your Mac directly.
+
+Optional: add a **Dictionary** or **Ask Each Time** step for:
+
+- **note** — optional string (max 2000 characters).
+- **tag_names** — optional list of strings (normalized lowercase server-side).
+
+## Shortcut steps (recommended layout)
+
+1. **Receive URLs** from Share Sheet (input may be `URLs` list — take **first item** if multiple).
+2. **Get URLs from Input** (if needed so you always have one URL string).
+3. **Get Contents of URL**
+   - **Method:** POST  
+   - **URL:** `https://YOUR_DOMAIN/api/capture`  
+   - **Headers:**
+     - `Content-Type` = `application/json`
+     - `Authorization` = `Bearer ` + your token **including** the `bmly_` prefix  
+       Example header value: `Bearer bmly_xxxxxxxx`
+   - **Request Body:** JSON (see below)
+
+## Example JSON body
+
+Minimal:
+
+```json
+{
+  "url": "https://www.goodreads.com/book/show/123",
+  "source": "ios_shortcut"
+}
+```
+
+With optional fields:
+
+```json
+{
+  "url": "https://www.goodreads.com/book/show/123",
+  "note": "Borrow from library",
+  "tag_names": ["fiction", "queue"],
+  "collection_ids": ["00000000-0000-0000-0000-000000000000"],
+  "source": "ios_shortcut"
+}
+```
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `url` | yes | Must be `http` or `https`. |
+| `source` | yes | Use **`ios_shortcut`** for this flow. |
+| `note` | no | Max 2000 chars. |
+| `tag_names` | no | Lowercase normalization on server. |
+| `collection_ids` | no | UUIDs must belong to your account or you get **403**. |
+
+The Shortcut editor’s **Dictionary → JSON** action can build this object; map **Shortcut Input** into the `url` field.
+
+## Responses
+
+- **201** — new item (`created: true`).
+- **200** — duplicate fingerprint (`created: false`).
+- See [`docs/api-contract.md`](./api-contract.md) for error codes.
+
+## Troubleshooting
+
+| Issue | Likely cause |
+|-------|----------------|
+| **401 unauthorized** | Wrong token, missing `Bearer ` prefix, or revoked token. |
+| **400 invalid_url** | Shared payload wasn’t a valid absolute URL — coerce with **Get URLs from Input**. |
+| **403 forbidden** | A `collection_id` isn’t yours — remove collections from body or fix IDs. |
+| **Duplicate but wrong note** | Dedupe is by canonical URL fingerprint; notes don’t merge on duplicate capture — edit in the app. |
+| **Card stays “pending” / empty** | Enrichment runs asynchronously — wait for cron/job processing or trigger enrichment manually per app docs. |
+
+## Quick curl check (desktop)
+
+Replace domain and token:
+
+```bash
+curl -sS -X POST "https://YOUR_DOMAIN/api/capture" \
+  -H "Authorization: Bearer bmly_YOUR_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com","source":"ios_shortcut"}'
+```

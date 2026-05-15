@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Keepswell</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="ks-popup">
+      <header class="ks-header">
+        <h1>Keepswell</h1>
+        <p class="ks-tagline">Save this tab</p>
+      </header>
+
+      <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
+
+      <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
+      <textarea id="ks-note" class="ks-input ks-textarea" rows="3" maxlength="2000" placeholder="Why are you saving this?"></textarea>
+
+      <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save current tab</button>
+
+      <details class="ks-settings">
+        <summary>Settings</summary>
+        <label class="ks-label" for="ks-base-url">API base URL</label>
+        <input
+          id="ks-base-url"
+          class="ks-input"
+          type="url"
+          placeholder="https://your-app.vercel.app"
+          autocomplete="off"
+        />
+        <p class="ks-hint">No trailing slash. Use your deployed URL or http://localhost:3000</p>
+
+        <label class="ks-label" for="ks-token">Capture token</label>
+        <input
+          id="ks-token"
+          class="ks-input ks-token"
+          type="password"
+          autocomplete="off"
+          placeholder="bmly_…"
+        />
+        <p class="ks-hint">Create one in Keepswell → Settings → Capture tokens.</p>
+
+        <button type="button" id="ks-save-settings" class="ks-btn ks-btn-secondary">Save settings</button>
+      </details>
+    </main>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

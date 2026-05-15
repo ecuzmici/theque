@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
 import "./globals.css";
 
@@ -17,9 +17,25 @@ const keepswellSerif = Source_Serif_4({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#faf8f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+  ],
+};
+
 export const metadata: Metadata = {
   title: "Keepswell",
   description: "Your private taste library — save what you'll love later.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Keepswell",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

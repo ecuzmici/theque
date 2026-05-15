@@ -1,0 +1,157 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
+  font-size: 13px;
+  color: #1c1917;
+  background: #faf8f5;
+  width: 320px;
+}
+
+.ks-popup {
+  padding: 14px;
+}
+
+.ks-header h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.ks-tagline {
+  margin: 4px 0 0;
+  color: #57534e;
+  font-size: 12px;
+}
+
+.ks-status {
+  margin: 10px 0;
+  min-height: 2.6em;
+  line-height: 1.35;
+  font-size: 12px;
+}
+
+.ks-status--muted {
+  color: #78716c;
+}
+
+.ks-status--ok {
+  color: #166534;
+}
+
+.ks-status--err {
+  color: #b91c1c;
+}
+
+.ks-label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #44403c;
+}
+
+.ks-optional {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #78716c;
+}
+
+.ks-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(28, 25, 23, 0.15);
+  border-radius: 8px;
+  font: inherit;
+  background: #fffefb;
+}
+
+.ks-input:focus {
+  outline: 2px solid rgba(180, 83, 9, 0.35);
+  outline-offset: 1px;
+}
+
+.ks-textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.ks-token {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+
+.ks-hint {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #78716c;
+  line-height: 1.35;
+}
+
+.ks-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ks-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ks-btn-primary {
+  background: #b45309;
+  color: #fffefb;
+}
+
+.ks-btn-primary:hover:not(:disabled) {
+  background: #92400e;
+}
+
+.ks-btn-secondary {
+  margin-top: 10px;
+  background: #e7e5e4;
+  color: #1c1917;
+}
+
+.ks-btn-secondary:hover:not(:disabled) {
+  background: #d6d3d1;
+}
+
+.ks-settings {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(28, 25, 23, 0.09);
+}
+
+.ks-settings summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  color: #57534e;
+}
+
+.ks-settings[open] summary {
+  margin-bottom: 8px;
+}
