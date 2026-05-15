@@ -1,0 +1,9 @@
+# Supabase CLI — links local tooling to hosted project ref
+# See https://supabase.com/docs/reference/cli/config
+project_id = "jucaqjkgyhyzixzaisjr"
+
+[api]
+enabled = true
+
+[db]
+major_version = 17
