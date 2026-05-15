@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
@@ -40,14 +40,18 @@ export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryIt
   if (items.length === 0) {
     const empty = SHELF_EMPTY[shelfId];
     return (
-      <Card className="border-dashed py-14 text-center">
-        <CardHeader className="mx-auto max-w-sm items-center">
-          <CardTitle className="font-serif text-lg">{empty.title}</CardTitle>
-          <CardDescription>{empty.description}</CardDescription>
-          <Button nativeButton={false} render={<Link href="/add" />} className="mt-4">
-            Add a link
-          </Button>
-        </CardHeader>
+      <Card className="border-dashed">
+        <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
+          <div className="w-full max-w-md">
+            <h2 className="font-serif text-lg font-medium text-card-foreground">{empty.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+              {empty.description}
+            </p>
+            <Button nativeButton={false} render={<Link href="/add" />} className="mt-6">
+              Add a link
+            </Button>
+          </div>
+        </CardContent>
       </Card>
     );
   }

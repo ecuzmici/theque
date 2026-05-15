@@ -6,7 +6,7 @@ import { FolderOpen, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -112,14 +112,16 @@ export function CollectionsPageClient({
       </div>
 
       {collections.length === 0 ? (
-        <Card className="border-dashed py-12 text-center">
-          <CardHeader className="items-center">
-            <FolderOpen className="size-10 text-muted-foreground" aria-hidden />
-            <CardTitle className="font-serif text-lg">No collections yet</CardTitle>
-            <CardDescription>
-              Collections are your &quot;why&quot; — shelves are the &quot;what kind.&quot;
-            </CardDescription>
-          </CardHeader>
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center px-6 py-12 text-center sm:px-10">
+            <div className="w-full max-w-md">
+              <FolderOpen className="mx-auto size-10 text-muted-foreground" aria-hidden />
+              <h2 className="mt-4 font-serif text-lg font-medium">No collections yet</h2>
+              <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                Collections are your &quot;why&quot; — shelves are the &quot;what kind.&quot;
+              </p>
+            </div>
+          </CardContent>
         </Card>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">

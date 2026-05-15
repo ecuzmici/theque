@@ -70,7 +70,7 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
           ))}
         </ul>
       ) : items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center text-sm text-muted-foreground">
+        <p className="mx-auto max-w-md rounded-xl border border-dashed border-border bg-muted/30 px-6 py-16 text-center text-sm leading-relaxed text-pretty text-muted-foreground sm:px-10">
           No items in this collection yet. Open an item and add it here.
         </p>
       ) : (
