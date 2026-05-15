@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         <nav
-          className="fixed bottom-0 left-0 right-0 z-30 grid h-[var(--ks-nav-height)] grid-cols-5 items-end border-t border-border bg-card/95 px-1 pb-2 backdrop-blur lg:hidden"
+          className="fixed bottom-0 left-0 right-0 z-30 grid h-[var(--ks-nav-height)] grid-cols-5 items-end gap-x-1.5 border-t border-border bg-card/95 px-2 pb-2 backdrop-blur lg:hidden"
           aria-label="Primary"
         >
           {nav.slice(0, 2).map((item) => (

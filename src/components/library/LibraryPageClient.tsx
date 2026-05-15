@@ -131,7 +131,8 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
       ) : null}
 
       <ScrollArea className="w-full pb-4">
-        <div className="flex w-max gap-2 pb-1" role="tablist" aria-label="Shelves">
+        {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
+        <div className="flex w-max gap-2 px-0.5 py-1.5 pb-2" role="tablist" aria-label="Shelves">
           {SHELVES.map((s) => {
             const selected = s.id === activeShelf;
             return (
@@ -142,10 +143,10 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
                 aria-selected={selected}
                 onClick={() => selectShelf(s.id)}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition",
+                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition",
                   selected
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground ring-1 ring-border hover:bg-card hover:text-foreground",
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-muted text-muted-foreground hover:bg-card hover:text-foreground",
                 )}
               >
                 {s.label}
