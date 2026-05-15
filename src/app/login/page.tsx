@@ -8,6 +8,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/library";
   const authError = searchParams.get("error") === "auth";
+  const authReason = searchParams.get("reason");
 
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
@@ -49,6 +50,9 @@ function LoginForm() {
         {authError && (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
             Sign-in failed. Please try again.
+            {authReason ? (
+              <span className="mt-1 block text-xs opacity-90">{authReason}</span>
+            ) : null}
           </p>
         )}
 
