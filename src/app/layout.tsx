@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const keepswellSerif = Source_Serif_4({
-  variable: "--font-keepswell-serif",
+const thequeSerif = Source_Serif_4({
+  variable: "--font-theque-serif",
   subsets: ["latin"],
 });
 
@@ -25,12 +25,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Keepswell",
+  title: "Theque",
   description: "Your private taste library — save what you'll love later.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Keepswell",
+    title: "Theque",
     statusBarStyle: "default",
   },
   icons: {
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${keepswellSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${thequeSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

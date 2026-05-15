@@ -47,7 +47,7 @@ export default function AddPage() {
     <div>
       <h1 className="font-serif text-3xl tracking-tight text-[color:var(--ks-fg)]">Add a link</h1>
       <p className="mt-2 text-sm text-[color:var(--ks-fg-muted)]">
-        Paste any URL — Keepswell captures it and fills in the card when enrichment finishes.
+        Paste any URL — Theque captures it and fills in the card when enrichment finishes.
       </p>
 
       <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-5 rounded-[var(--ks-radius-card)] border border-[color:var(--ks-border)] bg-[color:var(--ks-surface)] p-6 shadow-[var(--ks-shadow)]">

@@ -12,7 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-full flex-col lg:flex-row">
       <aside className="hidden border-[color:var(--ks-border)] bg-[color:var(--ks-bg-muted)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-52 lg:shrink-0 lg:flex-col lg:border-r lg:px-4 lg:py-6">
         <Link href="/library" className="font-serif text-xl tracking-tight text-[color:var(--ks-fg)]">
-          Keepswell
+          Theque
         </Link>
         <p className="mt-1 text-xs text-[color:var(--ks-fg-muted)]">Your taste library</p>
         <nav className="mt-10 flex flex-col gap-1">
@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 border-b border-[color:var(--ks-border)] bg-[color:var(--ks-bg)]/90 backdrop-blur lg:hidden">
           <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
             <Link href="/library" className="font-serif text-lg tracking-tight">
-              Keepswell
+              Theque
             </Link>
           </div>
         </header>

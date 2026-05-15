@@ -1,4 +1,4 @@
-# Keepswell — Data Model
+# Theque — Data Model
 
 Postgres on Supabase. All user tables in `public` with **RLS enabled**. Use `auth.uid()` for policies; never trust client-only filtering.
 

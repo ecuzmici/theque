@@ -23,7 +23,7 @@ export default async function SettingsPage() {
     <div>
       <h1 className="font-serif text-3xl tracking-tight text-[color:var(--ks-fg)]">Settings</h1>
       <p className="mt-2 text-sm text-[color:var(--ks-fg-muted)]">
-        Manage how links arrive in Keepswell from extensions and shortcuts.
+        Manage how links arrive in Theque from extensions and shortcuts.
       </p>
       <CaptureTokens initialTokens={tokens ?? []} />
     </div>

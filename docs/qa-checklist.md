@@ -1,4 +1,4 @@
-# Keepswell — integration QA checklist
+# Theque — integration QA checklist
 
 Use this matrix before calling a release “good enough” for personal PoC. Capture paths: **Chrome extension**, **iOS Shortcut** (or **`curl`** with Bearer token). Web app: library, inbox, collections.
 

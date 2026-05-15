@@ -1,15 +1,15 @@
-# Keepswell — iOS Shortcut (Share sheet)
+# Theque — iOS Shortcut (Share sheet)
 
 Send URLs from Safari or any app’s Share sheet to **`POST /api/capture`** using your personal Bearer token. Auth matches [`docs/api-contract.md`](./api-contract.md).
 
 ## Prerequisites
 
 - **Shortcut app** on iPhone or iPad.
-- A capture token created in Keepswell (**Settings → Capture tokens**). You only see the full secret once — store it in **Shortcuts → … → Sensitive data** or equivalent (never commit tokens).
+- A capture token created in Theque (**Settings → Capture tokens**). You only see the full secret once — store it in **Shortcuts → … → Sensitive data** or equivalent (never commit tokens).
 
 ## Configure once
 
-Create a Shortcut named **Keepswell capture** with:
+Create a Shortcut named **Theque capture** with:
 
 1. **Receive** — turn on **Show in Share Sheet**, accepted types **URLs** (and optionally **Rich text** if you want to paste URLs manually).
 2. **URL** — set to your deployed API endpoint:  

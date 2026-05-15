@@ -41,7 +41,7 @@ function LoginForm() {
     <main className="flex min-h-full flex-col items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <h1 className="font-serif text-3xl tracking-tight text-stone-900 dark:text-stone-50">
-          Keepswell
+          Theque
         </h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
           Your private taste library

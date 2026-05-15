@@ -19,7 +19,7 @@ export default async function Home() {
     <main className="flex min-h-full flex-col items-center justify-center gap-8 px-6 py-24">
       <div className="text-center">
         <h1 className="font-serif text-4xl tracking-tight text-stone-900 dark:text-stone-50">
-          Keepswell
+          Theque
         </h1>
         <p className="mt-3 max-w-md text-sm text-stone-600 dark:text-stone-400">
           Your private taste library — save what you&apos;ll love later.

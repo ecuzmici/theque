@@ -1,5 +1,5 @@
 /*
-  Keepswell initial schema — synced from docs/data-model.md
+  Theque initial schema — synced from docs/data-model.md
   Hosted project already has this applied; this migration keeps the repo aligned.
 */
 

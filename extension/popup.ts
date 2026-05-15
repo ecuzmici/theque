@@ -1,6 +1,6 @@
 const STORAGE_KEYS = {
-  token: "keepswell_capture_token",
-  baseUrl: "keepswell_api_base_url",
+  token: "theque_capture_token",
+  baseUrl: "theque_api_base_url",
 } as const;
 
 const DEFAULT_BASE_URL = "http://localhost:3000";
@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       const created = body?.created !== false;
-      setStatus(created ? "Saved to Keepswell." : "Already in your library.", "ok");
+      setStatus(created ? "Saved to Theque." : "Already in your library.", "ok");
     } catch {
       setStatus("Network error — check API URL and connection.", "err");
     } finally {

@@ -1,4 +1,4 @@
-# Keepswell — UI Shelves (Option A)
+# Theque — UI Shelves (Option A)
 
 Shelves are **fixed smart views** defined in code — not database tables. Users organize by **collections** and **tags**; shelves answer “what kind of thing is this?”
 

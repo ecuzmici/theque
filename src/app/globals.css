@@ -39,7 +39,7 @@
   --color-foreground: var(--ks-fg);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-serif: var(--font-keepswell-serif), ui-serif, Georgia, serif;
+  --font-serif: var(--font-theque-serif), ui-serif, Georgia, serif;
 }
 
 @keyframes ks-shimmer {

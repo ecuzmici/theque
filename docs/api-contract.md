@@ -1,4 +1,4 @@
-# Keepswell — API Contract
+# Theque — API Contract
 
 Base URL: `https://<app-domain>` (local: `http://localhost:3000`)
 
