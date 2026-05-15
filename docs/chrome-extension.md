@@ -14,7 +14,7 @@ Capture the active tab into your library using a personal capture token (`bmly_â
 2. Enable **Developer mode** (toggle in the toolbar).
 3. Click **Load unpacked**.
 4. Select the **`extension`** folder inside this repo  
-   (`bookmarkly/extension`), **not** the repo root.
+   (`keepswell/extension` or `extension/` in this repo), **not** the repo root.
 
 After code changes to `popup.ts` / `background.ts`, run `npm run build` again and click **Reload** on the extension card.
 
