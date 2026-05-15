@@ -40,7 +40,9 @@ function NavLink({
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
           ? "bg-accent text-accent-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          : compact
+            ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+            : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground dark:hover:bg-white/10",
         compact && "min-w-[4.5rem] flex-col gap-1 px-2 py-1.5 text-[11px]",
       )}
       aria-current={active ? "page" : undefined}
