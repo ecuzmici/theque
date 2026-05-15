@@ -20,6 +20,9 @@
 # production
 /build
 
+# cursor (local MCP/agents; use AGENTS.md + docs/sessions for shared agent docs)
+.cursor/
+
 # misc
 .DS_Store
 *.pem
@@ -48,3 +51,6 @@ next-env.d.ts
 # chrome extension build artifacts (run npm run build)
 extension/popup.js
 extension/background.js
+
+# QA agent screenshots (local only)
+qa-screenshots/

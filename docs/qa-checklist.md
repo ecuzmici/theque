@@ -2,6 +2,8 @@
 
 Use this matrix before calling a release “good enough” for personal PoC. Capture paths: **Chrome extension**, **iOS Shortcut** (or **`curl`** with Bearer token). Web app: library, inbox, collections.
 
+**Agent session:** For a guided Playwright-based run, use [`docs/sessions/qa-integration-session.md`](./sessions/qa-integration-session.md) and enable Playwright MCP (see `AGENTS.md`).
+
 ## Reference URLs
 
 | # | Domain / type | Example URL | Focus |
