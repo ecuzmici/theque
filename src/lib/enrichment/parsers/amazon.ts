@@ -40,7 +40,7 @@ export function parseAmazon(
     structured.brand = brand.replace(/^Brand:\s*/i, "").trim();
   }
 
-  let image_url = openGraph["og:image"];
+  let image_url: string | undefined = openGraph["og:image"];
   if (!image_url) {
     const landing = doc.querySelector<HTMLImageElement>("#landingImage, #imgBlkFront");
     image_url = landing?.getAttribute("src") ?? landing?.getAttribute("data-old-hires") ?? undefined;

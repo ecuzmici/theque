@@ -47,3 +47,11 @@ export function getShelf(id: ShelfId): ShelfDefinition {
   if (!shelf) throw new Error(`Unknown shelf: ${id}`);
   return shelf;
 }
+
+/** Resolves `?shelf=` (or missing) to a shelf id for the library route. */
+export function parseShelfParam(param: string | null | undefined): ShelfId {
+  if (param && SHELVES.some((s) => s.id === param)) {
+    return param as ShelfId;
+  }
+  return "all";
+}
