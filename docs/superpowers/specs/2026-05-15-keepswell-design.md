@@ -1,4 +1,4 @@
-# Bookmarkly — Design Specification
+# Keepswell — Design Specification
 
 **Status:** Approved for implementation  
 **Date:** 2026-05-15  
@@ -6,7 +6,7 @@
 
 ## Summary
 
-Bookmarkly is a personal visual library for things discovered while browsing. Capture is one gesture (Chrome extension, iOS Shortcut, paste URL); the backend saves immediately and enriches asynchronously; the UI prioritizes beautiful shelf browsing over inbox administration.
+Keepswell is a personal visual library for things discovered while browsing. Capture is one gesture (Chrome extension, iOS Shortcut, paste URL); the backend saves immediately and enriches asynchronously; the UI prioritizes beautiful shelf browsing over inbox administration.
 
 ## Goals
 
@@ -135,4 +135,4 @@ Native iOS Share Extension, AI classifier, Places API, public sharing, offline m
 | [api-contract.md](../../api-contract.md) | HTTP API |
 | [category-schemas.md](../../category-schemas.md) | JSONB shapes |
 | [ui-shelves.md](../../ui-shelves.md) | Shelf filters + UX |
-| [plans/2026-05-15-bookmarkly.md](../plans/2026-05-15-bookmarkly.md) | Implementation tasks |
+| [plans/2026-05-15-keepswell.md](../plans/2026-05-15-keepswell.md) | Implementation tasks |

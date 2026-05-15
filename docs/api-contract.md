@@ -1,4 +1,4 @@
-# Bookmarkly — API Contract
+# Keepswell — API Contract
 
 Base URL: `https://<app-domain>` (local: `http://localhost:3000`)
 

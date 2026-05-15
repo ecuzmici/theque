@@ -1,4 +1,4 @@
-# Bookmarkly — Data Model
+# Keepswell — Data Model
 
 Postgres on Supabase. All user tables in `public` with **RLS enabled**. Use `auth.uid()` for policies; never trust client-only filtering.
 

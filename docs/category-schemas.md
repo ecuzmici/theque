@@ -1,4 +1,4 @@
-# Bookmarkly — Category Schemas
+# Keepswell — Category Schemas
 
 `structured` JSONB holds category-specific extracted fields. `raw_metadata` stores the full extraction snapshot (OG tags, JSON-LD array, parser outputs). PoC uses **best-effort** parsing — no strict JSON Schema validation in v0.1.
 

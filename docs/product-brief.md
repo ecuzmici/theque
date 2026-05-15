@@ -1,4 +1,4 @@
-# Bookmarkly — Product Brief
+# Keepswell — Product Brief
 
 ## One-liner
 
@@ -77,5 +77,5 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 - [API contract](./api-contract.md)
 - [Category schemas](./category-schemas.md)
 - [UI shelves](./ui-shelves.md)
-- [Design spec](./superpowers/specs/2026-05-15-bookmarkly-design.md)
-- [Implementation plan](./superpowers/plans/2026-05-15-bookmarkly.md)
+- [Design spec](./superpowers/specs/2026-05-15-keepswell-design.md)
+- [Implementation plan](./superpowers/plans/2026-05-15-keepswell.md)

@@ -1,4 +1,4 @@
-# Bookmarkly Implementation Plan
+# Keepswell Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Next.js 15+, TypeScript, Tailwind CSS, `@supabase/ssr`, `@supabase/supabase-js`, Vitest, Chrome MV3, Supabase CLI + MCP.
 
-**Prerequisites:** Read `docs/product-brief.md`, `docs/data-model.md`, `docs/api-contract.md`, `docs/ui-shelves.md`, `docs/superpowers/specs/2026-05-15-bookmarkly-design.md`.
+**Prerequisites:** Read `docs/product-brief.md`, `docs/data-model.md`, `docs/api-contract.md`, `docs/ui-shelves.md`, `docs/superpowers/specs/2026-05-15-keepswell-design.md`.
 
 ---
 
@@ -446,7 +446,7 @@ curl -X POST http://localhost:3000/api/capture \
 
 ---
 
-**Plan complete.** Saved to `docs/superpowers/plans/2026-05-15-bookmarkly.md`.
+**Plan complete.** Saved to `docs/superpowers/plans/2026-05-15-keepswell.md`.
 
 **Execution options:**
 
