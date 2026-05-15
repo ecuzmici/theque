@@ -246,7 +246,12 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      claim_pending_enrichment_items: {
+        Args: { batch_size?: number };
+        Returns: string[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
