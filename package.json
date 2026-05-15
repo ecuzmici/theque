@@ -11,7 +11,8 @@
     "test": "vitest",
     "seed": "tsx scripts/seed.ts",
     "supabase:sync-auth": "node scripts/update-supabase-auth.mjs",
-    "qa:install-browsers": "playwright install chromium"
+    "qa:install-browsers": "playwright install chromium",
+    "qa:session-url": "node scripts/qa-local-session-url.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

@@ -87,7 +87,7 @@ After cloning, run once: `npm run qa:install-browsers`.
 
 | Agent | When to use |
 |-------|-------------|
-| **QA Integration** | Full matrix: capture + enrich + shelf/card UI per category. Start: `docs/sessions/qa-integration-session.md` + `docs/sessions/qa-integration-agent.md` |
+| **QA Integration** | Local-first; **no magic-link tests**. Paste `docs/sessions/qa-integration-prompt.md`; auth via `npm run qa:session-url` |
 | Code reviewer | After large feature chunks (superpowers plugin) |
 
 ## Working conventions
@@ -109,9 +109,8 @@ After cloning, run once: `npm run qa:install-browsers`.
 
 ## QA handoff
 
-For integration and visual regression testing, open a **new Cursor chat**, enable **Playwright MCP**, and paste or reference:
-
-**`docs/sessions/qa-integration-session.md`**
+For integration QA: **new chat** + Playwright MCP + paste **`docs/sessions/qa-integration-prompt.md`**.  
+Local auth: `QA_DEV_SESSION_SECRET` + `QA_DEV_EMAIL` in `.env.local`, then `npm run qa:session-url` (no email sent).
 
 Report failures with URL, client (web/extension/API), shelf, screenshot, and item id if any.
 

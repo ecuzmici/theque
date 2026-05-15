@@ -18,6 +18,7 @@ export type ShelfDefinition = {
     status?: ItemStatus;
     category?: ItemCategory | ItemCategory[];
     excludeDismissed?: boolean;
+    excludeInbox?: boolean;
   };
 };
 
@@ -32,7 +33,11 @@ export const SHELVES: ShelfDefinition[] = [
     filter: { category: ["products", "gifts"], excludeDismissed: true },
   },
   { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true } },
-  { id: "read", label: "Read", filter: { category: "articles", excludeDismissed: true } },
+  {
+    id: "read",
+    label: "Read",
+    filter: { category: "articles", excludeDismissed: true, excludeInbox: true },
+  },
   { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true } },
   { id: "inbox", label: "Inbox", filter: { status: "inbox" } },
 ];

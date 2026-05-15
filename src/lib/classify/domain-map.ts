@@ -25,6 +25,7 @@ export function classifyFromDomain(hostname: string): DomainClassification | nul
     { suffix: "google.com", category: "restaurants" },
     { suffix: "airbnb.com", category: "travel" },
     { suffix: "booking.com", category: "travel" },
+    { suffix: "lonelyplanet.com", category: "travel" },
   ];
 
   for (const { suffix, category } of pairs) {

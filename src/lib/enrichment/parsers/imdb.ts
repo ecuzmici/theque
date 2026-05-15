@@ -1,21 +1,11 @@
 import { flattenJsonLd, typesOf } from "@/lib/jsonld";
 
-function personNames(val: unknown): string[] {
-  if (!val) return [];
-  const list = Array.isArray(val) ? val : [val];
-  const names: string[] = [];
-  for (const entry of list) {
-    if (typeof entry === "string") names.push(entry);
-    else if (entry && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string") {
-      names.push((entry as { name: string }).name);
-    }
-  }
-  return names;
-}
+import { parseIsoDurationMinutes, parseTitleTag, personNames } from "@/lib/enrichment/meta-utils";
 
 export function parseImdb(
-  _doc: Document,
+  doc: Document,
   jsonLdRoots: unknown[],
+  openGraph: Record<string, string>,
 ): { structured: Record<string, unknown> } {
   const structured: Record<string, unknown> = {
     site_name: "IMDb",
@@ -46,18 +36,23 @@ export function parseImdb(
     if (typeof genre === "string") structured.genres = [genre];
     else if (Array.isArray(genre)) structured.genres = genre.filter((g): g is string => typeof g === "string");
 
-    const duration = node.duration;
-    if (typeof duration === "string" && duration.startsWith("PT")) {
-      const hours = duration.match(/(\d+)H/i);
-      const minutes = duration.match(/(\d+)M/i);
-      let total = 0;
-      if (hours) total += Number.parseInt(hours[1], 10) * 60;
-      if (minutes) total += Number.parseInt(minutes[1], 10);
-      if (total > 0) structured.runtime_minutes = total;
-    }
+    const runtime = parseIsoDurationMinutes(node.duration);
+    if (runtime !== undefined) structured.runtime_minutes = runtime;
 
     structured.media_type = types.includes("TVSeries") ? "tv" : "movie";
     break;
+  }
+
+  if (!structured.title_hint) {
+    const ogTitle = openGraph["og:title"];
+    if (typeof ogTitle === "string") {
+      structured.title_hint = parseTitleTag(ogTitle, "IMDb");
+    }
+  }
+
+  if (!structured.title_hint) {
+    const fromTag = parseTitleTag(doc.querySelector("title")?.textContent ?? undefined, "IMDb");
+    if (fromTag) structured.title_hint = fromTag;
   }
 
   return { structured };

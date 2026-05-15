@@ -1,159 +1,165 @@
 # QA Integration Session — Theque
 
-**Purpose:** One session to validate every capture integration and shelf/card rendering.  
-**Audience:** QA agent (or human) with **Playwright MCP** enabled.  
-**Duration:** ~45–90 minutes for full matrix.
+**Purpose:** Validate capture, enrichment, shelves, and card/detail UI per category.  
+**Out of scope:** Magic-link login (tested manually by owner). **Do not** open `/login` or submit the email form.
 
-## Setup
+**Audience:** QA agent with **Playwright MCP**.  
+**Default environment:** **local** (`http://localhost:3000`) to avoid Supabase email rate limits.
 
-1. **MCP:** Copy `docs/cursor-mcp.example.json` to `.cursor/mcp.json` (local, gitignored). In Cursor: Settings → MCP → ensure `playwright` is connected (reload window if needed).
-2. **Browsers (once per machine):**
-   ```bash
-   npm run qa:install-browsers
-   ```
-3. **Target environment** (pick one):
-   - **Production:** https://theque.vercel.app — use your real account (magic link).
-   - **Local:** `npm run dev` → http://localhost:3000
-4. **Capture token (API/extension tests):** Settings → Capture tokens → create → copy `bmly_…` once.
-5. **Optional:** Chrome extension built (`npm run build`), loaded from `extension/`, API base = target origin.
+## Setup (local)
+
+```bash
+npm install
+npm run dev
+npm run qa:install-browsers   # once per machine
+```
+
+In `.env.local` (see `.env.local.example`):
+
+```env
+QA_DEV_SESSION_SECRET=some-long-random-string
+QA_DEV_EMAIL=your-supabase-login-email@example.com
+```
+
+Get a capture token for API tests: after session bootstrap, open **Settings → Capture tokens** in the app (or use an existing `bmly_…` token).
+
+**Playwright MCP:** copy `docs/cursor-mcp.example.json` → `.cursor/mcp.json`, reload Cursor.
+
+### Bootstrap auth (no email sent)
+
+```bash
+npm run qa:session-url
+```
+
+Copy the printed URL. **First Playwright step:** navigate to that URL → redirects to `/library` with session cookies. Do not use `/login`.
+
+## Setup (production — optional)
+
+Only if explicitly asked. User must **already be logged in** in the browser context Playwright uses. **Never** submit the magic-link form (rate limits). Start at `/library` after user confirms auth.
 
 ## Reference URLs
-
-Use stable public URLs; replace if a link dies.
 
 | ID | Type | URL |
 |----|------|-----|
 | M1 | IMDb film | https://www.imdb.com/title/tt1375666/ |
 | B1 | Goodreads book | https://www.goodreads.com/book/show/5907.The_Hobbit |
-| A1 | Article | https://www.bbc.com/news (any article) |
-| P1 | Product | https://www.amazon.com/dp/B0BDHWDR12 (or any product DP link) |
-| R1 | Restaurant / place | Google Maps place share link (paste from Maps app) |
-| T1 | Travel | https://www.airbnb.com/rooms/ (any listing) |
-| C1 | Recipe | Any blog post with visible Recipe schema (e.g. serious eats recipe) |
+| A1 | Article | https://css-tricks.com/snippets/css/a-guide-to-flexbox/ |
+| P1 | Product | https://www.amazon.com/dp/B0BDHWDR12 |
+| R1 | Restaurant / place | https://www.google.com/maps/place/Caf%C3%A9+de+Flore/@48.8541604,2.3325599,17z |
+| T1 | Travel | https://www.lonelyplanet.com/articles/where-to-stay-in-paris |
+| C1 | Recipe | https://www.kingarthurbaking.com/recipes/chocolate-chip-cookies-recipe |
 | I1 | Low confidence | https://example.com/ |
 
 ## Session flow
 
-### Phase 0 — Smoke
+### Phase 0 — Session smoke (not login)
 
-- [ ] Open `/login` — page renders, email field works.
-- [ ] Complete magic link login (user action if needed).
-- [ ] Land on `/library` — shelf tabs visible (All, Books, Watch, … Inbox).
+- [ ] `npm run qa:session-url` → open URL in Playwright → land on `/library`.
+- [ ] Shelf tabs visible: All, Books, Watch, Eat, Shop, Travel, Read, Cook, Inbox.
+- [ ] `/login` is **not** tested.
 
-### Phase 1 — Capture via web UI
+### Phase 1 — Capture via web UI (`/add`)
 
 For each URL (M1, B1, A1, …):
 
-1. Go to **Add** (`/add`) or use capture flow in app.
-2. Paste URL, optional note `QA-[ID]-[date]`, submit.
-3. Wait for enrichment (≤60s); refresh or rely on realtime if visible.
-4. Record item id from URL `/item/[id]`.
+1. Go to **Add** (`/add`).
+2. Paste URL, note `QA-[ID]-[date]`, submit.
+3. Wait for enrichment (≤90s); refresh if needed.
+4. Record item id from `/item/[id]`.
 
 ### Phase 2 — Shelf placement
 
-For each captured item:
+| ID | Expected shelf(s) |
+|----|-------------------|
+| M1 | Watch |
+| B1 | Books |
+| A1 | Read |
+| P1 | Shop |
+| R1 | Eat |
+| T1 | Travel |
+| C1 | Cook |
+| I1 | Inbox (likely) |
 
-| ID | Expected shelf(s) | Must NOT appear on |
-|----|-------------------|---------------------|
-| M1 | Watch | Books only (wrong category) |
-| B1 | Books | Watch |
-| A1 | Read | — |
-| P1 | Shop | — |
-| R1 | Eat | — |
-| T1 | Travel | — |
-| C1 | Cook | — |
-| I1 | Inbox (likely) | Watch/Books until triaged |
+- [ ] Each shelf tab shows/hides the item correctly.
+- [ ] **All** includes non-dismissed items.
 
-- [ ] Click each shelf tab; confirm card appears or absent as expected.
-- [ ] **All** tab shows non-dismissed items.
+### Phase 3 — Card & detail (Playwright)
 
-### Phase 3 — Card & detail rendering (Playwright)
+For each `/item/[id]`:
 
-For each item on `/item/[id]`:
+- [ ] Hero image or placeholder.
+- [ ] Title present; structured fields per `docs/category-schemas.md`.
+- [ ] External link opens correct URL.
+- [ ] Screenshots: `qa-screenshots/{ID}-library.png`, `{ID}-detail.png`.
 
-- [ ] Hero image loads (or graceful placeholder).
-- [ ] Title matches source site (not empty "Untitled" unless scrape failed).
-- [ ] Structured section shows category fields (see `docs/category-schemas.md`).
-- [ ] **Open original** / external link uses correct URL.
-- [ ] Screenshot: card on library + detail page (name files `qa-M1-library.png`, etc.).
+### Phase 4 — API capture (`curl`)
 
-**Category-specific expectations:**
-
-| ID | Structured fields to verify |
-|----|----------------------------|
-| M1 | `year`, `directors`, optional `runtime_minutes` |
-| B1 | `authors`, `published_year` |
-| A1 | description / site_name from OG |
-| P1 | product-ish OG fields |
-| R1 | at least title; cuisine optional |
-| T1 | title, image |
-| C1 | recipe-related structured keys if parsed |
-| I1 | minimal card OK; stays in inbox |
-
-### Phase 4 — API capture (curl)
-
-Use token from Settings. Replace `BASE` and `TOKEN`.
+Requires capture token from Settings.
 
 ```bash
-curl -s -X POST "%BASE%/api/capture" \
-  -H "Authorization: Bearer %TOKEN%" \
+curl -s -X POST "http://localhost:3000/api/capture" \
+  -H "Authorization: Bearer bmly_..." \
   -H "Content-Type: application/json" \
   -d "{\"url\":\"https://www.imdb.com/title/tt1375666/\",\"note\":\"QA-api-M1\",\"source\":\"manual\"}"
 ```
 
-- [ ] Second identical POST returns `"created": false` (dedupe).
-- [ ] POST without header returns 401.
+- [ ] Second identical POST → `"created": false`.
+- [ ] POST without Bearer → **401**.
 
-### Phase 5 — Extension (optional)
+### Phase 5 — Enrichment job (local)
 
-- [ ] Popup: API base + token saved.
-- [ ] Save current tab on IMDb → item in library with `source` chrome path.
+Trigger enrichment for pending items (if cron not running):
 
-### Phase 6 — Regression
+```bash
+curl -s -X POST "http://localhost:3000/api/jobs/enrich" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
 
-- [ ] **Search** finds `QA-` note or known title.
+(Use `CRON_SECRET` from `.env.local`.)
+
+### Phase 6 — Extension (optional)
+
+See `docs/chrome-extension.md`. API base `http://localhost:3000`. Skip if not installed; note BLOCKED.
+
+### Phase 7 — Regression
+
+- [ ] **Search** finds a captured title or `QA-` note.
 - [ ] **Inbox** badge count matches inbox items.
-- [ ] **Retry enrichment** on a failed item if any (Settings or detail action).
-- [ ] Run unit tests: `npm test` (parser fixtures must pass).
+- [ ] **Settings** loads; capture token list works.
+- [ ] `npm test` passes.
 
-## Playwright MCP tips
+## Playwright tips
 
-- Start with `browser_navigate` to login URL.
-- Use accessibility snapshots before clicking ambiguous buttons.
-- Set viewport to mobile size for one pass: 390×844.
-- Save screenshots to `qa-screenshots/` in repo (gitignored) or attach to report only.
+- First navigation: **qa-session URL**, not `/login`.
+- Mobile pass: viewport 390×844.
+- Use accessibility snapshots before clicks.
 
 ## Pass / fail
 
-**Pass:** Item captured, correct shelf, card/detail render with acceptable metadata, no console errors on critical paths.  
-**Fail:** Wrong shelf, blank card, stuck processing >2 min, broken auth, 500 on capture.  
-**Blocked:** Cannot login, no capture token, extension not installed (note in report).
+**Pass:** Capture works, correct shelf, card/detail OK, no 500s on core paths.  
+**Fail:** Wrong shelf, broken layout, enrichment stuck >2 min, capture 500.  
+**Blocked:** Missing `QA_DEV_*` env, no capture token, extension not loaded.
 
 ## Report template
-
-Copy into chat or `docs/sessions/reports/YYYY-MM-DD-qa.md`:
 
 ```markdown
 # Theque integration QA — YYYY-MM-DD
 
-Environment: production | local
-Tester: agent | human
+Environment: local | production
+Auth: qa-session | user pre-authenticated
 
 | ID | Capture | Shelf | Card | Detail | Notes |
 |----|---------|-------|------|--------|-------|
 | M1 | | | | | |
-...
 
 ## Unit tests
 npm test: pass | fail
 
-## Blockers
-
-## Recommended fixes
+## Blockers / fixes
 ```
 
-## Related docs
+## Related
 
-- `docs/qa-checklist.md` — full checklist  
-- `AGENTS.md` — repo map and agent roles  
-- `docs/sessions/qa-integration-agent.md` — agent prompt  
+- `docs/sessions/qa-integration-prompt.md` — paste into Cursor  
+- `docs/qa-checklist.md`  
+- `AGENTS.md`

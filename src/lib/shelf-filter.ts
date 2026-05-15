@@ -5,6 +5,12 @@ export function itemMatchesShelf(
   item: { status: ItemStatus; category: ItemCategory | null },
   shelfId: ShelfId,
 ): boolean {
+  if (shelfId !== "inbox") {
+    const shelf = SHELVES.find((s) => s.id === shelfId);
+    if (shelf?.filter.excludeInbox && item.status === "inbox") {
+      return false;
+    }
+  }
   const shelf = SHELVES.find((s) => s.id === shelfId);
   if (!shelf) return false;
 

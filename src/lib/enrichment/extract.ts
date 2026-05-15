@@ -1,7 +1,9 @@
-import { JSDOM } from "jsdom";
+import { JSDOM, VirtualConsole } from "jsdom";
 
 import type { Json } from "@/lib/database.types";
 
+import { isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { parseAmazon } from "@/lib/enrichment/parsers/amazon";
 import { parseGoodreads } from "@/lib/enrichment/parsers/goodreads";
 import { parseGeneric } from "@/lib/enrichment/parsers/generic";
 import { parseImdb } from "@/lib/enrichment/parsers/imdb";
@@ -24,6 +26,11 @@ export type ExtractResult = {
   structured: Record<string, unknown>;
   raw_metadata: RawMetadata;
 };
+
+const virtualConsole = new VirtualConsole();
+virtualConsole.on("error", () => {
+  /* JSDOM may log CSS parse errors on large pages; extraction still proceeds */
+});
 
 function readMetaMap(doc: Document, propertyPrefix: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -65,7 +72,7 @@ export function extractFromHtml(
   html: string,
   opts: { finalUrl: string; statusCode: number },
 ): ExtractResult {
-  const dom = new JSDOM(html);
+  const dom = new JSDOM(html, { virtualConsole });
   const doc = dom.window.document;
   const hostname = new URL(opts.finalUrl).hostname.toLowerCase();
 
@@ -76,21 +83,38 @@ export function extractFromHtml(
   let parser = "generic";
   let structured: Record<string, unknown> = {};
 
+  let title: string | null = null;
+  let image_url: string | null = null;
+
   if (hostname === "imdb.com" || hostname.endsWith(".imdb.com")) {
-    const imdb = parseImdb(doc, json_ld);
+    const imdb = parseImdb(doc, json_ld, open_graph);
     structured = { ...structured, ...imdb.structured };
     parser = "imdb";
   } else if (hostname === "goodreads.com" || hostname.endsWith(".goodreads.com")) {
     const gr = parseGoodreads(doc, json_ld);
     structured = { ...structured, ...gr.structured };
     parser = "goodreads";
+  } else if (hostname === "amazon.com" || hostname.endsWith(".amazon.com")) {
+    const amazon = parseAmazon(doc, open_graph);
+    structured = { ...structured, ...amazon.structured };
+    title = amazon.title ?? null;
+    image_url = amazon.image_url ?? null;
+    parser = "amazon";
   }
 
   const generic = parseGeneric(doc, json_ld, open_graph, twitter);
 
-  const title = generic.title ?? null;
+  if (!title) title = generic.title ?? null;
+  if (!image_url) image_url = generic.image_url ?? null;
   const description = generic.description ?? null;
-  const image_url = generic.image_url ?? null;
+
+  const titleHint =
+    typeof structured.title_hint === "string" ? structured.title_hint : undefined;
+  const siteName =
+    typeof structured.site_name === "string" ? structured.site_name : undefined;
+  if (titleHint && isWeakTitle(title, siteName)) {
+    title = titleHint;
+  }
 
   const raw_metadata: RawMetadata = {
     fetched_at: new Date().toISOString(),
@@ -107,7 +131,7 @@ export function extractFromHtml(
     subtitle: generic.subtitle ?? null,
     description,
     image_url,
-    structured: { ...structured, ...generic.structured },
+    structured: { ...generic.structured, ...structured },
     raw_metadata,
   };
 }

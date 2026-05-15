@@ -2,8 +2,10 @@ import "server-only";
 
 import type { CategorySource, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { classify } from "@/lib/classify/index";
+import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EnrichOutcome = "ready" | "pending_retry" | "failed" | "skipped";
@@ -77,10 +79,14 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
 
   try {
     const fetchResult = await fetchPage(row.canonical_url);
-    const extracted = extractFromHtml(fetchResult.html, {
-      finalUrl: fetchResult.finalUrl,
-      statusCode: fetchResult.statusCode,
-    });
+    const extracted = await applyEnrichmentFallbacks(
+      fetchResult,
+      extractFromHtml(fetchResult.html, {
+        finalUrl: fetchResult.finalUrl,
+        statusCode: fetchResult.statusCode,
+      }),
+      { requestUrl: row.canonical_url },
+    );
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
@@ -106,12 +112,29 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     const subtitle =
       extracted.subtitle ?? buildSubtitle(classification.category, mergedStructured);
 
-    const title = extracted.title ?? titleHint ?? row.title;
+    const siteForTitle =
+      typeof mergedStructured.site_name === "string" ? mergedStructured.site_name : undefined;
+    let title = extracted.title?.trim() || null;
+    if (isWeakTitle(title, siteForTitle)) {
+      title = titleHint?.trim() || null;
+    }
+    if (isWeakTitle(title, siteForTitle)) {
+      const placeName =
+        typeof mergedStructured.place_name === "string" ? mergedStructured.place_name : null;
+      if (placeName) title = placeName;
+    }
+    if (!title?.trim()) {
+      title = row.title?.trim() || null;
+    }
 
     const nextStatus: ItemStatus =
       classification.category_confidence >= 0.6 ? "want" : "inbox";
 
     const display = mergeDisplay(row.display, classification.category);
+
+    const fetchBlocked = isBotBlockPage(fetchResult.html, fetchResult.statusCode);
+    const enrichmentError =
+      fetchBlocked && !title?.trim() ? "fetch_blocked_or_sparse" : null;
 
     await admin
       .from("items")
@@ -128,7 +151,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         raw_metadata: extracted.raw_metadata as unknown as Json,
         display: display as Json,
         processing_status: "ready",
-        enrichment_error: null,
+        enrichment_error: enrichmentError,
         enriched_at: new Date().toISOString(),
       })
       .eq("id", itemId);

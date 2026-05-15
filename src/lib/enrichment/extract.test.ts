@@ -41,6 +41,33 @@ describe("extractFromHtml", () => {
     expect(r.title).toContain("Inception");
   });
 
+  it("parses Recipe structured fields from @graph JSON-LD", () => {
+    const html = loadFixture("recipe-graph.html");
+    const r = extractFromHtml(html, {
+      finalUrl: "https://www.kingarthurbaking.com/recipes/chocolate-chip-cookies-recipe",
+      statusCode: 200,
+    });
+    expect(r.title).toBe("Classic Chocolate Chip Cookies");
+    expect(r.structured.author).toBe("PJ Hamel");
+    expect(r.structured.prep_time_minutes).toBe(12);
+    expect(r.structured.cook_time_minutes).toBe(12);
+    expect(r.structured.yield).toBe("36 cookies");
+    expect(r.structured.rating).toBe(4.8);
+  });
+
+  it("parses Amazon product fields and normalizes title", () => {
+    const html = loadFixture("amazon-product.html");
+    const r = extractFromHtml(html, {
+      finalUrl: "https://www.amazon.com/dp/B0BDHWDR12",
+      statusCode: 200,
+    });
+    expect(r.raw_metadata.parser).toBe("amazon");
+    expect(r.title).toBe("Test Product");
+    expect(r.image_url).toBe("https://cdn.example/product.jpg");
+    expect(r.structured.brand).toBe("Acme");
+    expect(r.structured.price).toEqual({ amount: 49.99, currency: "USD" });
+  });
+
   it("parses Goodreads Book structured fields", () => {
     const html = loadFixture("goodreads-book.html");
     const r = extractFromHtml(html, {

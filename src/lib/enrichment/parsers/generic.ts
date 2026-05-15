@@ -1,13 +1,18 @@
-import { flattenJsonLd, type JsonLdNode } from "@/lib/jsonld";
+import {
+  extractJsonLdStructured,
+  flattenAllJsonLd,
+  pickTitleFromLd,
+} from "@/lib/enrichment/parsers/jsonld-fields";
+import { isWeakTitle, parseTitleTag } from "@/lib/enrichment/meta-utils";
 
-function pickTitleFromLd(nodes: JsonLdNode[]): string | undefined {
-  for (const n of nodes) {
-    const name = n.name;
-    if (typeof name === "string" && name.trim()) return name.trim();
-    const headline = n.headline;
-    if (typeof headline === "string" && headline.trim()) return headline.trim();
-  }
-  return undefined;
+function readMetaByName(doc: Document, prefix: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  doc.querySelectorAll(`meta[name^="${prefix}"]`).forEach((el) => {
+    const name = el.getAttribute("name");
+    const content = el.getAttribute("content");
+    if (name && content) out[name] = content;
+  });
+  return out;
 }
 
 export function parseGeneric(
@@ -22,7 +27,9 @@ export function parseGeneric(
   image_url?: string;
   structured: Record<string, unknown>;
 } {
-  const structured: Record<string, unknown> = {};
+  const flattened = flattenAllJsonLd(jsonLdRoots);
+  const schemaStructured = extractJsonLdStructured(flattened);
+  const structured: Record<string, unknown> = { ...schemaStructured };
 
   const ogTitle = openGraph["og:title"];
   const ogDesc = openGraph["og:description"];
@@ -35,16 +42,34 @@ export function parseGeneric(
   const twDesc = twitter["twitter:description"];
   const twImage = twitter["twitter:image"];
 
-  const flattened = jsonLdRoots.flatMap(flattenJsonLd);
+  const articleMeta = readMetaByName(doc, "article:");
   const ldTitle = pickTitleFromLd(flattened);
 
-  const title = ogTitle ?? twTitle ?? ldTitle ?? doc.querySelector("title")?.textContent?.trim();
+  let title = ogTitle ?? twTitle ?? ldTitle ?? doc.querySelector("title")?.textContent?.trim();
+  if (title) {
+    title = parseTitleTag(title, typeof siteName === "string" ? siteName : undefined) ?? title;
+  }
+  if (isWeakTitle(title, typeof siteName === "string" ? siteName : undefined)) {
+    const hint = structured.title_hint;
+    if (typeof hint === "string") title = hint;
+  }
 
   const description = ogDesc ?? twDesc ?? undefined;
 
-  let image_url = ogImage ?? twImage;
+  let image_url =
+    ogImage ??
+    twImage ??
+    (typeof structured._product_image === "string" ? structured._product_image : undefined);
+  delete structured._product_image;
   if (image_url && image_url.startsWith("//")) {
     image_url = `https:${image_url}`;
+  }
+
+  if (!structured.author && articleMeta["article:author"]) {
+    structured.author = articleMeta["article:author"];
+  }
+  if (!structured.published_at && articleMeta["article:published_time"]) {
+    structured.published_at = articleMeta["article:published_time"];
   }
 
   return {

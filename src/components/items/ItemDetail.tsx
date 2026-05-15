@@ -48,6 +48,12 @@ async function patchItem(itemId: string, body: Record<string, unknown>): Promise
   return (await res.json()) as ItemDetailModel;
 }
 
+async function fetchItem(itemId: string): Promise<ItemDetailModel | null> {
+  const res = await fetch(`/api/items/${itemId}`);
+  if (!res.ok) return null;
+  return (await res.json()) as ItemDetailModel;
+}
+
 export function ItemDetail({
   initial,
   collections,
@@ -87,17 +93,33 @@ export function ItemDetail({
     setRetryBusy(true);
     try {
       const res = await fetch(`/api/items/${item.id}/retry-enrichment`, { method: "POST" });
-      if (res.ok) {
-        setItem((prev) => ({
-          ...prev,
-          processing_status: "pending",
-          enrichment_error: null,
-        }));
+      if (!res.ok) return;
+
+      setItem((prev) => ({
+        ...prev,
+        processing_status: "pending",
+        enrichment_error: null,
+      }));
+
+      for (let attempt = 0; attempt < 45; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const next = await fetchItem(item.id);
+        if (!next) continue;
+        if (next.processing_status === "ready" || next.processing_status === "failed") {
+          setItem(next);
+          setTagsDraft(next.tags.join(", "));
+          return;
+        }
       }
     } finally {
       setRetryBusy(false);
     }
   };
+
+  const showRefreshMetadata =
+    item.processing_status === "ready" || item.processing_status === "failed";
+  const refreshLabel =
+    item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
   const toggleCollection = async (collectionId: string, checked: boolean) => {
     const set = new Set(item.collection_ids);
@@ -151,18 +173,18 @@ export function ItemDetail({
           >
             Open original
           </a>
-          {item.processing_status === "failed" ? (
+          {showRefreshMetadata ? (
             <button
               type="button"
               disabled={retryBusy}
               onClick={() => void onRetry()}
               className="rounded-full bg-[color:var(--ks-surface)] px-4 py-2 text-sm font-semibold ring-1 ring-[color:var(--ks-border)] disabled:opacity-50"
             >
-              Retry enrichment
+              {retryBusy ? "Refreshing…" : refreshLabel}
             </button>
           ) : null}
         </div>
-        {item.processing_status === "failed" && item.enrichment_error ? (
+        {item.enrichment_error ? (
           <p className="mt-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
             {item.enrichment_error}
           </p>
