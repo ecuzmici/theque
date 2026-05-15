@@ -2,7 +2,7 @@
 
 Personal visual library — capture URLs from desktop and mobile, enrich them into browseable shelf cards powered by Next.js and Supabase.
 
-**Production:** https://theque.vercel.app (after Vercel project rename; custom domain later)
+**Production:** https://theque.vercel.app
 
 See `docs/product-brief.md` and `docs/data-model.md` for product and schema details.
 

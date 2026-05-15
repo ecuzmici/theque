@@ -7,3 +7,13 @@ enabled = true
 
 [db]
 major_version = 17
+
+[auth]
+enabled = true
+site_url = "https://theque.vercel.app"
+additional_redirect_urls = [
+  "http://localhost:3000/**",
+  "http://localhost:3000/auth/callback",
+  "https://theque.vercel.app/**",
+  "https://theque.vercel.app/auth/callback",
+]

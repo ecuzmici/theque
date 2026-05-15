@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "supabase:sync-auth": "node scripts/update-supabase-auth.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
