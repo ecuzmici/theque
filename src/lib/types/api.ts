@@ -2,6 +2,7 @@ import type {
   ItemCategory,
   ItemSource,
   ItemStatus,
+  Json,
   ProcessingStatus,
 } from "@/lib/database.types";
 
@@ -51,6 +52,7 @@ export type ItemSummaryPayload = {
   created_at: string;
   tags: string[];
   collection_ids: string[];
+  display: Json | null;
 };
 
 export type ItemsListResponseBody = {
@@ -77,6 +79,20 @@ export type CaptureTokenCreateResponseBody = {
   token: string;
   token_prefix: string;
   created_at: string;
+};
+
+/** GET /api/capture-tokens */
+export type CaptureTokenListEntry = {
+  id: string;
+  name: string;
+  token_prefix: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
+};
+
+export type CaptureTokensListResponseBody = {
+  tokens: CaptureTokenListEntry[];
 };
 
 /** GET /api/collections */

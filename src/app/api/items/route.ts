@@ -89,6 +89,7 @@ function mapSummary(row: ItemRow, tags: string[], collection_ids: string[]): Ite
     created_at: row.created_at,
     tags,
     collection_ids,
+    display: row.display,
   };
 }
 
@@ -208,7 +209,7 @@ export async function GET(req: Request) {
   if (q && q.trim()) {
     const esc = escapeIlike(q.trim());
     query = query.or(
-      `title.ilike.%${esc}%,description.ilike.%${esc}%,domain.ilike.%${esc}%`,
+      `title.ilike.%${esc}%,description.ilike.%${esc}%,domain.ilike.%${esc}%,note.ilike.%${esc}%`,
     );
   }
 

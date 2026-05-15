@@ -1,7 +1,29 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
-import type { CaptureTokenCreateResponseBody } from "@/lib/types/api";
+import type {
+  CaptureTokenCreateResponseBody,
+  CaptureTokensListResponseBody,
+} from "@/lib/types/api";
 import { mintCaptureTokenParts } from "@/lib/auth/capture-token";
 import { createClient } from "@/lib/supabase/server";
+
+export async function GET() {
+  const user = await getSessionUserOrNull();
+  if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("capture_tokens")
+    .select("id, name, token_prefix, created_at, last_used_at, revoked_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return Response.json({ code: "query_failed", detail: error.message }, { status: 500 });
+  }
+
+  const body: CaptureTokensListResponseBody = { tokens: data ?? [] };
+  return Response.json(body);
+}
 
 export async function POST(req: Request) {
   const user = await getSessionUserOrNull();

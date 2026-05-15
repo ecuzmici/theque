@@ -1,0 +1,32 @@
+import type { Database } from "@/lib/database.types";
+
+import type { ItemSummaryPayload } from "@/lib/types/api";
+
+export type LibraryItemRow = Pick<
+  Database["public"]["Tables"]["items"]["Row"],
+  | "id"
+  | "title"
+  | "subtitle"
+  | "image_url"
+  | "domain"
+  | "category"
+  | "status"
+  | "processing_status"
+  | "created_at"
+  | "display"
+>;
+
+export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
+  return {
+    id: summary.id,
+    title: summary.title,
+    subtitle: summary.subtitle,
+    image_url: summary.image_url,
+    domain: summary.domain,
+    category: summary.category,
+    status: summary.status,
+    processing_status: summary.processing_status,
+    created_at: summary.created_at,
+    display: summary.display,
+  };
+}
