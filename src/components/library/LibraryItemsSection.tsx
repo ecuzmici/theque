@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
+import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -27,9 +30,7 @@ export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryIt
       opts?: { remove?: boolean },
     ) => {
       setItems((prev) => {
-        if (opts?.remove) {
-          return prev.filter((i) => i.id !== itemId);
-        }
+        if (opts?.remove) return prev.filter((i) => i.id !== itemId);
         return prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
       });
     },
@@ -37,19 +38,17 @@ export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryIt
   );
 
   if (items.length === 0) {
+    const empty = SHELF_EMPTY[shelfId];
     return (
-      <div className="rounded-[var(--ks-radius-card)] border border-dashed border-[color:var(--ks-border)] bg-[color:var(--ks-bg-muted)]/40 px-6 py-16 text-center">
-        <p className="font-serif text-lg text-[color:var(--ks-fg)]">Nothing on this shelf yet</p>
-        <p className="mt-2 text-sm text-[color:var(--ks-fg-muted)]">
-          Save something from Chrome or your phone to start your library.
-        </p>
-        <Link
-          href="/add"
-          className="mt-6 inline-block rounded-full bg-[color:var(--ks-accent-soft)] px-5 py-2.5 text-sm font-semibold text-[color:var(--ks-accent-hover)] ring-1 ring-[color:var(--ks-border)] transition hover:opacity-90"
-        >
-          Add a link
-        </Link>
-      </div>
+      <Card className="border-dashed py-14 text-center">
+        <CardHeader className="mx-auto max-w-sm items-center">
+          <CardTitle className="font-serif text-lg">{empty.title}</CardTitle>
+          <CardDescription>{empty.description}</CardDescription>
+          <Button nativeButton={false} render={<Link href="/add" />} className="mt-4">
+            Add a link
+          </Button>
+        </CardHeader>
+      </Card>
     );
   }
 

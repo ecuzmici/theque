@@ -1,8 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -39,49 +45,52 @@ function LoginForm() {
 
   return (
     <main className="flex min-h-full flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-sm">
-        <h1 className="font-serif text-3xl tracking-tight text-stone-900 dark:text-stone-50">
-          Theque
-        </h1>
-        <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-          Your private taste library
-        </p>
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="font-serif text-2xl">Theque</CardTitle>
+          <CardDescription>Your private taste library</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {authError ? (
+            <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Sign-in failed. Please try again.
+              {authReason ? (
+                <span className="mt-1 block text-xs opacity-90">{authReason}</span>
+              ) : null}
+            </p>
+          ) : null}
 
-        {authError && (
-          <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
-            Sign-in failed. Please try again.
-            {authReason ? (
-              <span className="mt-1 block text-xs opacity-90">{authReason}</span>
-            ) : null}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={status === "loading" || status === "sent"}
+            >
+              {status === "loading" ? "Sending…" : status === "sent" ? "Link sent" : "Send magic link"}
+            </Button>
+          </form>
+
+          {message ? <p className="mt-4 text-sm text-muted-foreground">{message}</p> : null}
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            <Link href="/" className="underline-offset-2 hover:underline">
+              ← Back
+            </Link>
           </p>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          <label className="block">
-            <span className="text-sm font-medium text-stone-700 dark:text-stone-300">Email</span>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-stone-900 shadow-sm outline-none transition focus:ring-2 focus:ring-amber-500/50 dark:border-stone-600 dark:bg-stone-900 dark:text-stone-50"
-              placeholder="you@example.com"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={status === "loading" || status === "sent"}
-            className="w-full rounded-lg bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800 disabled:opacity-60 dark:bg-amber-100 dark:text-stone-900 dark:hover:bg-amber-200"
-          >
-            {status === "loading" ? "Sending…" : status === "sent" ? "Link sent" : "Send magic link"}
-          </button>
-        </form>
-
-        {message && (
-          <p className="mt-4 text-sm text-stone-600 dark:text-stone-400">{message}</p>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </main>
   );
 }
@@ -90,7 +99,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full items-center justify-center text-stone-500">
+        <div className="flex min-h-full items-center justify-center text-muted-foreground">
           Loading…
         </div>
       }

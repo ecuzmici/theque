@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
 export default function AddPage() {
   const router = useRouter();
   const [url, setUrl] = useState("");
@@ -45,60 +52,54 @@ export default function AddPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl tracking-tight text-[color:var(--ks-fg)]">Add a link</h1>
-      <p className="mt-2 text-sm text-[color:var(--ks-fg-muted)]">
-        Paste any URL — Theque captures it and fills in the card when enrichment finishes.
-      </p>
+      <PageHeader
+        title="Add a link"
+        description="Paste any URL — Theque captures it and fills in the card when enrichment finishes."
+      />
 
-      <form onSubmit={(e) => void onSubmit(e)} className="mt-8 space-y-5 rounded-[var(--ks-radius-card)] border border-[color:var(--ks-border)] bg-[color:var(--ks-surface)] p-6 shadow-[var(--ks-shadow)]">
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--ks-fg-muted)]">
-            URL
-          </span>
-          <input
-            type="url"
-            required
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://"
-            className="mt-2 w-full rounded-xl border border-[color:var(--ks-border)] bg-[color:var(--ks-bg)] px-3 py-3 text-base outline-none focus:ring-2 focus:ring-[color:var(--ks-ring)]"
-          />
-        </label>
+      <Card>
+        <CardContent className="pt-6">
+          <form onSubmit={(e) => void onSubmit(e)} className="space-y-5">
+            <div className="grid gap-2">
+              <Label htmlFor="add-url">URL</Label>
+              <Input
+                id="add-url"
+                type="url"
+                required
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="https://"
+                className="h-11"
+              />
+            </div>
 
-        <label className="block">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--ks-fg-muted)]">
-            Note (optional)
-          </span>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={3}
-            className="mt-2 w-full resize-y rounded-xl border border-[color:var(--ks-border)] bg-[color:var(--ks-bg)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[color:var(--ks-ring)]"
-          />
-        </label>
+            <div className="grid gap-2">
+              <Label htmlFor="add-note">Note (optional)</Label>
+              <Textarea
+                id="add-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={3}
+              />
+            </div>
 
-        {error ? (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
-            {error}
-          </p>
-        ) : null}
+            {error ? (
+              <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {error}
+              </p>
+            ) : null}
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            disabled={busy || !url.trim()}
-            className="rounded-full bg-[color:var(--ks-accent-soft)] px-6 py-3 text-sm font-semibold text-[color:var(--ks-accent-hover)] ring-1 ring-[color:var(--ks-border)] disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Save link"}
-          </button>
-          <Link
-            href="/library"
-            className="rounded-full px-5 py-3 text-sm font-medium text-[color:var(--ks-fg-muted)] ring-1 ring-[color:var(--ks-border)]"
-          >
-            Cancel
-          </Link>
-        </div>
-      </form>
+            <div className="flex flex-wrap gap-3">
+              <Button type="submit" disabled={busy || !url.trim()}>
+                {busy ? "Saving…" : "Save link"}
+              </Button>
+              <Button nativeButton={false} render={<Link href="/library" />} variant="outline">
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

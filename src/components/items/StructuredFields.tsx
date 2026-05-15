@@ -33,17 +33,17 @@ export function StructuredFields({ structured }: { structured: Json | null }) {
 
   return (
     <section className="mt-8">
-      <h2 className="font-serif text-lg text-[color:var(--ks-fg)]">Details</h2>
+      <h2 className="font-serif text-lg text-foreground">Details</h2>
       <dl className="mt-4 grid gap-3 sm:grid-cols-2">
         {entries.map(([key, value]) => (
           <div
             key={key}
-            className="rounded-xl border border-[color:var(--ks-border)] bg-[color:var(--ks-surface)] px-4 py-3 shadow-[var(--ks-shadow)]"
+            className="rounded-xl border border-border bg-card px-4 py-3 ring-1 ring-foreground/10"
           >
-            <dt className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--ks-fg-muted)]">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {formatKey(key)}
             </dt>
-            <dd className="mt-1 text-sm text-[color:var(--ks-fg)]">{formatValue(value)}</dd>
+            <dd className="mt-1 text-sm text-foreground">{formatValue(value)}</dd>
           </div>
         ))}
       </dl>

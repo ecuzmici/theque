@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Bookmark, Sparkles } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -16,21 +18,31 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex min-h-full flex-col items-center justify-center gap-8 px-6 py-24">
-      <div className="text-center">
-        <h1 className="font-serif text-4xl tracking-tight text-stone-900 dark:text-stone-50">
+    <main className="flex min-h-full flex-col items-center justify-center gap-10 px-6 py-20">
+      <div className="max-w-lg text-center">
+        <p className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
+          <Sparkles className="size-3.5 text-accent-foreground" aria-hidden />
+          Private taste library
+        </p>
+        <h1 className="mt-6 font-serif text-4xl tracking-tight text-foreground sm:text-5xl">
           Theque
         </h1>
-        <p className="mt-3 max-w-md text-sm text-stone-600 dark:text-stone-400">
-          Your private taste library — save what you&apos;ll love later.
+        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+          Capture links from Chrome or your phone. They become rich cards on shelves — books,
+          films, restaurants, gifts — plus collections for trips and projects.
         </p>
+        <ul className="mt-8 flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
+          <li className="inline-flex items-center gap-2">
+            <Bookmark className="size-4" aria-hidden />
+            One-tap save
+          </li>
+          <li>Auto-enriched cards</li>
+          <li>Your library, only yours</li>
+        </ul>
       </div>
-      <Link
-        href="/login"
-        className="rounded-lg bg-stone-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-800 dark:bg-amber-100 dark:text-stone-900 dark:hover:bg-amber-200"
-      >
+      <Button nativeButton={false} render={<Link href="/login" />} size="lg">
         Sign in with email
-      </Link>
+      </Button>
     </main>
   );
 }

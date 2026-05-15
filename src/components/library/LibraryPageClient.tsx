@@ -5,10 +5,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
 import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+import { cn } from "@/lib/utils";
 
 type LibraryPageClientProps = {
   userId: string;
@@ -58,16 +63,13 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
   );
 
   useEffect(() => {
-    if (itemsCacheRef.current[activeShelf] !== undefined) {
-      return;
-    }
+    if (itemsCacheRef.current[activeShelf] !== undefined) return;
 
     let cancelled = false;
     const supabase = createClient();
     const targetShelf = activeShelf;
 
     void (async () => {
-      if (cancelled) return;
       setLoadError(null);
       try {
         const rows = await fetchLibraryItemsForShelf(supabase, targetShelf);
@@ -75,8 +77,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
         setItemsCache((prev) => ({ ...prev, [targetShelf]: rows }));
       } catch (e) {
         if (cancelled) return;
-        const message = e instanceof Error ? e.message : "Could not load items";
-        setLoadError(message);
+        setLoadError(e instanceof Error ? e.message : "Could not load items");
       }
     })();
 
@@ -103,38 +104,72 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
 
   const cachedItems = itemsCache[activeShelf];
   const isLoadingShelf = cachedItems === undefined && loadError == null;
+  const activeLabel = SHELVES.find((s) => s.id === activeShelf)?.label ?? "All";
 
   return (
     <div>
-      <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none" role="tablist" aria-label="Shelves">
-        {SHELVES.map((s) => {
-          const selected = s.id === activeShelf;
-          return (
-            <button
-              key={s.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => selectShelf(s.id)}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
-                selected
-                  ? "bg-[color:var(--ks-fg)] text-[color:var(--ks-bg)] dark:bg-[color:var(--ks-accent-soft)] dark:text-[color:var(--ks-accent-hover)]"
-                  : "bg-[color:var(--ks-bg-muted)] text-[color:var(--ks-fg-muted)] ring-1 ring-[color:var(--ks-border)] hover:bg-[color:var(--ks-surface)]"
-              }`}
-            >
-              {s.label}
-              {s.id === "inbox" && inboxCount != null && inboxCount > 0 ? (
-                <span className="ml-1.5 rounded-full bg-[color:var(--ks-accent)] px-2 py-0.5 text-[11px] font-semibold text-stone-950">
-                  {inboxCount}
-                </span>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
+      <PageHeader
+        title="Library"
+        description="Browse your taste by shelf — categories, not folders."
+      />
+
+      {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
+          <p className="text-sm text-foreground">
+            <span className="font-semibold">{inboxCount}</span>{" "}
+            {inboxCount === 1 ? "item needs" : "items need"} triage in Inbox
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => selectShelf("inbox")}
+          >
+            Open Inbox
+          </Button>
+        </div>
+      ) : null}
+
+      <ScrollArea className="w-full pb-4">
+        <div className="flex w-max gap-2 pb-1" role="tablist" aria-label="Shelves">
+          {SHELVES.map((s) => {
+            const selected = s.id === activeShelf;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => selectShelf(s.id)}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition",
+                  selected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground ring-1 ring-border hover:bg-card hover:text-foreground",
+                )}
+              >
+                {s.label}
+                {s.id === "inbox" && inboxCount != null && inboxCount > 0 ? (
+                  <Badge
+                    variant={selected ? "secondary" : "default"}
+                    className="h-5 min-w-5 justify-center px-1.5 text-[10px]"
+                  >
+                    {inboxCount}
+                  </Badge>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <ScrollBar orientation="horizontal" className="hidden" />
+      </ScrollArea>
+
+      <p className="sr-only" aria-live="polite">
+        Showing {activeLabel} shelf
+      </p>
 
       {loadError != null && cachedItems === undefined ? (
-        <div className="rounded-[var(--ks-radius-card)] border border-[color:var(--ks-border)] bg-[color:var(--ks-bg-muted)]/40 px-6 py-10 text-center text-sm text-[color:var(--ks-fg-muted)]">
+        <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
           {loadError}
         </div>
       ) : isLoadingShelf ? (

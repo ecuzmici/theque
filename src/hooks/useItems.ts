@@ -3,25 +3,49 @@
 import { useEffect, useState } from "react";
 
 import type { ItemsListResponseBody, ItemSummaryPayload } from "@/lib/types/api";
+import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 
 const DEBOUNCE_MS = 320;
 
-/** Debounced GET /api/items?q= for the Search screen. */
-export function useDebouncedItemSearch(query: string) {
+export type ItemSearchFilters = {
+  q: string;
+  category?: ItemCategory | "";
+  status?: ItemStatus | "";
+  tag?: string;
+  collectionId?: string;
+};
+
+function buildSearchUrl(filters: ItemSearchFilters): string | null {
+  const q = filters.q.trim();
+  if (!q && !filters.category && !filters.status && !filters.tag && !filters.collectionId) {
+    return null;
+  }
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (filters.category) params.set("category", filters.category);
+  if (filters.status) params.set("status", filters.status);
+  if (filters.tag?.trim()) params.set("tag", filters.tag.trim());
+  if (filters.collectionId) params.set("collection_id", filters.collectionId);
+  params.set("limit", "48");
+  return `/api/items?${params.toString()}`;
+}
+
+/** Debounced GET /api/items with optional filters for Search. */
+export function useDebouncedItemSearch(filters: ItemSearchFilters) {
   const [items, setItems] = useState<ItemSummaryPayload[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const q = query.trim();
+    const url = buildSearchUrl(filters);
     const handle = window.setTimeout(async () => {
-      if (!q) {
+      if (!url) {
         setItems([]);
         setLoading(false);
         return;
       }
       setLoading(true);
       try {
-        const res = await fetch(`/api/items?q=${encodeURIComponent(q)}&limit=48`);
+        const res = await fetch(url);
         if (!res.ok) {
           setItems([]);
           return;
@@ -34,7 +58,7 @@ export function useDebouncedItemSearch(query: string) {
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(handle);
-  }, [query]);
+  }, [filters]);
 
-  return { items, loading };
+  return { items, loading, hasQuery: buildSearchUrl(filters) != null };
 }

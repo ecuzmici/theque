@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { CaptureTokens } from "@/components/settings/CaptureTokens";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -21,11 +23,12 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl tracking-tight text-[color:var(--ks-fg)]">Settings</h1>
-      <p className="mt-2 text-sm text-[color:var(--ks-fg-muted)]">
-        Manage how links arrive in Theque from extensions and shortcuts.
-      </p>
-      <CaptureTokens initialTokens={tokens ?? []} />
+      <PageHeader
+        title="Settings"
+        description="Capture tokens for Chrome and shortcuts, plus appearance."
+        actions={<ThemeToggle />}
+      />
+      <CaptureTokens initialTokens={tokens ?? []} userEmail={user.email ?? undefined} />
     </div>
   );
 }
