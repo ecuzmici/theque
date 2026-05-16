@@ -10,38 +10,100 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
+import {
+  getAuthErrorMessage,
+  isValidOtpToken,
+  normalizeOtpToken,
+  OTP_MAX_LENGTH,
+  sanitizeRedirectPath,
+} from "./login-utils";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/library";
+  const safeNext = sanitizeRedirectPath(searchParams.get("next"));
   const authError = searchParams.get("error") === "auth";
   const authReason = searchParams.get("reason");
 
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
+  const [step, setStep] = useState<"email" | "code">("email");
+  const [token, setToken] = useState("");
+  const [pendingAction, setPendingAction] = useState<"send" | "verify" | null>(null);
+
+  const messageId = "login-message";
+  const invalidTokenMessage = "Enter the code from your email.";
+  const verifyErrorMessage = "That code did not work. Try again or request a new code.";
+  const tokenHasError = status === "error" && message === invalidTokenMessage;
+
+  async function sendOtp() {
+    setPendingAction("send");
+    setStatus("idle");
+    setMessage(null);
+    setToken("");
+
+    try {
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
+
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: { emailRedirectTo: redirectTo },
+      });
+
+      if (error) {
+        setStatus("error");
+        setMessage(getAuthErrorMessage(error, "Could not send a sign-in code. Try again."));
+        return false;
+      }
+
+      setStatus("sent");
+      setStep("code");
+      setMessage("Check your email for a sign-in code. You can also use the sign-in button in the email.");
+      return true;
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setStatus("loading");
-    setMessage(null);
+    await sendOtp();
+  }
 
-    const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    const normalizedEmail = email.trim();
+    const normalizedToken = normalizeOtpToken(token);
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: redirectTo },
-    });
-
-    if (error) {
+    if (!isValidOtpToken(normalizedToken)) {
       setStatus("error");
-      setMessage(error.message);
+      setMessage(invalidTokenMessage);
       return;
     }
 
-    setStatus("sent");
-    setMessage("Check your email for a sign-in link.");
+    setPendingAction("verify");
+    setStatus("idle");
+    setMessage(null);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token: normalizedToken,
+        type: "email",
+      });
+
+      if (error) {
+        setStatus("error");
+        setMessage(getAuthErrorMessage(error, verifyErrorMessage));
+        return;
+      }
+
+      window.location.assign(safeNext);
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   return (
@@ -68,32 +130,82 @@ function LoginForm() {
             </p>
           ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-4" aria-describedby="login-description">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                required
-                autoComplete="email"
-                inputMode="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="h-11 rounded-xl text-base"
-              />
-            </div>
-            <Button
-              type="submit"
-              className="h-11 w-full min-h-11 text-base"
-              disabled={status === "loading" || status === "sent"}
-            >
-              {status === "loading" ? "Sending…" : status === "sent" ? "Link sent" : "Send magic link"}
-            </Button>
-          </form>
+          {step === "email" ? (
+            <form onSubmit={handleSubmit} className="space-y-4" aria-describedby="login-description">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  inputMode="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-11 rounded-xl text-base"
+                />
+              </div>
+              <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={pendingAction !== null}>
+                {pendingAction === "send" ? "Sending..." : "Send sign-in code"}
+              </Button>
+            </form>
+          ) : null}
+
+          {step === "code" ? (
+            <form onSubmit={handleVerify} className="space-y-4" aria-describedby="login-description">
+              <div className="grid gap-2">
+                <Label htmlFor="token">Sign-in code</Label>
+                <Input
+                  id="token"
+                  type="text"
+                  required
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={OTP_MAX_LENGTH}
+                  value={token}
+                  onChange={(e) => setToken(normalizeOtpToken(e.target.value))}
+                  aria-invalid={tokenHasError}
+                  aria-describedby={message ? messageId : undefined}
+                  placeholder="12345678"
+                  className="h-12 rounded-xl text-center font-mono text-xl tracking-[0.3em]"
+                />
+              </div>
+              <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={pendingAction !== null}>
+                {pendingAction === "verify" ? "Checking..." : "Continue to library"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-9 w-full text-sm"
+                disabled={pendingAction !== null}
+                onClick={() => {
+                  void sendOtp();
+                }}
+              >
+                {pendingAction === "send" ? "Resending..." : "Resend code"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 w-full"
+                disabled={pendingAction !== null}
+                onClick={() => {
+                  setStep("email");
+                  setToken("");
+                  setStatus("idle");
+                  setMessage(null);
+                }}
+              >
+                Use a different email
+              </Button>
+            </form>
+          ) : null}
 
           {message ? (
             <p
+              id={messageId}
               className="mt-4 text-sm text-muted-foreground"
               role={status === "error" ? "alert" : "status"}
               aria-live={status === "error" ? "assertive" : "polite"}

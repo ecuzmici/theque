@@ -22,5 +22,5 @@ additional_redirect_urls = [
 
 # Magic link HTML for local Supabase; hosted projects copy this file into Dashboard → Authentication → Email Templates → Magic link.
 [auth.email.template.magic_link]
-subject = "Welcome to — theque"
+subject = "Your Theque sign-in code"
 content_path = "./supabase/templates/magic_link.html"

@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
-    <title>Finish signing in</title>
+    <title>Your sign-in code</title>
     <!--
       Supabase Auth → Magic link (Dashboard → Authentication → Email Templates).
-      Suggested subject: Finish signing in
+      Suggested subject: Your Theque sign-in code
       Docs: https://supabase.com/docs/guides/auth/auth-email-templates
     -->
   </head>
@@ -109,7 +109,7 @@
                     letter-spacing: -0.02em;
                   "
                 >
-                  Finish signing in
+                  Your sign-in code
                 </h1>
 
                 <p
@@ -129,8 +129,63 @@
                     color: #57534e;
                   "
                 >
-                  Tap the button to open your library. For your security, this link expires soon and works only once.
+                  Copy this code into Theque. For your security, it expires soon and works only once.
                 </p>
+
+                <div
+                  style="
+                    margin: 0 0 28px 0;
+                    padding: 18px 20px;
+                    border: 1px dashed #d97706;
+                    border-radius: 16px;
+                    background-color: #fffbeb;
+                    text-align: center;
+                  "
+                >
+                  <p
+                    style="
+                      margin: 0 0 8px 0;
+                      font-family:
+                        ui-sans-serif,
+                        system-ui,
+                        -apple-system,
+                        Segoe UI,
+                        Roboto,
+                        Helvetica,
+                        Arial,
+                        sans-serif;
+                      font-size: 12px;
+                      font-weight: 700;
+                      letter-spacing: 0.08em;
+                      text-transform: uppercase;
+                      color: #92400e;
+                      line-height: 1.4;
+                    "
+                  >
+                    One-time code
+                  </p>
+                  <p
+                    style="
+                      margin: 0;
+                      font-family:
+                        ui-monospace,
+                        SFMono-Regular,
+                        Menlo,
+                        Monaco,
+                        Consolas,
+                        Liberation Mono,
+                        Courier New,
+                        monospace;
+                      font-size: 34px;
+                      font-weight: 800;
+                      letter-spacing: 0.22em;
+                      color: #1c1917;
+                      line-height: 1.2;
+                    "
+                  >
+                    {{ .Token }}
+                  </p>
+                </div>
 
                 <!-- CTA -->
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -160,7 +215,7 @@
                                 border-radius: 999px;
                                 line-height: 1;
                               "
-                              >Sign in</a
+                              >Open Theque instead</a
                             >
                           </td>
                         </tr>
@@ -168,6 +223,26 @@
                     </td>
                   </tr>
                 </table>
+
+                <p
+                  style="
+                    margin: 16px 0 0 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 13px;
+                    line-height: 1.55;
+                    color: #78716c;
+                  "
+                >
+                  If copying the code is inconvenient, this button opens Theque and signs you in directly.
+                </p>
 
                 <p
                   style="
@@ -209,7 +284,7 @@
                   "
                 >
                   Trouble with the button?
-                  <a href="{{ .ConfirmationURL }}" style="color: #b45309; text-decoration: underline; font-weight: 600">Open this link</a>
+                  <a href="{{ .ConfirmationURL }}" style="color: #b45309; text-decoration: underline; font-weight: 600">Open Theque instead</a>
                 </p>
                   </div>
                   <div style="padding: 0 36px 28px 36px">

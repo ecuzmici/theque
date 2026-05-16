@@ -4,12 +4,20 @@ import { NextResponse } from "next/server";
 
 import type { Database } from "@/lib/database.types";
 
+function sanitizeRedirectPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
+    return "/library";
+  }
+
+  return value;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const oauthError = searchParams.get("error");
   const oauthDescription = searchParams.get("error_description");
-  const next = searchParams.get("next")?.startsWith("/") ? searchParams.get("next")! : "/library";
+  const next = sanitizeRedirectPath(searchParams.get("next"));
 
   if (oauthError) {
     console.error("[auth/callback] oauth error:", oauthError, oauthDescription);
