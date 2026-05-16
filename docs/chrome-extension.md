@@ -1,4 +1,4 @@
-# Theque — Chrome extension (MV3)
+# thèque — Chrome extension (MV3)
 
 Capture the active tab into your library using a personal capture token (`bmly_…`) stored locally in the extension.
 
@@ -20,13 +20,11 @@ After code changes to `popup.ts` / `background.ts`, run `npm run build` again an
 
 ## First-time setup
 
-1. Click the Theque toolbar icon to open the popup.
+1. Click the thèque toolbar icon to open the popup.
 2. Expand **Settings**.
-3. Set **API base URL** to your app origin with **no trailing slash**, e.g. `http://localhost:3000` or `https://your-deployment.vercel.app`.
-4. Paste your **capture token** from the web app (**Settings → Capture tokens** — shown once when created).
-5. Click **Save settings**.
+3. Click **Connect to thèque** and finish the flow in the opened thèque tab.
 
-The token is stored in **`chrome.storage.local`** only on your machine.
+The extension connects to `https://theque.app`. The token is stored in **`chrome.storage.local`** only on your machine.
 
 ## Capture
 
@@ -37,7 +35,7 @@ The token is stored in **`chrome.storage.local`** only on your machine.
 The extension sends:
 
 ```http
-POST {API base URL}/api/capture
+POST https://theque.app/api/capture
 Authorization: Bearer bmly_...
 Content-Type: application/json
 ```

@@ -747,7 +747,7 @@ function scoreResponse(
 
   return {
     dimensions,
-    total: Object.values(dimensions).reduce((sum, value) => sum + value, 0),
+    total: Object.values(dimensions).reduce<number>((sum, value) => sum + value, 0),
   };
 }
 

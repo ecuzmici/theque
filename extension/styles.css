@@ -94,11 +94,6 @@ body {
   min-height: 4.5rem;
 }
 
-.ks-token {
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-}
-
 .ks-hint {
   margin: 4px 0 0;
   font-size: 11px;

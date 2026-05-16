@@ -1,9 +1,10 @@
 const STORAGE_KEYS = {
   token: "theque_capture_token",
   baseUrl: "theque_api_base_url",
+  email: "theque_connected_email",
 } as const;
 
-const DEFAULT_BASE_URL = "http://localhost:3000";
+const THEQUE_APP_URL = "https://theque.app";
 
 function $(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -20,39 +21,15 @@ function setStatus(msg: string, kind: "muted" | "ok" | "err") {
   );
 }
 
-function normalizeBaseUrl(raw: string): string {
-  const t = raw.trim().replace(/\/+$/, "");
-  if (!t) return DEFAULT_BASE_URL;
-  try {
-    const u = new URL(t);
-    if (u.protocol !== "http:" && u.protocol !== "https:") {
-      throw new Error("invalid protocol");
-    }
-    return `${u.protocol}//${u.host}`;
-  } catch {
-    throw new Error("Enter a valid http(s) URL");
-  }
-}
-
-async function loadSettings(): Promise<{ token: string; baseUrl: string }> {
-  const stored = await chrome.storage.local.get([STORAGE_KEYS.token, STORAGE_KEYS.baseUrl]);
+async function loadSettings(): Promise<{ token: string; baseUrl: string; email: string }> {
+  const stored = await chrome.storage.local.get([
+    STORAGE_KEYS.token,
+    STORAGE_KEYS.baseUrl,
+    STORAGE_KEYS.email,
+  ]);
   const token = typeof stored[STORAGE_KEYS.token] === "string" ? stored[STORAGE_KEYS.token] : "";
-  let baseUrl = typeof stored[STORAGE_KEYS.baseUrl] === "string" ? stored[STORAGE_KEYS.baseUrl] : "";
-  try {
-    baseUrl = normalizeBaseUrl(baseUrl || DEFAULT_BASE_URL);
-  } catch {
-    baseUrl = DEFAULT_BASE_URL;
-  }
-  return { token, baseUrl };
-}
-
-async function persistSettings(token: string, baseUrlRaw: string) {
-  const baseUrl = normalizeBaseUrl(baseUrlRaw);
-  await chrome.storage.local.set({
-    [STORAGE_KEYS.token]: token.trim(),
-    [STORAGE_KEYS.baseUrl]: baseUrl,
-  });
-  return baseUrl;
+  const email = typeof stored[STORAGE_KEYS.email] === "string" ? stored[STORAGE_KEYS.email] : "";
+  return { token, baseUrl: THEQUE_APP_URL, email };
 }
 
 async function getActiveTabUrl(): Promise<string | null> {
@@ -66,21 +43,19 @@ async function getActiveTabUrl(): Promise<string | null> {
 
 document.addEventListener("DOMContentLoaded", async () => {
   const noteEl = $("ks-note") as HTMLTextAreaElement;
-  const baseEl = $("ks-base-url") as HTMLInputElement;
-  const tokenEl = $("ks-token") as HTMLInputElement;
 
-  const { token, baseUrl } = await loadSettings();
-  baseEl.value = baseUrl;
-  tokenEl.value = token;
-  setStatus("Ready.", "muted");
+  const { token, email } = await loadSettings();
+  setStatus(token ? `Connected${email ? ` as ${email}` : ""}.` : "Connect to thèque to save pages.", token ? "ok" : "muted");
 
-  $("ks-save-settings").addEventListener("click", async () => {
+  $("ks-connect-session").addEventListener("click", async () => {
     try {
-      const nextBase = await persistSettings(tokenEl.value, baseEl.value);
-      baseEl.value = nextBase;
-      setStatus("Settings saved.", "ok");
+      await chrome.storage.local.set({ [STORAGE_KEYS.baseUrl]: THEQUE_APP_URL });
+      const url = new URL("/settings/extension-connect", THEQUE_APP_URL);
+      url.searchParams.set("extensionId", chrome.runtime.id);
+      await chrome.tabs.create({ url: url.toString() });
+      setStatus("Opened thèque to connect this extension.", "muted");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "Could not save settings.", "err");
+      setStatus(e instanceof Error ? e.message : "Could not open connect page.", "err");
     }
   });
 
@@ -90,7 +65,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const { token: tok, baseUrl: apiBase } = await loadSettings();
       if (!tok.startsWith("bmly_")) {
-        setStatus("Add your capture token in Settings (starts with bmly_).", "err");
+        setStatus("Connect to thèque before saving pages.", "err");
         return;
       }
 
@@ -118,6 +93,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!res.ok) {
         const code = body && typeof body.code === "string" ? body.code : res.statusText;
+        if (res.status === 401) {
+          setStatus("Connection expired or revoked. Reconnect to thèque.", "err");
+          return;
+        }
         setStatus(`Save failed (${res.status}): ${code}`, "err");
         return;
       }

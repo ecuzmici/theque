@@ -12,5 +12,5 @@
     "types": ["chrome"]
   },
   "include": ["*.ts"],
-  "exclude": ["*.js"]
+  "exclude": ["*.js", "*.test.ts"]
 }

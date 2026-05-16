@@ -9,7 +9,10 @@
     "default_title": "Save to thèque"
   },
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["http://*/*", "https://*/*"],
+  "host_permissions": ["https://theque.app/*"],
+  "externally_connectable": {
+    "matches": ["https://theque.app/*"]
+  },
   "background": {
     "service_worker": "background.js"
   }

@@ -14,6 +14,9 @@
       </header>
 
       <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
+      <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">
+        Connect to thèque
+      </button>
 
       <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
       <textarea id="ks-note" class="ks-input ks-textarea" rows="3" maxlength="2000" placeholder="Why are you saving this?"></textarea>
@@ -22,27 +25,10 @@
 
       <details class="ks-settings">
         <summary>Settings</summary>
-        <label class="ks-label" for="ks-base-url">API base URL</label>
-        <input
-          id="ks-base-url"
-          class="ks-input"
-          type="url"
-          placeholder="https://your-app.vercel.app"
-          autocomplete="off"
-        />
-        <p class="ks-hint">No trailing slash. Use your deployed URL or http://localhost:3000</p>
-
-        <label class="ks-label" for="ks-token">Capture token</label>
-        <input
-          id="ks-token"
-          class="ks-input ks-token"
-          type="password"
-          autocomplete="off"
-          placeholder="bmly_…"
-        />
-        <p class="ks-hint">Create one in thèque → Settings → Capture tokens.</p>
-
-        <button type="button" id="ks-save-settings" class="ks-btn ks-btn-secondary">Save settings</button>
+        <p class="ks-hint">
+          This extension connects to https://theque.app. If your connection expires or is revoked,
+          reconnect from this popup.
+        </p>
       </details>
     </main>
 
