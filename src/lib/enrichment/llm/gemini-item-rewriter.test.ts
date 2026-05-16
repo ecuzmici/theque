@@ -1,0 +1,79 @@
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
+
+import {
+  buildGeminiItemRewritePrompt,
+  buildGeminiItemRewriteResponseJsonSchema,
+  normalizeGeminiItemRewritePayload,
+} from "@/lib/enrichment/llm/gemini-item-rewriter";
+
+const baseRewriteInput = {
+  finalUrl: "https://www.amazon.nl/example-book",
+  currentCategory: "articles" as const,
+  title: "Amazon.nl listing",
+  subtitle: null,
+  description: null,
+  image_url: null,
+  structured: {},
+  rawMetadata: {
+    fetched_at: "2026-05-16T00:00:00.000Z",
+    final_url: "https://www.amazon.nl/example-book",
+    status_code: 200,
+    open_graph: {},
+    twitter: {},
+    json_ld: [],
+    parser: "generic",
+  },
+};
+
+describe("buildGeminiItemRewritePrompt", () => {
+  it("allows a full metadata rewrite proposal", () => {
+    const prompt = buildGeminiItemRewritePrompt(baseRewriteInput);
+
+    expect(prompt).toContain("You are proposing a full metadata rewrite for a single item in Theque.");
+    expect(prompt).toContain("You may change category, title, description, image_url, and structured metadata.");
+    expect(prompt).toContain("This is a review flow, so return your best proposal even when it overwrites existing fields.");
+  });
+});
+
+describe("buildGeminiItemRewriteResponseJsonSchema", () => {
+  it("requires category and category confidence", () => {
+    const schema = buildGeminiItemRewriteResponseJsonSchema();
+
+    expect(schema.required).toContain("category");
+    expect(schema.required).toContain("category_confidence");
+    expect(schema.properties).toHaveProperty("structured");
+  });
+});
+
+describe("normalizeGeminiItemRewritePayload", () => {
+  it("validates full rewrite provider output before returning it", () => {
+    const result = normalizeGeminiItemRewritePayload({
+      category: "books",
+      category_confidence: 0.94,
+      title: "A Drop of Corruption",
+      structured: {
+        authors: ["Robert Jackson Bennett"],
+      },
+      confidence: 0.85,
+      sources: ["url"],
+    });
+
+    expect(result.status).toBe("enhanced");
+  });
+
+  it("fails closed for invalid rewrite output", () => {
+    const result = normalizeGeminiItemRewritePayload({
+      category: "books",
+      category_confidence: 0.94,
+      structured: {
+        place_name: "Wrong field",
+      },
+      confidence: 0.85,
+      sources: ["url"],
+    });
+
+    expect(result.status).toBe("failed");
+  });
+});

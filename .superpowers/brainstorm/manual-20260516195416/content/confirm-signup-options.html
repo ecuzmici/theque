@@ -1,0 +1,158 @@
+<style>
+  .email-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 24px;
+    align-items: start;
+  }
+  .email-choice {
+    border: 2px solid rgba(28, 25, 23, 0.08);
+    border-radius: 22px;
+    padding: 18px;
+    background: #fffefb;
+    cursor: pointer;
+    transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  }
+  .email-choice:hover {
+    border-color: #d97706;
+    transform: translateY(-2px);
+    box-shadow: 0 16px 42px rgba(28, 25, 23, 0.09);
+  }
+  .email-preview {
+    margin: 0 auto;
+    max-width: 360px;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #fffefb;
+    border: 1px solid rgba(28, 25, 23, 0.08);
+    box-shadow: 0 8px 32px rgba(28, 25, 23, 0.06);
+  }
+  .email-accent {
+    height: 6px;
+    background: #b45309;
+  }
+  .email-body {
+    padding: 30px 30px 26px;
+  }
+  .brand {
+    margin: 0 0 24px;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: lowercase;
+    color: #1c1917;
+  }
+  .kicker {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #92400e;
+  }
+  .email-title {
+    margin: 0 0 14px;
+    color: #1c1917;
+    font-size: 23px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .email-copy {
+    margin: 0 0 24px;
+    color: #57534e;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .email-button {
+    display: inline-block;
+    border-radius: 999px;
+    background: #b45309;
+    color: #fffefb;
+    padding: 14px 28px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .note-box {
+    margin: 0 0 24px;
+    padding: 16px 18px;
+    border: 1px dashed #d97706;
+    border-radius: 16px;
+    background: #fffbeb;
+    color: #57534e;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .email-foot {
+    margin: 26px 0 0;
+    padding-top: 20px;
+    border-top: 1px solid rgba(28, 25, 23, 0.08);
+    color: #78716c;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .choice-meta h3 {
+    margin-top: 18px;
+  }
+</style>
+
+<h2>Confirm Sign Up Email Direction</h2>
+<p class="subtitle">
+  The current sent email is Supabase's default plain template. These keep the same warm card, amber accent, serif thèque wordmark, and restrained auth-email tone as the magic-link design.
+</p>
+
+<div class="email-options">
+  <div class="email-choice" data-choice="a" onclick="toggleSelect(this)">
+    <div class="email-preview">
+      <div class="email-accent"></div>
+      <div class="email-body">
+        <p class="brand">thèque</p>
+        <p class="kicker">Confirm sign up</p>
+        <h3 class="email-title">Confirm your email address</h3>
+        <p class="email-copy">Finish setting up your Theque account. This link confirms your email and opens your library.</p>
+        <a class="email-button">Confirm email address</a>
+        <p class="email-foot">Didn't create a Theque account? You can ignore this email.</p>
+      </div>
+    </div>
+    <div class="choice-meta">
+      <h3>A. Direct Match</h3>
+      <p>Closest to the magic-link email: one clear button, short security copy, minimal friction. Recommended.</p>
+    </div>
+  </div>
+
+  <div class="email-choice" data-choice="b" onclick="toggleSelect(this)">
+    <div class="email-preview">
+      <div class="email-accent"></div>
+      <div class="email-body">
+        <p class="brand">thèque</p>
+        <p class="kicker">Welcome</p>
+        <h3 class="email-title">Save your first thing</h3>
+        <p class="email-copy">Confirm your email to start building a private visual library of books, films, places, products, recipes, and ideas.</p>
+        <a class="email-button">Confirm email address</a>
+        <p class="email-foot">This link only works for this sign-up request.</p>
+      </div>
+    </div>
+    <div class="choice-meta">
+      <h3>B. More Product-Led</h3>
+      <p>Warmer onboarding language. Nice brand moment, but less purely transactional than auth email best practice.</p>
+    </div>
+  </div>
+
+  <div class="email-choice" data-choice="c" onclick="toggleSelect(this)">
+    <div class="email-preview">
+      <div class="email-accent"></div>
+      <div class="email-body">
+        <p class="brand">thèque</p>
+        <p class="kicker">Email confirmation</p>
+        <h3 class="email-title">One last step</h3>
+        <div class="note-box">Confirming helps keep your private library tied to the right inbox.</div>
+        <a class="email-button">Confirm email</a>
+        <p class="email-foot">If the button doesn't work, use the fallback link below.</p>
+      </div>
+    </div>
+    <div class="choice-meta">
+      <h3>C. Guided Card</h3>
+      <p>Uses the dashed highlight motif from the OTP card, but may overemphasize a simple confirmation action.</p>
+    </div>
+  </div>
+</div>

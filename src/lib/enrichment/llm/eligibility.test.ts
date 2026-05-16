@@ -1,0 +1,92 @@
+import { describe, expect, it } from "vitest";
+
+import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
+
+const baseInput = {
+  enabled: true,
+  hasApiKey: true,
+  fetchBlocked: false,
+  fetchSparse: false,
+  category: "books" as const,
+  categorySource: "schema_org" as const,
+  title: "A Real Book",
+  description: "A useful description with enough detail.",
+  image_url: "https://example.com/book.jpg",
+  structured: {
+    authors: ["Jane Doe"],
+    published_year: 2024,
+  },
+};
+
+describe("decideLlmEligibility", () => {
+  it("skips when disabled", () => {
+    expect(decideLlmEligibility({ ...baseInput, enabled: false }).eligible).toBe(false);
+  });
+
+  it("skips without an API key", () => {
+    expect(decideLlmEligibility({ ...baseInput, hasApiKey: false }).eligible).toBe(false);
+  });
+
+  it("runs for sparse structured fields", () => {
+    const result = decideLlmEligibility({ ...baseInput, structured: {} });
+    expect(result).toMatchObject({ eligible: true, reason: "sparse_category_fields" });
+  });
+
+  it("runs for blocked fetches", () => {
+    const result = decideLlmEligibility({ ...baseInput, fetchBlocked: true });
+    expect(result).toMatchObject({ eligible: true, reason: "blocked_or_sparse_fetch" });
+  });
+
+  it("skips when deterministic data is strong enough", () => {
+    const result = decideLlmEligibility(baseInput);
+    expect(result).toMatchObject({ eligible: false, reason: "deterministic_data_sufficient" });
+  });
+
+  it("allows category suggestions for blocked deterministic fetches", () => {
+    const result = decideLlmEligibility({ ...baseInput, fetchBlocked: true });
+
+    expect(result).toMatchObject({
+      categorySuggestionAllowed: true,
+      categorySuggestionReason: "blocked_or_sparse_fetch",
+    });
+  });
+
+  it("allows category suggestions for sparse deterministic fetches", () => {
+    const result = decideLlmEligibility({ ...baseInput, fetchSparse: true });
+
+    expect(result).toMatchObject({
+      categorySuggestionAllowed: true,
+      categorySuggestionReason: "blocked_or_sparse_fetch",
+    });
+  });
+
+  it("allows manual category suggestions only when metadata has no useful value", () => {
+    const result = decideLlmEligibility({
+      ...baseInput,
+      fetchBlocked: true,
+      categorySource: "manual",
+      title: null,
+      description: null,
+      image_url: null,
+      structured: {},
+    });
+
+    expect(result).toMatchObject({
+      categorySuggestionAllowed: true,
+      categorySuggestionReason: "manual_no_useful_metadata",
+    });
+  });
+
+  it("does not allow manual category suggestions when useful metadata exists", () => {
+    const result = decideLlmEligibility({
+      ...baseInput,
+      fetchBlocked: true,
+      categorySource: "manual",
+    });
+
+    expect(result).toMatchObject({
+      categorySuggestionAllowed: false,
+      categorySuggestionReason: "manual_metadata_useful",
+    });
+  });
+});

@@ -20,7 +20,11 @@ additional_redirect_urls = [
   "https://theque.vercel.app/auth/callback",
 ]
 
-# Magic link HTML for local Supabase; hosted projects copy this file into Dashboard → Authentication → Email Templates → Magic link.
+# Email HTML for local Supabase; hosted projects copy these files into Dashboard → Authentication → Email Templates.
+[auth.email.template.confirmation]
+subject = "Confirm your email address"
+content_path = "./supabase/templates/confirmation.html"
+
 [auth.email.template.magic_link]
-subject = "Your Theque sign-in code"
+subject = "Your thèque sign-in code"
 content_path = "./supabase/templates/magic_link.html"

@@ -2,22 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink, Pencil, RefreshCw } from "lucide-react";
+import { ExternalLink, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { StructuredFields } from "@/components/items/StructuredFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatCategory, formatStatus } from "@/lib/item-labels";
-import type { Database } from "@/lib/database.types";
+import type {
+  AiEnrichmentApplyRequestBody,
+  AiEnrichmentProposalResponseBody,
+  ItemDetailResponseBody,
+} from "@/lib/types/api";
 
-type ItemRow = Database["public"]["Tables"]["items"]["Row"];
-
-export type ItemDetailModel = ItemRow & {
-  tags: string[];
-  collection_ids: string[];
-};
+export type ItemDetailModel = ItemDetailResponseBody;
 
 function safeRemoteImageUrl(url: string | null): string | null {
   if (!url) return null;
@@ -46,6 +46,25 @@ async function fetchItem(itemId: string): Promise<ItemDetailModel | null> {
   return (await res.json()) as ItemDetailModel;
 }
 
+async function createAiProposal(itemId: string): Promise<AiEnrichmentProposalResponseBody | null> {
+  const res = await fetch(`/api/items/${itemId}/ai-enrichment-proposal`, { method: "POST" });
+  if (!res.ok) return null;
+  return (await res.json()) as AiEnrichmentProposalResponseBody;
+}
+
+async function applyAiProposal(
+  itemId: string,
+  body: AiEnrichmentApplyRequestBody,
+): Promise<ItemDetailModel | null> {
+  const res = await fetch(`/api/items/${itemId}/ai-enrichment-apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as ItemDetailModel;
+}
+
 export function ItemDetail({
   initial,
   collections,
@@ -56,6 +75,12 @@ export function ItemDetail({
   const [item, setItem] = useState(initial);
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
+  const [aiReviewOpen, setAiReviewOpen] = useState(false);
+  const [aiProposalBusy, setAiProposalBusy] = useState(false);
+  const [aiApplyBusy, setAiApplyBusy] = useState(false);
+  const [aiProposalError, setAiProposalError] = useState<string | null>(null);
+  const [aiProposal, setAiProposal] = useState<AiEnrichmentProposalResponseBody["proposal"] | null>(null);
+  const [aiProposalMetadata, setAiProposalMetadata] = useState<AiEnrichmentProposalResponseBody["proposal_metadata"] | null>(null);
 
   const imgSrc = useMemo(() => safeRemoteImageUrl(item.image_url), [item.image_url]);
 
@@ -91,6 +116,47 @@ export function ItemDetail({
       }
     } finally {
       setRetryBusy(false);
+    }
+  };
+
+  const onOpenAiReview = async () => {
+    setAiReviewOpen(true);
+    setAiProposal(null);
+    setAiProposalMetadata(null);
+    setAiProposalError(null);
+    setAiProposalBusy(true);
+    try {
+      const next = await createAiProposal(item.id);
+      if (!next) {
+        setAiProposalError("Gemini could not prepare a rewrite proposal.");
+        return;
+      }
+      setAiProposal(next.proposal);
+      setAiProposalMetadata(next.proposal_metadata);
+    } finally {
+      setAiProposalBusy(false);
+    }
+  };
+
+  const onApplyAiProposal = async () => {
+    if (!aiProposal || !aiProposalMetadata) return;
+    setAiApplyBusy(true);
+    setAiProposalError(null);
+    try {
+      const next = await applyAiProposal(item.id, {
+        proposal: aiProposal,
+        proposal_metadata: aiProposalMetadata,
+      });
+      if (!next) {
+        setAiProposalError("The AI rewrite could not be applied.");
+        return;
+      }
+      setItem(next);
+      setAiReviewOpen(false);
+      setAiProposal(null);
+      setAiProposalMetadata(null);
+    } finally {
+      setAiApplyBusy(false);
     }
   };
 
@@ -199,6 +265,16 @@ export function ItemDetail({
               {retryBusy ? "Refreshing…" : refreshLabel}
             </Button>
           ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={aiProposalBusy || aiApplyBusy}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            onClick={() => void onOpenAiReview()}
+          >
+            <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
+            {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
+          </Button>
         </div>
 
         {item.enrichment_error ? (
@@ -209,6 +285,24 @@ export function ItemDetail({
       </header>
 
       <StructuredFields structured={item.structured} />
+
+      <ItemAiReviewDialog
+        open={aiReviewOpen}
+        onOpenChange={(open) => {
+          setAiReviewOpen(open);
+          if (!open) {
+            setAiProposalError(null);
+            setAiProposal(null);
+            setAiProposalMetadata(null);
+          }
+        }}
+        item={item}
+        proposal={aiProposal}
+        loading={aiProposalBusy}
+        applying={aiApplyBusy}
+        error={aiProposalError}
+        onApply={onApplyAiProposal}
+      />
 
       <ItemEditSheet
         open={editOpen}

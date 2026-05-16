@@ -35,7 +35,8 @@ export type CategorySource =
   | "domain"
   | "schema_org"
   | "heuristic"
-  | "manual";
+  | "manual"
+  | "llm";
 
 export type Database = {
   public: {
