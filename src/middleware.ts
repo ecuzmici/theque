@@ -3,6 +3,30 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/database.types";
 
+/** Routes that require a session; must stay in sync with matcher (excluding public entries). */
+const PROTECTED_PREFIXES = [
+  "/library",
+  "/settings",
+  "/item",
+  "/search",
+  "/add",
+] as const;
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+/** Keep refreshed Supabase cookies when returning a new Response (e.g. redirect). */
+function redirectPreservingCookies(from: NextResponse, url: URL): NextResponse {
+  const redirect = NextResponse.redirect(url);
+  for (const { name, value, ...opts } of from.cookies.getAll()) {
+    redirect.cookies.set(name, value, opts);
+  }
+  return redirect;
+}
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -25,7 +49,7 @@ export async function middleware(request: NextRequest) {
         cookiesToSet.forEach(({ name, value, options }) => {
           response.cookies.set(name, value, options);
         });
-        Object.entries(headersToSet).forEach(([key, value]) => {
+        Object.entries(headersToSet ?? {}).forEach(([key, value]) => {
           response.headers.set(key, value);
         });
       },
@@ -36,11 +60,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  const pathname = request.nextUrl.pathname;
+
+  if (user && pathname === "/") {
+    return redirectPreservingCookies(response, new URL("/library", request.url));
+  }
+
+  if (user && pathname === "/login") {
+    const next = request.nextUrl.searchParams.get("next");
+    const dest = next?.startsWith("/") ? next : "/library";
+    return redirectPreservingCookies(response, new URL(dest, request.url));
+  }
+
+  if (!user && isProtectedPath(pathname)) {
     const loginUrl = new URL("/login", request.url);
-    const returnPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+    const returnPath = `${pathname}${request.nextUrl.search}`;
     loginUrl.searchParams.set("next", returnPath === "/login" ? "/library" : returnPath);
-    return NextResponse.redirect(loginUrl);
+    return redirectPreservingCookies(response, loginUrl);
   }
 
   return response;
@@ -48,6 +84,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
+    "/login",
+    "/login/:path*",
     "/library",
     "/library/:path*",
     "/settings",
