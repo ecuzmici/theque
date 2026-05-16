@@ -24,40 +24,33 @@
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #faf8f5">
       <tr>
         <td align="center" style="padding: 48px 20px">
-          <!-- Card -->
-          <table
-            role="presentation"
-            cellpadding="0"
-            cellspacing="0"
-            border="0"
-            width="100%"
-            style="
-              max-width: 440px;
-              background-color: #fffefb;
-              border-radius: 18px;
-              border: 1px solid rgba(28, 25, 23, 0.08);
-              box-shadow: 0 8px 32px rgba(28, 25, 23, 0.06);
-            "
-          >
-            <!-- Accent stripe (keep thin — avoid tall cell + &nbsp; in Gmail) -->
+          <!-- Card: div wrapper clips accent to radius (tables rarely clip children in Gmail, etc.) -->
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 440px">
             <tr>
-              <td
-                height="3"
-                style="
-                  height: 3px;
-                  max-height: 3px;
-                  font-size: 1px;
-                  line-height: 1px;
-                  mso-line-height-rule: exactly;
-                  background-color: #b45309;
-                  border-radius: 18px 18px 0 0;
-                "
-              >
-                &nbsp;
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 36px 36px 32px 36px">
+              <td style="padding: 0">
+                <div
+                  style="
+                    border-radius: 18px;
+                    overflow: hidden;
+                    background-color: #fffefb;
+                    border: 1px solid rgba(28, 25, 23, 0.08);
+                    box-shadow: 0 8px 32px rgba(28, 25, 23, 0.06);
+                  "
+                >
+                  <!-- Accent stripe (avoid very tall spacer + &nbsp; quirks in Gmail) -->
+                  <div
+                    style="
+                      height: 6px;
+                      max-height: 6px;
+                      font-size: 1px;
+                      line-height: 1px;
+                      mso-line-height-rule: exactly;
+                      background-color: #b45309;
+                    "
+                  >
+                    &nbsp;
+                  </div>
+                  <div style="padding: 36px 36px 32px 36px">
                 <!-- Brand -->
                 <p
                   style="
@@ -218,10 +211,8 @@
                   Trouble with the button?
                   <a href="{{ .ConfirmationURL }}" style="color: #b45309; text-decoration: underline; font-weight: 600">Open this link</a>
                 </p>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 0 36px 28px 36px">
+                  </div>
+                  <div style="padding: 0 36px 28px 36px">
                 <p
                   style="
                     margin: 0;
@@ -243,6 +234,8 @@
                   ·
                   <a href="{{ .SiteURL }}" style="color: #92400e; text-decoration: underline">{{ .SiteURL }}</a>
                 </p>
+                  </div>
+                </div>
               </td>
             </tr>
           </table>
