@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -75,27 +76,29 @@ export function InboxActions({ itemId, category, onOptimistic }: InboxActionsPro
         Triage
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuLabel>Inbox</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => void apply({ status: "want" }, { remove: true })}>
-          Keep · Want
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void apply({ status: "planned" }, { remove: true })}>
-          Plan
-        </DropdownMenuItem>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Wrong type…</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="max-h-48 overflow-y-auto">
-            {CATEGORIES.map((c) => (
-              <DropdownMenuItem
-                key={c}
-                className={category === c ? "font-semibold text-accent-foreground" : undefined}
-                onClick={() => void apply({ category: c, status: "want" }, { remove: true })}
-              >
-                {CATEGORY_LABELS[c]}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Inbox</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => void apply({ status: "want" }, { remove: true })}>
+            Keep · Want
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void apply({ status: "planned" }, { remove: true })}>
+            Plan
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Wrong type…</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-48 overflow-y-auto">
+              {CATEGORIES.map((c) => (
+                <DropdownMenuItem
+                  key={c}
+                  className={category === c ? "font-semibold text-accent-foreground" : undefined}
+                  onClick={() => void apply({ category: c, status: "want" }, { remove: true })}
+                >
+                  {CATEGORY_LABELS[c]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
