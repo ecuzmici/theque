@@ -26,9 +26,9 @@ export default async function Home() {
         </p>
         <h1
           id="home-heading"
-          className="mt-6 font-serif text-4xl tracking-tight text-foreground sm:text-5xl"
+          className="mt-6 font-serif text-4xl lowercase tracking-[0.04em] text-foreground sm:text-5xl"
         >
-          Theque
+          theque
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Capture links from Chrome or your phone. They become rich cards on shelves — books,

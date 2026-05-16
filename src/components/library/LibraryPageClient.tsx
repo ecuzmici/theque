@@ -152,7 +152,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
                 {s.label}
                 {s.id === "inbox" && inboxCount != null && inboxCount > 0 ? (
                   <Badge
-                    variant={selected ? "secondary" : "default"}
+                    variant="secondary"
                     className="h-5 min-w-5 justify-center px-1.5 text-[10px]"
                   >
                     {inboxCount}

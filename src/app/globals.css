@@ -25,8 +25,8 @@
   --card-foreground: var(--ks-fg);
   --popover: var(--ks-surface);
   --popover-foreground: var(--ks-fg);
-  --primary: var(--ks-fg);
-  --primary-foreground: var(--ks-bg);
+  --primary: var(--ks-accent);
+  --primary-foreground: #fffefb;
   --secondary: var(--ks-bg-muted);
   --secondary-foreground: var(--ks-fg);
   --muted: var(--ks-bg-muted);
@@ -66,6 +66,8 @@
   --ks-ring: rgba(251, 191, 36, 0.35);
   --ks-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   --ks-shadow-md: 0 4px 18px rgba(0, 0, 0, 0.45);
+  --primary: var(--ks-accent);
+  --primary-foreground: #1c1917;
 }
 
 @theme inline {

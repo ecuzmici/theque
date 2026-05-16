@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { cn } from "@/lib/utils";
 
 const nav = [
@@ -62,9 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <Link href="/library" className="font-serif text-xl tracking-tight text-foreground">
-              Theque
-            </Link>
+            <ThequeLogo size="lg" href="/library" />
             <p className="mt-1 text-xs text-muted-foreground">Your taste library</p>
           </div>
           <ThemeToggle />
@@ -98,9 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-h-full min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
-          <Link href="/library" className="font-serif text-lg tracking-tight text-foreground">
-            Theque
-          </Link>
+          <ThequeLogo size="md" href="/library" />
           <ThemeToggle />
         </header>
 

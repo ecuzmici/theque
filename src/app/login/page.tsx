@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThequeLogo } from "@/components/brand/ThequeLogo";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -47,7 +48,9 @@ function LoginForm() {
     <main className="flex min-h-svh flex-col items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <h1 className="font-serif text-2xl tracking-tight text-card-foreground">Theque</h1>
+          <h1 className="m-0 max-w-full p-0">
+            <ThequeLogo size="xl" href="/" className="text-card-foreground" />
+          </h1>
           <CardDescription id="login-description">
             Sign in with email — your private taste library.
           </CardDescription>

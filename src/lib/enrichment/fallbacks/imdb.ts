@@ -21,7 +21,7 @@ export async function fetchImdbFromSuggestionApi(ttId: string): Promise<ImdbSugg
     signal: AbortSignal.timeout(6000),
     headers: {
       Accept: "application/json",
-      "User-Agent": "Mozilla/5.0 (compatible; Theque/1.0; +https://theque.vercel.app)",
+      "User-Agent": "Mozilla/5.0 (compatible; theque/1.0; +https://theque.vercel.app)",
     },
   });
   if (!res.ok) return null;

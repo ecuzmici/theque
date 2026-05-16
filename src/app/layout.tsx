@@ -44,16 +44,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Theque",
+  title: "theque",
   description: "Your private taste library — save what you'll love later.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Theque",
+    title: "theque",
     statusBarStyle: "default",
-  },
-  icons: {
-    apple: "/icons/apple-touch-icon.png",
   },
 };
 

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#faf8f5"/>
+  <!-- Index card (variant D), scaled from 24×24 artwork -->
+  <rect
+    x="5.33"
+    y="6"
+    width="21.33"
+    height="20"
+    rx="2.33"
+    fill="#fffefb"
+    stroke="#d6d3d1"
+    stroke-width="0.85"
+  />
+  <path
+    d="M10 12.67h12M10 17.33h8.67"
+    stroke="#78716c"
+    stroke-width="1.35"
+    stroke-linecap="round"
+  />
+  <circle cx="22.67" cy="10.67" r="1.8" fill="#b45309"/>
+</svg>

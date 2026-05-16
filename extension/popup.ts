@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       const created = body?.created !== false;
-      setStatus(created ? "Saved to Theque." : "Already in your library.", "ok");
+      setStatus(created ? "Saved to theque." : "Already in your library.", "ok");
     } catch {
       setStatus("Network error — check API URL and connection.", "err");
     } finally {
