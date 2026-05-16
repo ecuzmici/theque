@@ -7,7 +7,7 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 - **Single user**, private; no multi-tenant or social features.
 - **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. **Collections** are user-created in Postgres.
 - **Classification**: domain map + schema.org + heuristics only (no LLM).
-- **Capture auth**: magic link for web; `Bearer bmly_…` capture tokens for extension/Shortcut.
+- **Web auth**: email OTP is primary; magic-link callback remains as fallback. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
 - **iOS Shortcut** is documented but lower priority than Chrome + web QA.
 
 ## Environments
@@ -28,7 +28,7 @@ Required env vars: see `.env.local.example`. Never commit `.env.local`.
 npm install
 npm run dev              # Next.js on :3000
 npm run build            # extension tsc + next build
-npm test                 # Vitest (parsers, classify, url)
+npm test                 # Vitest (parsers, classify, auth utils, timestamps, url)
 npm run seed             # optional demo rows (needs SEED_USER_ID)
 npm run supabase:sync-auth   # optional; needs SUPABASE_ACCESS_TOKEN
 ```
@@ -40,6 +40,8 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | Path | Purpose |
 |------|---------|
 | `src/app/(app)/` | Authenticated UI: library, item detail, add, search, settings |
+| `src/app/login` + `src/app/auth/callback` | Email OTP login and magic-link fallback callback |
+| `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
@@ -69,10 +71,12 @@ Structured field display: `src/components/items/StructuredFields.tsx` + `docs/ca
 
 ## Auth flows
 
-- **Web**: `/login` → Supabase magic link → `/auth/callback` (cookies on redirect response in `src/app/auth/callback/route.ts`).
+- **Web**: `/login` is a two-step Supabase email OTP flow. `signInWithOtp` sends the email; `verifyOtp({ type: "email" })` signs in with the copied code. `src/app/login/login-utils.ts` normalizes 6-10 digit tokens and keeps `next` redirects local.
+- **Magic-link fallback**: `supabase/templates/magic_link.html` shows `{{ .Token }}` prominently and keeps `{{ .ConfirmationURL }}` as the secondary "Open Theque instead" path. `/auth/callback` exchanges clicked-link codes and sets cookies on the redirect response.
+- **Middleware**: `src/middleware.ts` protects `/library`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
 - **Capture API**: `Authorization: Bearer <capture_token>`; create tokens in **Settings → Capture tokens** (shown once).
 
-Supabase redirect URLs must include production and localhost callbacks (see `supabase/config.toml`).
+Supabase redirect URLs must include production and localhost app/callback URLs (see `supabase/config.toml`). Use `npm run supabase:sync-auth` after changing the hosted auth template or redirect allow-list; it reads `SUPABASE_ACCESS_TOKEN` from the environment or `.env.local`.
 
 ## MCP servers (local Cursor)
 
@@ -94,6 +98,8 @@ After cloning, run once: `npm run qa:install-browsers`.
 
 - Match existing patterns; minimal diffs; no drive-by refactors.
 - Run `npm test` before claiming parser/classify changes are done.
+- For auth/login changes, update `src/app/login/login-utils.test.ts` when redirect or OTP validation behavior changes.
+- Touch UX uses Tailwind custom variants in `src/app/globals.css`: `pointer-coarse`, `lg-fine`, `--tap-target-min`, and `.ks-pointer-coarse-min-hit`. Prefer `<Button />` for controls so coarse-pointer hit targets stay at roughly 44px without making desktop layouts bulky.
 - Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
 - Do not commit secrets, `.env.local`, or `.vercel/`.
