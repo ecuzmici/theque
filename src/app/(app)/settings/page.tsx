@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { CaptureTokens } from "@/components/settings/CaptureTokens";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -25,8 +24,7 @@ export default async function SettingsPage() {
     <div>
       <PageHeader
         title="Settings"
-        description="Capture tokens for Chrome and shortcuts, plus appearance."
-        actions={<ThemeToggle />}
+        description="Capture tokens for Chrome and shortcuts."
       />
       <CaptureTokens initialTokens={tokens ?? []} userEmail={user.email ?? undefined} />
     </div>

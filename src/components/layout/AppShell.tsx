@@ -44,7 +44,8 @@ function NavLink({
           : compact
             ? "text-muted-foreground hover:bg-muted hover:text-foreground"
             : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground dark:hover:bg-white/10",
-        compact && "min-w-[4.5rem] flex-col gap-1 px-2 py-1.5 text-[11px]",
+        compact &&
+          "max-w-full flex-col gap-1 px-1 py-2 text-[11px] w-full min-h-11 items-center justify-center text-center leading-tight",
       )}
       aria-current={active ? "page" : undefined}
     >
@@ -106,24 +107,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </main>
 
         <nav
-          className="fixed bottom-0 left-0 right-0 z-30 grid h-[var(--ks-nav-height)] grid-cols-5 items-end gap-x-1.5 border-t border-border bg-card/95 px-2 pb-2 backdrop-blur lg:hidden"
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-30 flex h-[var(--ks-nav-height)] items-end border-t border-border bg-card/95 backdrop-blur lg:hidden",
+            "px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
+          )}
           aria-label="Primary"
         >
           {nav.slice(0, 2).map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              active={item.match(pathname)}
-              compact
-            />
+            <div key={item.href} className="flex min-w-0 flex-1 justify-center">
+              <NavLink
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={item.match(pathname)}
+                compact
+              />
+            </div>
           ))}
-          <div className="flex justify-center pb-1">
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-end pb-0.5">
             <Link
               href="/add"
               className={cn(
-                "flex size-12 -translate-y-2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-4 ring-background transition hover:opacity-90",
+                "flex size-12 shrink-0 -translate-y-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-4 ring-background transition hover:opacity-90",
                 onAdd && "ring-accent",
               )}
               aria-label="Add link"
@@ -133,14 +138,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
           {nav.slice(2).map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              active={item.match(pathname)}
-              compact
-            />
+            <div key={item.href} className="flex min-w-0 flex-1 justify-center">
+              <NavLink
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={item.match(pathname)}
+                compact
+              />
+            </div>
           ))}
         </nav>
       </div>
