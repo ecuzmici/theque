@@ -62,7 +62,7 @@ export function ThequeLogo({
       href={href}
       aria-label="thèque home"
       className={cn(
-        "inline-flex items-center rounded-md text-foreground outline-none ring-ring/50 focus-visible:ring-3",
+        "inline-flex items-center rounded-md text-foreground outline-none ring-ring/50 focus-visible:ring-3 pointer-coarse:min-h-[var(--tap-target-min)] pointer-coarse:px-1",
         mark === "none" ? "gap-0" : "gap-2",
         className,
       )}

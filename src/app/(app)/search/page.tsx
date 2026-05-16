@@ -6,6 +6,7 @@ import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemGrid } from "@/components/items/ItemGrid";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -149,13 +150,15 @@ export default function SearchPage() {
       {activeFilters > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{activeFilters} filter{activeFilters === 1 ? "" : "s"}</Badge>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            className="h-auto text-xs font-medium text-muted-foreground underline-offset-2 hover:bg-transparent hover:text-muted-foreground hover:underline"
             onClick={clearFilters}
-            className="text-xs font-medium text-muted-foreground underline-offset-2 hover:underline"
           >
             Clear filters
-          </button>
+          </Button>
         </div>
       ) : null}
 

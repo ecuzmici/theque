@@ -50,7 +50,7 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
     <div>
       <Link
         href="/collections"
-        className="mb-4 inline-flex text-sm font-medium text-muted-foreground hover:text-foreground"
+        className="mb-4 inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground ks-pointer-coarse-min-hit"
       >
         ← Collections
       </Link>

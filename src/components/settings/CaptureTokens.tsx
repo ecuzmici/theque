@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { formatDbTimestampUtc } from "@/lib/format-timestamp";
 import type {
   CaptureTokenCreateResponseBody,
   CaptureTokenListEntry,
@@ -176,7 +177,7 @@ export function CaptureTokens({
                       <p className="font-medium">{t.name}</p>
                       <p className="font-mono text-xs text-muted-foreground">{t.token_prefix}…</p>
                       <p className="text-xs text-muted-foreground">
-                        Created {new Date(t.created_at).toLocaleString()}
+                        Created {formatDbTimestampUtc(t.created_at)}
                         {t.revoked_at ? (
                           <Badge variant="secondary" className="ml-2">
                             Revoked

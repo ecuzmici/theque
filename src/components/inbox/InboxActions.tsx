@@ -62,7 +62,7 @@ export function InboxActions({ itemId, category, onOptimistic }: InboxActionsPro
             type="button"
             size="xs"
             variant="secondary"
-            className="h-11 min-h-11 min-w-11 gap-1 px-3 bg-card/95 shadow-sm backdrop-blur lg:h-7 lg:min-h-7 lg:w-auto lg:min-w-0"
+            className="h-11 min-h-11 min-w-11 gap-1 px-3 bg-card/95 shadow-sm backdrop-blur lg-fine:h-7 lg-fine:min-h-7 lg-fine:w-auto lg-fine:min-w-0"
             disabled={busy}
             onClick={(e) => {
               e.preventDefault();

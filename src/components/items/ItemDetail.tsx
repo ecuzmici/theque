@@ -107,7 +107,7 @@ export function ItemDetail({
     <article className="pb-12">
       <Link
         href="/library"
-        className="-ml-1 inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground lg:min-h-0 lg:py-0"
+        className="-ml-1 inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground lg-fine:min-h-0 lg-fine:py-0"
       >
         ← Library
       </Link>
@@ -173,7 +173,7 @@ export function ItemDetail({
           <Button
             nativeButton={false}
             render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
-            className="min-h-11 gap-1.5 lg:min-h-8"
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
           >
             <ExternalLink className="size-4" />
             Open original
@@ -181,7 +181,7 @@ export function ItemDetail({
           <Button
             type="button"
             variant="outline"
-            className="min-h-11 gap-1.5 lg:min-h-8"
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
             onClick={() => setEditOpen(true)}
           >
             <Pencil className="size-4" />
@@ -192,7 +192,7 @@ export function ItemDetail({
               type="button"
               variant="outline"
               disabled={retryBusy}
-              className="min-h-11 gap-1.5 lg:min-h-8"
+              className="min-h-11 gap-1.5 lg-fine:min-h-8"
               onClick={() => void onRetry()}
             >
               <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />

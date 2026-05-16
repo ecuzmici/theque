@@ -3,8 +3,13 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+/* Touch UX: enlarge hit areas on coarse pointers (phones/tablets); keep dense layouts for mouse/trackpad. */
+@custom-variant pointer-coarse (@media (pointer: coarse));
+@custom-variant lg-fine (@media (min-width: 64rem) and (pointer: fine));
 
 :root {
+  /* WCAG-ish comfort target (~44 CSS px); used with pointer-coarse utilities */
+  --tap-target-min: 2.75rem;
   --ks-bg: #faf8f5;
   --ks-bg-muted: #f5f0e8;
   --ks-surface: #fffefb;
@@ -170,6 +175,20 @@
   display: none;
 }
 
+@layer utilities {
+  /**
+   * Plain links / lightweight controls outside <Button>.
+   * Prefer <Button /> when possible — this catches back links, footers, etc.
+   */
+  .ks-pointer-coarse-min-hit {
+    @media (pointer: coarse) {
+      min-height: var(--tap-target-min);
+      padding-inline: 0.25rem;
+      margin-inline: -0.25rem;
+      align-self: flex-start;
+    }
+  }
+}
 
 @layer base {
   * {
