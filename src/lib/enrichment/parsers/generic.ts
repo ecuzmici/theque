@@ -1,6 +1,7 @@
 import {
   extractJsonLdStructured,
   flattenAllJsonLd,
+  pickImageFromLd,
   pickTitleFromLd,
 } from "@/lib/enrichment/parsers/jsonld-fields";
 import { isWeakTitle, parseTitleTag } from "@/lib/enrichment/meta-utils";
@@ -41,9 +42,13 @@ export function parseGeneric(
   const twTitle = twitter["twitter:title"];
   const twDesc = twitter["twitter:description"];
   const twImage = twitter["twitter:image"];
+  const itempropImage = doc
+    .querySelector('meta[itemprop="image"], link[itemprop="image"]')
+    ?.getAttribute("content") ?? doc.querySelector('link[rel~="image_src"]')?.getAttribute("href") ?? undefined;
 
   const articleMeta = readMetaByName(doc, "article:");
   const ldTitle = pickTitleFromLd(flattened);
+  const ldImage = pickImageFromLd(flattened);
 
   let title = ogTitle ?? twTitle ?? ldTitle ?? doc.querySelector("title")?.textContent?.trim();
   if (title) {
@@ -59,6 +64,8 @@ export function parseGeneric(
   let image_url =
     ogImage ??
     twImage ??
+    ldImage ??
+    itempropImage ??
     (typeof structured._product_image === "string" ? structured._product_image : undefined);
   delete structured._product_image;
   if (image_url && image_url.startsWith("//")) {

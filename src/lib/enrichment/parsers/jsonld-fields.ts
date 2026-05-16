@@ -39,6 +39,29 @@ export function extractJsonLdStructured(nodes: JsonLdNode[]): Record<string, unk
   return structured;
 }
 
+function imageUrlFromValue(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const imageUrl = imageUrlFromValue(entry);
+      if (imageUrl) return imageUrl;
+    }
+  }
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return imageUrlFromValue(record.url) ?? imageUrlFromValue(record.contentUrl);
+  }
+  return undefined;
+}
+
+export function pickImageFromLd(nodes: JsonLdNode[]): string | undefined {
+  for (const node of nodes) {
+    const imageUrl = imageUrlFromValue(node.image);
+    if (imageUrl) return imageUrl;
+  }
+  return undefined;
+}
+
 function applyRecipe(node: JsonLdNode, structured: Record<string, unknown>): void {
   const name = node.name;
   if (typeof name === "string") structured.title_hint = name;

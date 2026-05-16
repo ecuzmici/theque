@@ -142,6 +142,30 @@ describe("validateLlmItemRewriteProposal", () => {
     });
   });
 
+  it("accepts null optional string fields from the proposal API response", () => {
+    const result = validateLlmItemRewriteProposal({
+      category: "books",
+      category_confidence: 1,
+      title: "A Drop of Corruption",
+      subtitle: null,
+      description: null,
+      image_url: null,
+      structured: {},
+      confidence: 1,
+      sources: ["https://example.com/book"],
+      notes: null,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        category: "books",
+        image_url: undefined,
+        notes: undefined,
+      },
+    });
+  });
+
   it("rejects invalid proposed categories", () => {
     const result = validateLlmItemRewriteProposal({
       category: "music",

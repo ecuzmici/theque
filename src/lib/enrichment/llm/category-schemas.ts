@@ -66,6 +66,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isOptionalStringOrNull(value: unknown): value is string | null | undefined {
+  return value === undefined || value === null || typeof value === "string";
+}
+
 function isNonEmptyStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry.trim().length > 0);
 }
@@ -169,7 +173,7 @@ export function validateLlmCategoryEnhancement(category: ItemCategory, value: un
 
   for (const key of ["title", "subtitle", "description", "image_url", "notes"]) {
     const field = value[key];
-    if (field !== undefined && typeof field !== "string") {
+    if (!isOptionalStringOrNull(field)) {
       return { ok: false, reason: `invalid_${key}` };
     }
   }
@@ -231,7 +235,7 @@ export function validateLlmItemRewriteProposal(value: unknown): LlmItemRewriteVa
 
   for (const key of ["title", "subtitle", "description", "image_url", "notes"]) {
     const field = value[key];
-    if (field !== undefined && typeof field !== "string") {
+    if (!isOptionalStringOrNull(field)) {
       return { ok: false, reason: `invalid_${key}` };
     }
   }

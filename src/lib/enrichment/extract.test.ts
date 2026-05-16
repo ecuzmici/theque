@@ -68,6 +68,35 @@ describe("extractFromHtml", () => {
     expect(r.structured.price).toEqual({ amount: 49.99, currency: "USD" });
   });
 
+  it("uses JSON-LD image metadata when social image tags are missing", () => {
+    const r = extractFromHtml(
+      `<!doctype html>
+      <html>
+        <head>
+          <title>Useful item</title>
+          <script type="application/ld+json">
+            {
+              "@context": "https://schema.org",
+              "@type": "Thing",
+              "name": "Useful item",
+              "image": {
+                "@type": "ImageObject",
+                "url": "https://cdn.example/useful-item.jpg"
+              }
+            }
+          </script>
+        </head>
+        <body></body>
+      </html>`,
+      {
+        finalUrl: "https://example.com/useful-item",
+        statusCode: 200,
+      },
+    );
+
+    expect(r.image_url).toBe("https://cdn.example/useful-item.jpg");
+  });
+
   it("parses Goodreads Book structured fields", () => {
     const html = loadFixture("goodreads-book.html");
     const r = extractFromHtml(html, {
