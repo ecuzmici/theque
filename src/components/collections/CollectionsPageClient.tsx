@@ -70,7 +70,7 @@ export function CollectionsPageClient({
     <div>
       <div className="mb-6 flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger render={<Button size="sm" className="gap-1.5" />}>
+          <DialogTrigger render={<Button className="gap-1.5" />}>
             <Plus className="size-4" />
             New collection
           </DialogTrigger>
