@@ -1,4 +1,5 @@
 import type {
+  Database,
   ItemCategory,
   ItemSource,
   ItemStatus,
@@ -60,11 +61,50 @@ export type ItemsListResponseBody = {
   next_cursor: string | null;
 };
 
+/** GET /api/items/:id and PATCH /api/items/:id */
+export type ItemDetailResponseBody = Database["public"]["Tables"]["items"]["Row"] & {
+  tags: string[];
+  collection_ids: string[];
+};
+
 /** POST /api/items/:id/retry-enrichment */
 export type RetryEnrichmentResponseBody = {
   item_id: string;
   processing_status: ProcessingStatus;
 };
+
+/** POST /api/items/:id/ai-enrichment-proposal */
+export type AiItemRewriteProposal = {
+  category: ItemCategory;
+  category_confidence: number;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  image_url: string | null;
+  structured: Record<string, Json>;
+  confidence: number;
+  sources: string[];
+  notes?: string | null;
+};
+
+export type AiEnrichmentProposalMetadata = {
+  provider: string;
+  model?: string;
+};
+
+export type AiEnrichmentProposalResponseBody = {
+  item_id: string;
+  proposal: AiItemRewriteProposal;
+  proposal_metadata: AiEnrichmentProposalMetadata;
+};
+
+/** POST /api/items/:id/ai-enrichment-apply */
+export type AiEnrichmentApplyRequestBody = {
+  proposal: AiItemRewriteProposal;
+  proposal_metadata: AiEnrichmentProposalMetadata;
+};
+
+export type AiEnrichmentApplyResponseBody = ItemDetailResponseBody;
 
 /** POST /api/jobs/enrich */
 export type EnrichJobResponseBody = {

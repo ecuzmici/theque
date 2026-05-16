@@ -163,7 +163,8 @@ Separate from `structured` — user or system UI preferences:
 }
 ```
 
-Written to item columns, not inside `structured`.
+Written to item columns, not inside `structured`. `category_source` may be
+`domain`, `schema_org`, `heuristic`, `manual`, or `llm`.
 
 ## `raw_metadata` shape
 
@@ -177,4 +178,83 @@ Written to item columns, not inside `structured`.
   "json_ld": [{ "@type": "Movie", "name": "..." }],
   "parser": "imdb"
 }
+```
+
+### `raw_metadata.llm`
+
+When LLM enrichment is enabled, Theque records the Gemini attempt for debugging.
+Gemini normally enriches fields for the deterministic category. When
+deterministic evidence is weak, blocked, or sparse, Gemini may also return a
+validated category suggestion. If the suggestion is applied, the item columns are
+updated with `category_source: "llm"`.
+
+Manual categories are protected unless the item has no useful metadata: weak or
+missing title, missing description and image, empty structured fields, and
+blocked/sparse fetch evidence.
+
+```json
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "status": "enhanced",
+  "confidence": 0.82,
+  "sources": ["open_graph", "json_ld"],
+  "returned_fields": ["authors", "published_year"],
+  "category_suggestion": {
+    "category": "restaurants",
+    "confidence": 0.78,
+    "allowed": true,
+    "applied": true,
+    "reason": "blocked_or_sparse_fetch"
+  },
+  "enriched_at": "2026-05-16T00:00:00.000Z"
+}
+```
+
+### `raw_metadata.ai_review`
+
+When a user clicks `Enrich with AI`, Gemini can propose a full metadata rewrite
+for the item, including category changes. The proposal is shown to the user
+before any data is written. If the user accepts it, Theque records the accepted
+proposal in `raw_metadata.ai_review`.
+
+```json
+{
+  "provider": "gemini",
+  "model": "gemini-2.5-flash",
+  "status": "accepted",
+  "accepted_fields": [
+    "category",
+    "category_confidence",
+    "category_source",
+    "title",
+    "structured"
+  ],
+  "proposal": {
+    "category": "books",
+    "category_confidence": 0.93,
+    "title": "A Drop of Corruption",
+    "subtitle": null,
+    "description": "A detective fantasy sequel.",
+    "image_url": "https://...",
+    "structured": {
+      "authors": ["Robert Jackson Bennett"]
+    },
+    "confidence": 0.88,
+    "sources": ["url"],
+    "notes": "Amazon Kindle listing"
+  },
+  "accepted_at": "2026-05-16T00:00:00.000Z"
+}
+```
+
+## LLM Rollout
+
+Roll out Gemini enrichment conservatively:
+
+```text
+1. Local only with LLM_ENRICHMENT_ENABLED=true.
+2. Production deploy with LLM_ENRICHMENT_ENABLED=false.
+3. Enable only after local QA on sparse pages from docs/qa-checklist.md.
+4. Review raw_metadata.llm on real items before broadening usage.
 ```

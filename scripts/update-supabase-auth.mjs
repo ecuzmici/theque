@@ -18,6 +18,7 @@ if (!token) {
   process.exit(1);
 }
 
+const confirmationTemplate = fs.readFileSync("supabase/templates/confirmation.html", "utf8");
 const magicLinkTemplate = fs.readFileSync("supabase/templates/magic_link.html", "utf8");
 
 const headers = {
@@ -56,7 +57,9 @@ const patchAuth = await fetch(`https://api.supabase.com/v1/projects/${ref}/confi
   body: JSON.stringify({
     site_url: "https://theque.vercel.app",
     uri_allow_list: allow.join(","),
-    mailer_subjects_magic_link: "Your Theque sign-in code",
+    mailer_subjects_confirmation: "Confirm your email address",
+    mailer_templates_confirmation_content: confirmationTemplate,
+    mailer_subjects_magic_link: "Your thèque sign-in code",
     mailer_templates_magic_link_content: magicLinkTemplate,
   }),
 });
@@ -78,5 +81,5 @@ if (!patchProject.ok) {
 }
 
 console.log(
-  "OK — site_url, redirect URLs, and magic-link subject/template updated; project renamed to theque.",
+  "OK — site_url, redirect URLs, auth email subjects/templates updated; project renamed to theque.",
 );

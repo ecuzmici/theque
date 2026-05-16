@@ -5,6 +5,9 @@ import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
+import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -14,6 +17,28 @@ function stripExtractHints(structured: Record<string, unknown>): Record<string, 
   const rest = { ...structured };
   delete rest.title_hint;
   return rest;
+}
+
+function hasUsefulValue(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.length > 0;
+  if (value && typeof value === "object") return Object.keys(value).length > 0;
+  return false;
+}
+
+function hasSparseFetchEvidence(input: {
+  title: string | null;
+  description: string | null;
+  image_url: string | null;
+  structured: Record<string, unknown>;
+}): boolean {
+  return (
+    isWeakTitle(input.title) &&
+    !input.description?.trim() &&
+    !input.image_url?.trim() &&
+    !Object.values(input.structured).some(hasUsefulValue)
+  );
 }
 
 function buildSubtitle(category: ItemCategory, structured: Record<string, unknown>): string | null {
@@ -108,13 +133,84 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         ? extracted.structured.title_hint
         : null;
     const structuredClean = stripExtractHints(extracted.structured) as Record<string, unknown>;
-    const mergedStructured = { ...structuredClean };
-    const subtitle =
-      extracted.subtitle ?? buildSubtitle(classification.category, mergedStructured);
+    let mergedStructured = { ...structuredClean };
+    let mergedRawMetadata = extracted.raw_metadata as unknown as Record<string, unknown>;
+    let mergedTitle = extracted.title?.trim() || null;
+    let mergedSubtitle = extracted.subtitle ?? null;
+    let mergedDescription = extracted.description ?? row.description;
+    let mergedImageUrl = extracted.image_url ?? row.image_url;
+    let mergedCategory = classification.category;
+    let mergedCategoryConfidence = classification.category_confidence;
+    let mergedCategorySource = classification.category_source;
+
+    const fetchBlocked = isBotBlockPage(fetchResult.html, fetchResult.statusCode);
+    const fetchSparse = hasSparseFetchEvidence({
+      title: mergedTitle,
+      description: mergedDescription,
+      image_url: mergedImageUrl,
+      structured: mergedStructured,
+    });
+    const llmEligibility = decideLlmEligibility({
+      enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
+      hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+      fetchBlocked,
+      fetchSparse,
+      category: classification.category,
+      categorySource: classification.category_source,
+      title: mergedTitle,
+      description: mergedDescription,
+      image_url: mergedImageUrl,
+      structured: mergedStructured,
+    });
+
+    if (llmEligibility.eligible) {
+      const llmResult = await enhanceCategoryWithGemini({
+        finalUrl: fetchResult.finalUrl,
+        category: classification.category,
+        categorySuggestionAllowed: llmEligibility.categorySuggestionAllowed,
+        categorySuggestionReason: llmEligibility.categorySuggestionReason,
+        title: mergedTitle,
+        subtitle: mergedSubtitle,
+        description: mergedDescription,
+        image_url: mergedImageUrl,
+        structured: mergedStructured,
+        rawMetadata: extracted.raw_metadata,
+      });
+
+      const merged = mergeLlmEnrichment({
+        current: {
+          title: mergedTitle,
+          subtitle: mergedSubtitle,
+          description: mergedDescription,
+          image_url: mergedImageUrl,
+          category: mergedCategory,
+          category_confidence: mergedCategoryConfidence,
+          category_source: mergedCategorySource,
+          structured: mergedStructured,
+          rawMetadata: mergedRawMetadata,
+        },
+        categorySuggestionAllowed: llmEligibility.categorySuggestionAllowed,
+        categorySuggestionReason: llmEligibility.categorySuggestionReason,
+        llmResult,
+        now: new Date().toISOString(),
+      });
+
+      mergedTitle = merged.title;
+      mergedSubtitle = merged.subtitle;
+      mergedDescription = merged.description;
+      mergedImageUrl = merged.image_url;
+      mergedStructured = merged.structured;
+      mergedRawMetadata = merged.rawMetadata;
+      mergedCategory = merged.category;
+      mergedCategoryConfidence = merged.category_confidence;
+      mergedCategorySource = merged.category_source;
+    }
+
+    const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
 
     const siteForTitle =
       typeof mergedStructured.site_name === "string" ? mergedStructured.site_name : undefined;
-    let title = extracted.title?.trim() || null;
+    let title = mergedTitle;
     if (isWeakTitle(title, siteForTitle)) {
       title = titleHint?.trim() || null;
     }
@@ -128,11 +224,10 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     }
 
     const nextStatus: ItemStatus =
-      classification.category_confidence >= 0.6 ? "want" : "inbox";
+      mergedCategoryConfidence >= 0.6 ? "want" : "inbox";
 
-    const display = mergeDisplay(row.display, classification.category);
+    const display = mergeDisplay(row.display, mergedCategory);
 
-    const fetchBlocked = isBotBlockPage(fetchResult.html, fetchResult.statusCode);
     const enrichmentError =
       fetchBlocked && !title?.trim() ? "fetch_blocked_or_sparse" : null;
 
@@ -141,14 +236,14 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       .update({
         title,
         subtitle,
-        description: extracted.description ?? row.description,
-        image_url: extracted.image_url ?? row.image_url,
-        category: classification.category,
-        category_confidence: classification.category_confidence,
-        category_source: classification.category_source,
-        status: preserveManual ? row.status : nextStatus,
+        description: mergedDescription,
+        image_url: mergedImageUrl,
+        category: mergedCategory,
+        category_confidence: mergedCategoryConfidence,
+        category_source: mergedCategorySource,
+        status: mergedCategorySource === "manual" ? row.status : nextStatus,
         structured: mergedStructured as Json,
-        raw_metadata: extracted.raw_metadata as unknown as Json,
+        raw_metadata: mergedRawMetadata as Json,
         display: display as Json,
         processing_status: "ready",
         enrichment_error: enrichmentError,
