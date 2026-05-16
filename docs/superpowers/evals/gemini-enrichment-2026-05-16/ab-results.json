@@ -1,0 +1,1362 @@
+{
+  "model": "gemini-2.5-flash",
+  "temperature": 0.1,
+  "timeoutMs": 30000,
+  "delayBetweenCallsMs": 1000,
+  "validSourceLabels": [
+    "url",
+    "open_graph",
+    "twitter",
+    "json_ld",
+    "title_tag",
+    "existing_structured"
+  ],
+  "generatedAt": "2026-05-16T22:00:05.567Z",
+  "results": [
+    {
+      "index": 1,
+      "name": "404 page should not copy error title",
+      "input": {
+        "finalUrl": "https://example.com/missing-page",
+        "category": "articles",
+        "categorySuggestionAllowed": false,
+        "title": "404 Not Found",
+        "subtitle": null,
+        "description": null,
+        "image_url": null,
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://example.com/missing-page",
+          "status_code": 404,
+          "open_graph": {},
+          "twitter": {},
+          "json_ld": [],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleShouldBeAbsent": true,
+        "noCategorySuggestion": true,
+        "structuredFieldsAbsent": [
+          "author",
+          "publisher",
+          "published_at",
+          "reading_time_minutes"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nDo not change or return a different category.\nUse only the provided URL and metadata evidence.\nReturn only fields allowed for the fixed category.\n\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://example.com/missing-page\nTitle: 404 Not Found\nSubtitle: \nDescription: \nImage URL: \nStructured: {}\nOpen Graph: {}\nTwitter: {}\nJSON-LD: []\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nDo NOT change the category. Do NOT return category_suggestion or category_confidence.\nReturn only structured fields allowed for: articles.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://example.com/missing-page\nTitle: 404 Not Found\nSubtitle: (none)\nDescription: (none)\nImage URL: (none)\nExisting structured: {}\nOpen Graph: {}\nTwitter card: {}\nJSON-LD: []\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 3604,
+        "rawText": "{\n  \"confidence\": 0.1,\n  \"sources\": [\n    \"https://example.com/missing-page\"\n  ],\n  \"notes\": \"Page returned a 404 Not Found status.\"\n}",
+        "parsedPayload": {
+          "confidence": 0.1,
+          "sources": [
+            "https://example.com/missing-page"
+          ],
+          "notes": "Page returned a 404 Not Found status."
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "confidence": 0.1,
+          "sources": [
+            "https://example.com/missing-page"
+          ],
+          "notes": "Page returned a 404 Not Found status."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 1,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 3
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 4608,
+        "rawText": "{\n  \"confidence\": 0.0,\n  \"sources\": [\n    \"url\"\n  ],\n  \"notes\": \"Title, subtitle, description, and image_url omitted as the page returned a 404 Not Found error. No structured fields could be extracted.\"\n}",
+        "parsedPayload": {
+          "confidence": 0,
+          "sources": [
+            "url"
+          ],
+          "notes": "Title, subtitle, description, and image_url omitted as the page returned a 404 Not Found error. No structured fields could be extracted."
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "confidence": 0,
+          "sources": [
+            "url"
+          ],
+          "notes": "Title, subtitle, description, and image_url omitted as the page returned a 404 Not Found error. No structured fields could be extracted."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 1,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 5
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 2,
+      "name": "Blocked restaurant should use URL venue",
+      "input": {
+        "finalUrl": "https://www.selva-restaurant.com/en/",
+        "category": "articles",
+        "categorySuggestionAllowed": true,
+        "categorySuggestionReason": "blocked_or_sparse_fetch",
+        "title": null,
+        "subtitle": null,
+        "description": null,
+        "image_url": null,
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.selva-restaurant.com/en/",
+          "status_code": 403,
+          "open_graph": {},
+          "twitter": {},
+          "json_ld": [],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "Selva",
+        "categorySuggestion": "restaurants",
+        "structuredFieldsPresent": [
+          "place_name"
+        ],
+        "structuredFieldsAbsent": [
+          "address",
+          "cuisine",
+          "price_level"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nCategory suggestion is allowed because: blocked_or_sparse_fetch.\nUse only the provided URL and metadata evidence.\nReturn category_suggestion and category_confidence only if evidence supports a better category.\nWhen returning category_suggestion, structured fields must match the suggested category.\nFor blocked or sparse pages, still return useful display metadata when it is evident from the URL; restaurant URLs can use a clear venue name as title and structured.place_name.\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.selva-restaurant.com/en/\nTitle: \nSubtitle: \nDescription: \nImage URL: \nStructured: {}\nOpen Graph: {}\nTwitter: {}\nJSON-LD: []\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nCategory suggestion is allowed (reason: blocked_or_sparse_fetch).\nYou MAY return category_suggestion + category_confidence ONLY if the supplied metadata clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is \"recipes\", not \"articles\"; an Amazon book listing is \"books\", not \"products\". Classify the SPECIFIC ITEM the user saved, not the website's general genre.\nWhen you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.\nIf evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n- restaurants → cuisine: string, price_level: string (e.g. \"$$\"), address: string, place_name: string\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n- gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }\n- travel → destination: string, travel_dates: string | null, lodging_name: string\n- recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## Blocked/sparse page\nThe page fetch was blocked or returned very little HTML. Use URL structure as primary evidence. Extract venue names, product names, or destinations from URL path segments when clearly readable. Set confidence to 0.2–0.4 for URL-only evidence.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.selva-restaurant.com/en/\nTitle: (none)\nSubtitle: (none)\nDescription: (none)\nImage URL: (none)\nExisting structured: {}\nOpen Graph: {}\nTwitter card: {}\nJSON-LD: []\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 2209,
+        "rawText": "{\"title\": \"Selva Restaurant\", \"structured\": {}, \"confidence\": 0.9, \"sources\": [\"https://www.selva-restaurant.com/en/\"], \"category_suggestion\": \"restaurants\", \"category_confidence\": 0.9}",
+        "parsedPayload": {
+          "title": "Selva Restaurant",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.selva-restaurant.com/en/"
+          ],
+          "category_suggestion": "restaurants",
+          "category_confidence": 0.9
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "restaurants",
+          "category_confidence": 0.9,
+          "title": "Selva Restaurant",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.selva-restaurant.com/en/"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 3613,
+        "rawText": "{\n  \"title\": \"Selva\",\n  \"structured\": {\n    },\n  \"confidence\": 0.3,\n  \"sources\": [\n    \"url\"\n  ],\n  \"notes\": \"Category changed to 'restaurants' based on URL. Title and place_name extracted from URL. Subtitle, description, image_url, cuisine, price_level, and address omitted (not in metadata).\",\n  \"category_suggestion\": \"restaurants\",\n  \"category_confidence\": 1\n}",
+        "parsedPayload": {
+          "title": "Selva",
+          "structured": {},
+          "confidence": 0.3,
+          "sources": [
+            "url"
+          ],
+          "notes": "Category changed to 'restaurants' based on URL. Title and place_name extracted from URL. Subtitle, description, image_url, cuisine, price_level, and address omitted (not in metadata).",
+          "category_suggestion": "restaurants",
+          "category_confidence": 1
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "restaurants",
+          "category_confidence": 1,
+          "title": "Selva",
+          "structured": {},
+          "confidence": 0.3,
+          "sources": [
+            "url"
+          ],
+          "notes": "Category changed to 'restaurants' based on URL. Title and place_name extracted from URL. Subtitle, description, image_url, cuisine, price_level, and address omitted (not in metadata)."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 3,
+      "name": "Recipe JSON-LD should suggest recipes",
+      "input": {
+        "finalUrl": "https://www.cozykitchen.example/lemon-herb-pasta-recipe/",
+        "category": "articles",
+        "categorySuggestionAllowed": true,
+        "categorySuggestionReason": "weak_evidence",
+        "title": "Lemon Herb Pasta Recipe - A Cozy Kitchen",
+        "subtitle": null,
+        "description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+        "image_url": "https://www.cozykitchen.example/images/lemon-herb-pasta.jpg",
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.cozykitchen.example/lemon-herb-pasta-recipe/",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "Lemon Herb Pasta Recipe",
+            "og:description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+            "og:type": "article",
+            "og:site_name": "A Cozy Kitchen"
+          },
+          "twitter": {},
+          "json_ld": [
+            {
+              "@context": "https://schema.org",
+              "@type": "Recipe",
+              "name": "Lemon Herb Pasta",
+              "author": {
+                "@type": "Person",
+                "name": "Ari Lane"
+              },
+              "prepTime": "PT15M",
+              "cookTime": "PT20M",
+              "recipeYield": "4 servings",
+              "recipeIngredient": [
+                "spaghetti",
+                "lemon",
+                "parsley",
+                "parmesan"
+              ]
+            }
+          ],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "Lemon Herb Pasta",
+        "categorySuggestion": "recipes",
+        "structuredFieldsPresent": [
+          "author",
+          "prep_time_minutes",
+          "cook_time_minutes",
+          "yield",
+          "ingredients"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nCategory suggestion is allowed because: weak_evidence.\nUse only the provided URL and metadata evidence.\nReturn category_suggestion and category_confidence only if evidence supports a better category.\nWhen returning category_suggestion, structured fields must match the suggested category.\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.cozykitchen.example/lemon-herb-pasta-recipe/\nTitle: Lemon Herb Pasta Recipe - A Cozy Kitchen\nSubtitle: \nDescription: A bright weeknight pasta with lemon, herbs, and parmesan.\nImage URL: https://www.cozykitchen.example/images/lemon-herb-pasta.jpg\nStructured: {}\nOpen Graph: {\"og:title\":\"Lemon Herb Pasta Recipe\",\"og:description\":\"A bright weeknight pasta with lemon, herbs, and parmesan.\",\"og:type\":\"article\",\"og:site_name\":\"A Cozy Kitchen\"}\nTwitter: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Lemon Herb Pasta\",\"author\":{\"@type\":\"Person\",\"name\":\"Ari Lane\"},\"prepTime\":\"PT15M\",\"cookTime\":\"PT20M\",\"recipeYield\":\"4 servings\",\"recipeIngredient\":[\"spaghetti\",\"lemon\",\"parsley\",\"parmesan\"]}]\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nCategory suggestion is allowed (reason: weak_evidence).\nYou MAY return category_suggestion + category_confidence ONLY if the supplied metadata clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is \"recipes\", not \"articles\"; an Amazon book listing is \"books\", not \"products\". Classify the SPECIFIC ITEM the user saved, not the website's general genre.\nWhen you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.\nIf evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n- restaurants → cuisine: string, price_level: string (e.g. \"$$\"), address: string, place_name: string\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n- gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }\n- travel → destination: string, travel_dates: string | null, lodging_name: string\n- recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.cozykitchen.example/lemon-herb-pasta-recipe/\nTitle: Lemon Herb Pasta Recipe - A Cozy Kitchen\nSubtitle: (none)\nDescription: A bright weeknight pasta with lemon, herbs, and parmesan.\nImage URL: https://www.cozykitchen.example/images/lemon-herb-pasta.jpg\nExisting structured: {}\nOpen Graph: {\"og:title\":\"Lemon Herb Pasta Recipe\",\"og:description\":\"A bright weeknight pasta with lemon, herbs, and parmesan.\",\"og:type\":\"article\",\"og:site_name\":\"A Cozy Kitchen\"}\nTwitter card: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Lemon Herb Pasta\",\"author\":{\"@type\":\"Person\",\"name\":\"Ari Lane\"},\"prepTime\":\"PT15M\",\"cookTime\":\"PT20M\",\"recipeYield\":\"4 servings\",\"recipeIngredient\":[\"spaghetti\",\"lemon\",\"parsley\",\"parmesan\"]}]\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 6499,
+        "rawText": "{\"title\":\"Lemon Herb Pasta Recipe - A Cozy Kitchen\",\"description\":\"A bright weeknight pasta with lemon, herbs, and parmesan.\",\"image_url\":\"https://www.cozykitchen.example/images/lemon-herb-pasta.jpg\",\"structured\":{},\"confidence\":0.9,\"sources\":[\"URL\",\"Title\",\"Description\",\"Image URL\",\"Open Graph\",\"JSON-LD\"],\"category_suggestion\":\"recipes\",\"category_confidence\":0.95}",
+        "parsedPayload": {
+          "title": "Lemon Herb Pasta Recipe - A Cozy Kitchen",
+          "description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+          "image_url": "https://www.cozykitchen.example/images/lemon-herb-pasta.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "URL",
+            "Title",
+            "Description",
+            "Image URL",
+            "Open Graph",
+            "JSON-LD"
+          ],
+          "category_suggestion": "recipes",
+          "category_confidence": 0.95
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "recipes",
+          "category_confidence": 0.95,
+          "title": "Lemon Herb Pasta Recipe - A Cozy Kitchen",
+          "description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+          "image_url": "https://www.cozykitchen.example/images/lemon-herb-pasta.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "URL",
+            "Title",
+            "Description",
+            "Image URL",
+            "Open Graph",
+            "JSON-LD"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 3754,
+        "rawText": "{\n  \"title\": \"Lemon Herb Pasta\",\n  \"description\": \"A bright weeknight pasta with lemon, herbs, and parmesan.\",\n  \"image_url\": \"https://www.cozykitchen.example/images/lemon-herb-pasta.jpg\",\n  \"structured\": {\n    },\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"json_ld\",\n    \"open_graph\",\n    \"url\",\n    \"title_tag\"\n  ],\n  \"notes\": \"title from JSON-LD name; description from og:description; image_url from supplied metadata; subtitle omitted (not applicable for recipes); structured fields extracted from JSON-LD: author, prep_time_minutes, cook_time_minutes, yield, ingredients.\",\n  \"category_suggestion\": \"recipes\",\n  \"category_confidence\": 1\n}",
+        "parsedPayload": {
+          "title": "Lemon Herb Pasta",
+          "description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+          "image_url": "https://www.cozykitchen.example/images/lemon-herb-pasta.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph",
+            "url",
+            "title_tag"
+          ],
+          "notes": "title from JSON-LD name; description from og:description; image_url from supplied metadata; subtitle omitted (not applicable for recipes); structured fields extracted from JSON-LD: author, prep_time_minutes, cook_time_minutes, yield, ingredients.",
+          "category_suggestion": "recipes",
+          "category_confidence": 1
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "recipes",
+          "category_confidence": 1,
+          "title": "Lemon Herb Pasta",
+          "description": "A bright weeknight pasta with lemon, herbs, and parmesan.",
+          "image_url": "https://www.cozykitchen.example/images/lemon-herb-pasta.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph",
+            "url",
+            "title_tag"
+          ],
+          "notes": "title from JSON-LD name; description from og:description; image_url from supplied metadata; subtitle omitted (not applicable for recipes); structured fields extracted from JSON-LD: author, prep_time_minutes, cook_time_minutes, yield, ingredients."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 4,
+      "name": "Amazon product should not invent ratings",
+      "input": {
+        "finalUrl": "https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/",
+        "category": "products",
+        "categorySuggestionAllowed": false,
+        "title": "Amazon.com: Fellow Stagg EKG Electric Kettle",
+        "subtitle": null,
+        "description": "Fellow Stagg EKG electric pour-over kettle with variable temperature control.",
+        "image_url": "https://m.media-amazon.com/images/I/stagg.jpg",
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "Fellow Stagg EKG Electric Kettle",
+            "og:description": "Variable temperature pour-over kettle.",
+            "og:type": "product",
+            "product:price:amount": "165.00",
+            "product:price:currency": "USD",
+            "product:availability": "in stock"
+          },
+          "twitter": {},
+          "json_ld": [
+            {
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "name": "Fellow Stagg EKG Electric Kettle",
+              "brand": {
+                "@type": "Brand",
+                "name": "Fellow"
+              },
+              "offers": {
+                "@type": "Offer",
+                "price": "165.00",
+                "priceCurrency": "USD",
+                "availability": "https://schema.org/InStock"
+              }
+            }
+          ],
+          "parser": "amazon"
+        }
+      },
+      "expected": {
+        "titleContains": "Fellow Stagg",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "brand",
+          "price",
+          "availability"
+        ],
+        "structuredFieldsAbsent": [
+          "average_rating",
+          "ratings_count",
+          "rating",
+          "rating_scale"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: products.\nDo not change or return a different category.\nUse only the provided URL and metadata evidence.\nReturn only fields allowed for the fixed category.\n\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/\nTitle: Amazon.com: Fellow Stagg EKG Electric Kettle\nSubtitle: \nDescription: Fellow Stagg EKG electric pour-over kettle with variable temperature control.\nImage URL: https://m.media-amazon.com/images/I/stagg.jpg\nStructured: {}\nOpen Graph: {\"og:title\":\"Fellow Stagg EKG Electric Kettle\",\"og:description\":\"Variable temperature pour-over kettle.\",\"og:type\":\"product\",\"product:price:amount\":\"165.00\",\"product:price:currency\":\"USD\",\"product:availability\":\"in stock\"}\nTwitter: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Fellow Stagg EKG Electric Kettle\",\"brand\":{\"@type\":\"Brand\",\"name\":\"Fellow\"},\"offers\":{\"@type\":\"Offer\",\"price\":\"165.00\",\"priceCurrency\":\"USD\",\"availability\":\"https://schema.org/InStock\"}}]\nParser: amazon",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **products**\nDo NOT change the category. Do NOT return category_suggestion or category_confidence.\nReturn only structured fields allowed for: products.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/\nTitle: Amazon.com: Fellow Stagg EKG Electric Kettle\nSubtitle: (none)\nDescription: Fellow Stagg EKG electric pour-over kettle with variable temperature control.\nImage URL: https://m.media-amazon.com/images/I/stagg.jpg\nExisting structured: {}\nOpen Graph: {\"og:title\":\"Fellow Stagg EKG Electric Kettle\",\"og:description\":\"Variable temperature pour-over kettle.\",\"og:type\":\"product\",\"product:price:amount\":\"165.00\",\"product:price:currency\":\"USD\",\"product:availability\":\"in stock\"}\nTwitter card: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Fellow Stagg EKG Electric Kettle\",\"brand\":{\"@type\":\"Brand\",\"name\":\"Fellow\"},\"offers\":{\"@type\":\"Offer\",\"price\":\"165.00\",\"priceCurrency\":\"USD\",\"availability\":\"https://schema.org/InStock\"}}]\nParser used: amazon"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 5218,
+        "rawText": "{\n  \"title\": \"Fellow Stagg EKG Electric Kettle\",\n  \"description\": \"Variable temperature pour-over kettle.\",\n  \"image_url\": \"https://m.media-amazon.com/images/I/stagg.jpg\",\n  \"structured\": {},\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/\"\n  ]\n}",
+        "parsedPayload": {
+          "title": "Fellow Stagg EKG Electric Kettle",
+          "description": "Variable temperature pour-over kettle.",
+          "image_url": "https://m.media-amazon.com/images/I/stagg.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "Fellow Stagg EKG Electric Kettle",
+          "description": "Variable temperature pour-over kettle.",
+          "image_url": "https://m.media-amazon.com/images/I/stagg.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.amazon.com/Fellow-Stagg-EKG-Electric-Kettle/dp/B077JBQZPX/"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 7679,
+        "rawText": "{\n  \"title\": \"Fellow Stagg EKG Electric Kettle\",\n  \"subtitle\": \"Fellow\",\n  \"description\": \"Variable temperature pour-over kettle.\",\n  \"image_url\": \"https://m.media-amazon.com/images/I/stagg.jpg\",\n  \"structured\": {\n    },\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"json_ld\",\n    \"open_graph\"\n  ],\n  \"notes\": \"title from json_ld name; subtitle (brand) from json_ld brand.name; description from og:description; structured.brand from json_ld brand.name; structured.price from json_ld offers.price and offers.priceCurrency; structured.availability from json_ld offers.availability (mapped to 'in stock').\"\n}",
+        "parsedPayload": {
+          "title": "Fellow Stagg EKG Electric Kettle",
+          "subtitle": "Fellow",
+          "description": "Variable temperature pour-over kettle.",
+          "image_url": "https://m.media-amazon.com/images/I/stagg.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph"
+          ],
+          "notes": "title from json_ld name; subtitle (brand) from json_ld brand.name; description from og:description; structured.brand from json_ld brand.name; structured.price from json_ld offers.price and offers.priceCurrency; structured.availability from json_ld offers.availability (mapped to 'in stock')."
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "Fellow Stagg EKG Electric Kettle",
+          "subtitle": "Fellow",
+          "description": "Variable temperature pour-over kettle.",
+          "image_url": "https://m.media-amazon.com/images/I/stagg.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph"
+          ],
+          "notes": "title from json_ld name; subtitle (brand) from json_ld brand.name; description from og:description; structured.brand from json_ld brand.name; structured.price from json_ld offers.price and offers.priceCurrency; structured.availability from json_ld offers.availability (mapped to 'in stock')."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 5,
+      "name": "IMDb movie should only use metadata fields",
+      "input": {
+        "finalUrl": "https://www.imdb.com/title/tt0118694/",
+        "category": "movies_and_tv",
+        "categorySuggestionAllowed": false,
+        "title": "In the Mood for Love (2000) - IMDb",
+        "subtitle": null,
+        "description": "Two neighbors form a strong bond after both suspect extramarital activities of their spouses.",
+        "image_url": "https://m.media-amazon.com/images/M/in-the-mood.jpg",
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.imdb.com/title/tt0118694/",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "In the Mood for Love (2000)",
+            "og:description": "Two neighbors form a strong bond.",
+            "og:type": "video.movie",
+            "og:image": "https://m.media-amazon.com/images/M/in-the-mood.jpg"
+          },
+          "twitter": {},
+          "json_ld": [
+            {
+              "@context": "https://schema.org",
+              "@type": "Movie",
+              "name": "In the Mood for Love",
+              "datePublished": "2000-05-20",
+              "director": [
+                {
+                  "@type": "Person",
+                  "name": "Wong Kar-wai"
+                }
+              ],
+              "genre": [
+                "Drama",
+                "Romance"
+              ],
+              "duration": "PT1H38M"
+            }
+          ],
+          "parser": "imdb"
+        }
+      },
+      "expected": {
+        "titleContains": "In the Mood for Love",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "year",
+          "directors",
+          "runtime_minutes",
+          "genres"
+        ],
+        "structuredFieldsAbsent": [
+          "rating",
+          "rating_scale"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: movies_and_tv.\nDo not change or return a different category.\nUse only the provided URL and metadata evidence.\nReturn only fields allowed for the fixed category.\n\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.imdb.com/title/tt0118694/\nTitle: In the Mood for Love (2000) - IMDb\nSubtitle: \nDescription: Two neighbors form a strong bond after both suspect extramarital activities of their spouses.\nImage URL: https://m.media-amazon.com/images/M/in-the-mood.jpg\nStructured: {}\nOpen Graph: {\"og:title\":\"In the Mood for Love (2000)\",\"og:description\":\"Two neighbors form a strong bond.\",\"og:type\":\"video.movie\",\"og:image\":\"https://m.media-amazon.com/images/M/in-the-mood.jpg\"}\nTwitter: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Movie\",\"name\":\"In the Mood for Love\",\"datePublished\":\"2000-05-20\",\"director\":[{\"@type\":\"Person\",\"name\":\"Wong Kar-wai\"}],\"genre\":[\"Drama\",\"Romance\"],\"duration\":\"PT1H38M\"}]\nParser: imdb",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **movies_and_tv**\nDo NOT change the category. Do NOT return category_suggestion or category_confidence.\nReturn only structured fields allowed for: movies_and_tv.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.imdb.com/title/tt0118694/\nTitle: In the Mood for Love (2000) - IMDb\nSubtitle: (none)\nDescription: Two neighbors form a strong bond after both suspect extramarital activities of their spouses.\nImage URL: https://m.media-amazon.com/images/M/in-the-mood.jpg\nExisting structured: {}\nOpen Graph: {\"og:title\":\"In the Mood for Love (2000)\",\"og:description\":\"Two neighbors form a strong bond.\",\"og:type\":\"video.movie\",\"og:image\":\"https://m.media-amazon.com/images/M/in-the-mood.jpg\"}\nTwitter card: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Movie\",\"name\":\"In the Mood for Love\",\"datePublished\":\"2000-05-20\",\"director\":[{\"@type\":\"Person\",\"name\":\"Wong Kar-wai\"}],\"genre\":[\"Drama\",\"Romance\"],\"duration\":\"PT1H38M\"}]\nParser used: imdb"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 3571,
+        "rawText": "{\n  \"title\": \"In the Mood for Love (2000)\",\n  \"description\": \"Two neighbors form a strong bond after both suspect extramarital activities of their spouses.\",\n  \"image_url\": \"https://m.media-amazon.com/images/M/in-the-mood.jpg\",\n  \"structured\": {},\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"https://www.imdb.com/title/tt0118694/\"\n  ]\n}",
+        "parsedPayload": {
+          "title": "In the Mood for Love (2000)",
+          "description": "Two neighbors form a strong bond after both suspect extramarital activities of their spouses.",
+          "image_url": "https://m.media-amazon.com/images/M/in-the-mood.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.imdb.com/title/tt0118694/"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "In the Mood for Love (2000)",
+          "description": "Two neighbors form a strong bond after both suspect extramarital activities of their spouses.",
+          "image_url": "https://m.media-amazon.com/images/M/in-the-mood.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.imdb.com/title/tt0118694/"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 11505,
+        "rawText": "{\n  \"title\": \"In the Mood for Love (2000)\",\n  \"description\": \"Two neighbors form a strong bond after both suspect extramarital activities of their spouses.\",\n  \"image_url\": \"https://m.media-amazon.com/images/M/in-the-mood.jpg\",\n  \"structured\": {\n    },\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"open_graph\",\n    \"json_ld\"\n  ],\n  \"notes\": \"title from og:title; description from supplied metadata; image_url from og:image; year, directors, runtime_minutes, genres, and media_type from JSON-LD; subtitle, rating, and rating_scale omitted (not in metadata).\"\n}",
+        "parsedPayload": {
+          "title": "In the Mood for Love (2000)",
+          "description": "Two neighbors form a strong bond after both suspect extramarital activities of their spouses.",
+          "image_url": "https://m.media-amazon.com/images/M/in-the-mood.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "open_graph",
+            "json_ld"
+          ],
+          "notes": "title from og:title; description from supplied metadata; image_url from og:image; year, directors, runtime_minutes, genres, and media_type from JSON-LD; subtitle, rating, and rating_scale omitted (not in metadata)."
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "In the Mood for Love (2000)",
+          "description": "Two neighbors form a strong bond after both suspect extramarital activities of their spouses.",
+          "image_url": "https://m.media-amazon.com/images/M/in-the-mood.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "open_graph",
+            "json_ld"
+          ],
+          "notes": "title from og:title; description from supplied metadata; image_url from og:image; year, directors, runtime_minutes, genres, and media_type from JSON-LD; subtitle, rating, and rating_scale omitted (not in metadata)."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 6,
+      "name": "Goodreads book should extract evidenced fields",
+      "input": {
+        "finalUrl": "https://www.goodreads.com/book/show/4671.The_Great_Gatsby",
+        "category": "books",
+        "categorySuggestionAllowed": false,
+        "title": "The Great Gatsby by F. Scott Fitzgerald | Goodreads",
+        "subtitle": null,
+        "description": "A portrait of the Jazz Age in all of its decadence and excess.",
+        "image_url": "https://images-na.ssl-images-amazon.com/gatsby.jpg",
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.goodreads.com/book/show/4671.The_Great_Gatsby",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "The Great Gatsby",
+            "og:description": "A portrait of the Jazz Age.",
+            "og:type": "books.book"
+          },
+          "twitter": {},
+          "json_ld": [
+            {
+              "@context": "https://schema.org",
+              "@type": "Book",
+              "name": "The Great Gatsby",
+              "author": [
+                {
+                  "@type": "Person",
+                  "name": "F. Scott Fitzgerald"
+                }
+              ],
+              "isbn": "9780743273565",
+              "datePublished": "1925-04-10",
+              "numberOfPages": 180
+            }
+          ],
+          "parser": "goodreads"
+        }
+      },
+      "expected": {
+        "titleContains": "The Great Gatsby",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "authors",
+          "isbn",
+          "published_year",
+          "page_count"
+        ],
+        "structuredFieldsAbsent": [
+          "average_rating",
+          "ratings_count"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: books.\nDo not change or return a different category.\nUse only the provided URL and metadata evidence.\nReturn only fields allowed for the fixed category.\n\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.goodreads.com/book/show/4671.The_Great_Gatsby\nTitle: The Great Gatsby by F. Scott Fitzgerald | Goodreads\nSubtitle: \nDescription: A portrait of the Jazz Age in all of its decadence and excess.\nImage URL: https://images-na.ssl-images-amazon.com/gatsby.jpg\nStructured: {}\nOpen Graph: {\"og:title\":\"The Great Gatsby\",\"og:description\":\"A portrait of the Jazz Age.\",\"og:type\":\"books.book\"}\nTwitter: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Book\",\"name\":\"The Great Gatsby\",\"author\":[{\"@type\":\"Person\",\"name\":\"F. Scott Fitzgerald\"}],\"isbn\":\"9780743273565\",\"datePublished\":\"1925-04-10\",\"numberOfPages\":180}]\nParser: goodreads",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **books**\nDo NOT change the category. Do NOT return category_suggestion or category_confidence.\nReturn only structured fields allowed for: books.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.goodreads.com/book/show/4671.The_Great_Gatsby\nTitle: The Great Gatsby by F. Scott Fitzgerald | Goodreads\nSubtitle: (none)\nDescription: A portrait of the Jazz Age in all of its decadence and excess.\nImage URL: https://images-na.ssl-images-amazon.com/gatsby.jpg\nExisting structured: {}\nOpen Graph: {\"og:title\":\"The Great Gatsby\",\"og:description\":\"A portrait of the Jazz Age.\",\"og:type\":\"books.book\"}\nTwitter card: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"Book\",\"name\":\"The Great Gatsby\",\"author\":[{\"@type\":\"Person\",\"name\":\"F. Scott Fitzgerald\"}],\"isbn\":\"9780743273565\",\"datePublished\":\"1925-04-10\",\"numberOfPages\":180}]\nParser used: goodreads"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 6613,
+        "rawText": "{\"title\":\"The Great Gatsby\",\"description\":\"A portrait of the Jazz Age in all of its decadence and excess.\",\"image_url\":\"https://images-na.ssl-images-amazon.com/gatsby.jpg\",\"structured\":{},\"confidence\":1.0,\"sources\":[\"https://www.goodreads.com/book/show/4671.The_Great_Gatsby\"]}",
+        "parsedPayload": {
+          "title": "The Great Gatsby",
+          "description": "A portrait of the Jazz Age in all of its decadence and excess.",
+          "image_url": "https://images-na.ssl-images-amazon.com/gatsby.jpg",
+          "structured": {},
+          "confidence": 1,
+          "sources": [
+            "https://www.goodreads.com/book/show/4671.The_Great_Gatsby"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "The Great Gatsby",
+          "description": "A portrait of the Jazz Age in all of its decadence and excess.",
+          "image_url": "https://images-na.ssl-images-amazon.com/gatsby.jpg",
+          "structured": {},
+          "confidence": 1,
+          "sources": [
+            "https://www.goodreads.com/book/show/4671.The_Great_Gatsby"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 8499,
+        "rawText": "{\n  \"title\": \"The Great Gatsby\",\n  \"subtitle\": \"F. Scott Fitzgerald (1925)\",\n  \"description\": \"A portrait of the Jazz Age.\",\n  \"image_url\": \"https://images-na.ssl-images-amazon.com/gatsby.jpg\",\n  \"structured\": {\n    },\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"json_ld\",\n    \"open_graph\"\n  ],\n  \"notes\": \"title from json_ld name; subtitle from json_ld author and datePublished; description from og:description; authors from json_ld author; isbn from json_ld isbn; published_year from json_ld datePublished; page_count from json_ld numberOfPages; average_rating omitted (not in metadata); ratings_count omitted (not in metadata)\"\n}",
+        "parsedPayload": {
+          "title": "The Great Gatsby",
+          "subtitle": "F. Scott Fitzgerald (1925)",
+          "description": "A portrait of the Jazz Age.",
+          "image_url": "https://images-na.ssl-images-amazon.com/gatsby.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph"
+          ],
+          "notes": "title from json_ld name; subtitle from json_ld author and datePublished; description from og:description; authors from json_ld author; isbn from json_ld isbn; published_year from json_ld datePublished; page_count from json_ld numberOfPages; average_rating omitted (not in metadata); ratings_count omitted (not in metadata)"
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "The Great Gatsby",
+          "subtitle": "F. Scott Fitzgerald (1925)",
+          "description": "A portrait of the Jazz Age.",
+          "image_url": "https://images-na.ssl-images-amazon.com/gatsby.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "json_ld",
+            "open_graph"
+          ],
+          "notes": "title from json_ld name; subtitle from json_ld author and datePublished; description from og:description; authors from json_ld author; isbn from json_ld isbn; published_year from json_ld datePublished; page_count from json_ld numberOfPages; average_rating omitted (not in metadata); ratings_count omitted (not in metadata)"
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 7,
+      "name": "AllRecipes about page should stay article",
+      "input": {
+        "finalUrl": "https://www.allrecipes.com/about",
+        "category": "articles",
+        "categorySuggestionAllowed": true,
+        "categorySuggestionReason": "weak_evidence",
+        "title": "About Allrecipes",
+        "subtitle": null,
+        "description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+        "image_url": null,
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.allrecipes.com/about",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "About Allrecipes",
+            "og:description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+            "og:type": "website",
+            "og:site_name": "Allrecipes"
+          },
+          "twitter": {},
+          "json_ld": [
+            {
+              "@context": "https://schema.org",
+              "@type": "AboutPage",
+              "name": "About Allrecipes",
+              "publisher": {
+                "@type": "Organization",
+                "name": "Allrecipes"
+              }
+            }
+          ],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "About",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "publisher"
+        ],
+        "structuredFieldsAbsent": [
+          "ingredients",
+          "prep_time_minutes",
+          "cook_time_minutes",
+          "yield"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nCategory suggestion is allowed because: weak_evidence.\nUse only the provided URL and metadata evidence.\nReturn category_suggestion and category_confidence only if evidence supports a better category.\nWhen returning category_suggestion, structured fields must match the suggested category.\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.allrecipes.com/about\nTitle: About Allrecipes\nSubtitle: \nDescription: Learn more about Allrecipes, our community, and our editorial guidelines.\nImage URL: \nStructured: {}\nOpen Graph: {\"og:title\":\"About Allrecipes\",\"og:description\":\"Learn more about Allrecipes, our community, and our editorial guidelines.\",\"og:type\":\"website\",\"og:site_name\":\"Allrecipes\"}\nTwitter: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"AboutPage\",\"name\":\"About Allrecipes\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"Allrecipes\"}}]\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nCategory suggestion is allowed (reason: weak_evidence).\nYou MAY return category_suggestion + category_confidence ONLY if the supplied metadata clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is \"recipes\", not \"articles\"; an Amazon book listing is \"books\", not \"products\". Classify the SPECIFIC ITEM the user saved, not the website's general genre.\nWhen you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.\nIf evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n- restaurants → cuisine: string, price_level: string (e.g. \"$$\"), address: string, place_name: string\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n- gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }\n- travel → destination: string, travel_dates: string | null, lodging_name: string\n- recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.allrecipes.com/about\nTitle: About Allrecipes\nSubtitle: (none)\nDescription: Learn more about Allrecipes, our community, and our editorial guidelines.\nImage URL: (none)\nExisting structured: {}\nOpen Graph: {\"og:title\":\"About Allrecipes\",\"og:description\":\"Learn more about Allrecipes, our community, and our editorial guidelines.\",\"og:type\":\"website\",\"og:site_name\":\"Allrecipes\"}\nTwitter card: {}\nJSON-LD: [{\"@context\":\"https://schema.org\",\"@type\":\"AboutPage\",\"name\":\"About Allrecipes\",\"publisher\":{\"@type\":\"Organization\",\"name\":\"Allrecipes\"}}]\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 3210,
+        "rawText": "{\"title\":\"About Allrecipes\",\"description\":\"Learn more about Allrecipes, our community, and our editorial guidelines.\",\"confidence\":0.9,\"sources\":[\"https://www.allrecipes.com/about\"]}",
+        "parsedPayload": {
+          "title": "About Allrecipes",
+          "description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+          "confidence": 0.9,
+          "sources": [
+            "https://www.allrecipes.com/about"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "About Allrecipes",
+          "description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+          "confidence": 0.9,
+          "sources": [
+            "https://www.allrecipes.com/about"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 4492,
+        "rawText": "{\"title\":\"About Allrecipes\",\"description\":\"Learn more about Allrecipes, our community, and our editorial guidelines.\",\"structured\":{},\"confidence\":0.8,\"sources\":[\"title_tag\",\"open_graph\",\"description\",\"json_ld\"],\"notes\":\"title from title_tag, og:title, and JSON-LD name; description from description and og:description; image_url omitted (not in metadata); subtitle omitted (not in metadata); structured.author omitted (not in metadata); structured.published_at omitted (not in metadata); structured.reading_time_minutes omitted (not in metadata); structured.publisher from JSON-LD publisher name.\",\"category_suggestion\":\"articles\",\"category_confidence\":1}",
+        "parsedPayload": {
+          "title": "About Allrecipes",
+          "description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+          "structured": {},
+          "confidence": 0.8,
+          "sources": [
+            "title_tag",
+            "open_graph",
+            "description",
+            "json_ld"
+          ],
+          "notes": "title from title_tag, og:title, and JSON-LD name; description from description and og:description; image_url omitted (not in metadata); subtitle omitted (not in metadata); structured.author omitted (not in metadata); structured.published_at omitted (not in metadata); structured.reading_time_minutes omitted (not in metadata); structured.publisher from JSON-LD publisher name.",
+          "category_suggestion": "articles",
+          "category_confidence": 1
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "articles",
+          "category_confidence": 1,
+          "title": "About Allrecipes",
+          "description": "Learn more about Allrecipes, our community, and our editorial guidelines.",
+          "structured": {},
+          "confidence": 0.8,
+          "sources": [
+            "title_tag",
+            "open_graph",
+            "description",
+            "json_ld"
+          ],
+          "notes": "title from title_tag, og:title, and JSON-LD name; description from description and og:description; image_url omitted (not in metadata); subtitle omitted (not in metadata); structured.author omitted (not in metadata); structured.published_at omitted (not in metadata); structured.reading_time_minutes omitted (not in metadata); structured.publisher from JSON-LD publisher name."
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 0,
+            "good_sources": 0,
+            "good_notes": 1
+          },
+          "total": 2
+        }
+      },
+      "winner": "tie"
+    },
+    {
+      "index": 8,
+      "name": "Generic blog article should use OG article data",
+      "input": {
+        "finalUrl": "https://examplemagazine.com/design/how-quiet-interfaces-age-well",
+        "category": "articles",
+        "categorySuggestionAllowed": false,
+        "title": "How Quiet Interfaces Age Well",
+        "subtitle": null,
+        "description": "An essay about calm interface patterns and visual systems.",
+        "image_url": "https://examplemagazine.com/images/quiet-interfaces.jpg",
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://examplemagazine.com/design/how-quiet-interfaces-age-well",
+          "status_code": 200,
+          "open_graph": {
+            "og:title": "How Quiet Interfaces Age Well",
+            "og:description": "An essay about calm interface patterns and visual systems.",
+            "og:type": "article",
+            "og:site_name": "Example Magazine",
+            "article:author": "Mina Kline",
+            "article:published_time": "2026-04-12T10:00:00.000Z"
+          },
+          "twitter": {},
+          "json_ld": [],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "Quiet Interfaces",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "author",
+          "published_at",
+          "publisher"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nDo not change or return a different category.\nUse only the provided URL and metadata evidence.\nReturn only fields allowed for the fixed category.\n\n\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://examplemagazine.com/design/how-quiet-interfaces-age-well\nTitle: How Quiet Interfaces Age Well\nSubtitle: \nDescription: An essay about calm interface patterns and visual systems.\nImage URL: https://examplemagazine.com/images/quiet-interfaces.jpg\nStructured: {}\nOpen Graph: {\"og:title\":\"How Quiet Interfaces Age Well\",\"og:description\":\"An essay about calm interface patterns and visual systems.\",\"og:type\":\"article\",\"og:site_name\":\"Example Magazine\",\"article:author\":\"Mina Kline\",\"article:published_time\":\"2026-04-12T10:00:00.000Z\"}\nTwitter: {}\nJSON-LD: []\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nDo NOT change the category. Do NOT return category_suggestion or category_confidence.\nReturn only structured fields allowed for: articles.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://examplemagazine.com/design/how-quiet-interfaces-age-well\nTitle: How Quiet Interfaces Age Well\nSubtitle: (none)\nDescription: An essay about calm interface patterns and visual systems.\nImage URL: https://examplemagazine.com/images/quiet-interfaces.jpg\nExisting structured: {}\nOpen Graph: {\"og:title\":\"How Quiet Interfaces Age Well\",\"og:description\":\"An essay about calm interface patterns and visual systems.\",\"og:type\":\"article\",\"og:site_name\":\"Example Magazine\",\"article:author\":\"Mina Kline\",\"article:published_time\":\"2026-04-12T10:00:00.000Z\"}\nTwitter card: {}\nJSON-LD: []\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 4705,
+        "rawText": "{\"title\":\"How Quiet Interfaces Age Well\",\"description\":\"An essay about calm interface patterns and visual systems.\",\"image_url\":\"https://examplemagazine.com/images/quiet-interfaces.jpg\",\"structured\":{},\"confidence\":1.0,\"sources\":[\"https://examplemagazine.com/design/how-quiet-interfaces-age-well\"]}",
+        "parsedPayload": {
+          "title": "How Quiet Interfaces Age Well",
+          "description": "An essay about calm interface patterns and visual systems.",
+          "image_url": "https://examplemagazine.com/images/quiet-interfaces.jpg",
+          "structured": {},
+          "confidence": 1,
+          "sources": [
+            "https://examplemagazine.com/design/how-quiet-interfaces-age-well"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "How Quiet Interfaces Age Well",
+          "description": "An essay about calm interface patterns and visual systems.",
+          "image_url": "https://examplemagazine.com/images/quiet-interfaces.jpg",
+          "structured": {},
+          "confidence": 1,
+          "sources": [
+            "https://examplemagazine.com/design/how-quiet-interfaces-age-well"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 5803,
+        "rawText": "{\n  \"title\": \"How Quiet Interfaces Age Well\",\n  \"description\": \"An essay about calm interface patterns and visual systems.\",\n  \"image_url\": \"https://examplemagazine.com/images/quiet-interfaces.jpg\",\n  \"structured\": {\n    },\n  \"confidence\": 0.9,\n  \"sources\": [\n    \"open_graph\"\n  ],\n  \"notes\": \"title from og:title; description from og:description; author from og:article:author; published_at from og:article:published_time; publisher from og:site_name; reading_time_minutes omitted (not in metadata)\"\n}",
+        "parsedPayload": {
+          "title": "How Quiet Interfaces Age Well",
+          "description": "An essay about calm interface patterns and visual systems.",
+          "image_url": "https://examplemagazine.com/images/quiet-interfaces.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "open_graph"
+          ],
+          "notes": "title from og:title; description from og:description; author from og:article:author; published_at from og:article:published_time; publisher from og:site_name; reading_time_minutes omitted (not in metadata)"
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "How Quiet Interfaces Age Well",
+          "description": "An essay about calm interface patterns and visual systems.",
+          "image_url": "https://examplemagazine.com/images/quiet-interfaces.jpg",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "open_graph"
+          ],
+          "notes": "title from og:title; description from og:description; author from og:article:author; published_at from og:article:published_time; publisher from og:site_name; reading_time_minutes omitted (not in metadata)"
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 4
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 9,
+      "name": "Airbnb listing should extract destination",
+      "input": {
+        "finalUrl": "https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14",
+        "category": "travel",
+        "categorySuggestionAllowed": true,
+        "categorySuggestionReason": "blocked_or_sparse_fetch",
+        "title": null,
+        "subtitle": null,
+        "description": null,
+        "image_url": null,
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14",
+          "status_code": 403,
+          "open_graph": {},
+          "twitter": {},
+          "json_ld": [],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "Copenhagen",
+        "noCategorySuggestion": true,
+        "structuredFieldsPresent": [
+          "destination"
+        ],
+        "structuredFieldsAbsent": [
+          "lodging_name"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: travel.\nCategory suggestion is allowed because: blocked_or_sparse_fetch.\nUse only the provided URL and metadata evidence.\nReturn category_suggestion and category_confidence only if evidence supports a better category.\nWhen returning category_suggestion, structured fields must match the suggested category.\nFor blocked or sparse pages, still return useful display metadata when it is evident from the URL; restaurant URLs can use a clear venue name as title and structured.place_name.\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14\nTitle: \nSubtitle: \nDescription: \nImage URL: \nStructured: {}\nOpen Graph: {}\nTwitter: {}\nJSON-LD: []\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **travel**\nCategory suggestion is allowed (reason: blocked_or_sparse_fetch).\nYou MAY return category_suggestion + category_confidence ONLY if the supplied metadata clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is \"recipes\", not \"articles\"; an Amazon book listing is \"books\", not \"products\". Classify the SPECIFIC ITEM the user saved, not the website's general genre.\nWhen you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.\nIf evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n- restaurants → cuisine: string, price_level: string (e.g. \"$$\"), address: string, place_name: string\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n- gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }\n- travel → destination: string, travel_dates: string | null, lodging_name: string\n- recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## Blocked/sparse page\nThe page fetch was blocked or returned very little HTML. Use URL structure as primary evidence. Extract venue names, product names, or destinations from URL path segments when clearly readable. Set confidence to 0.2–0.4 for URL-only evidence.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14\nTitle: (none)\nSubtitle: (none)\nDescription: (none)\nImage URL: (none)\nExisting structured: {}\nOpen Graph: {}\nTwitter card: {}\nJSON-LD: []\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 5369,
+        "rawText": "{\"title\":\"Copenhagen, Denmark\",\"subtitle\":\"Airbnb\",\"structured\":{},\"confidence\":0.9,\"sources\":[\"https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14\"]}",
+        "parsedPayload": {
+          "title": "Copenhagen, Denmark",
+          "subtitle": "Airbnb",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14"
+          ]
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "title": "Copenhagen, Denmark",
+          "subtitle": "Airbnb",
+          "structured": {},
+          "confidence": 0.9,
+          "sources": [
+            "https://www.airbnb.com/rooms/12345678?location=Copenhagen%2C%20Denmark&check_in=2026-06-10&check_out=2026-06-14"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "enhanced",
+        "latencyMs": 2846,
+        "rawText": "{\n  \"title\": \"Copenhagen, Denmark\",\n  \"confidence\": 0.3,\n  \"sources\": [\"url\"],\n  \"notes\": \"title from URL location parameter; subtitle omitted (not in metadata); description omitted (not in metadata); image_url omitted (not in metadata); destination from URL location parameter; travel_dates from URL check_in and check_out parameters; lodging_name omitted (not in metadata)\",\n  \"category_suggestion\": \"travel\",\n  \"category_confidence\": 1.0\n}",
+        "parsedPayload": {
+          "title": "Copenhagen, Denmark",
+          "confidence": 0.3,
+          "sources": [
+            "url"
+          ],
+          "notes": "title from URL location parameter; subtitle omitted (not in metadata); description omitted (not in metadata); image_url omitted (not in metadata); destination from URL location parameter; travel_dates from URL check_in and check_out parameters; lodging_name omitted (not in metadata)",
+          "category_suggestion": "travel",
+          "category_confidence": 1
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "travel",
+          "category_confidence": 1,
+          "title": "Copenhagen, Denmark",
+          "confidence": 0.3,
+          "sources": [
+            "url"
+          ],
+          "notes": "title from URL location parameter; subtitle omitted (not in metadata); description omitted (not in metadata); image_url omitted (not in metadata); destination from URL location parameter; travel_dates from URL check_in and check_out parameters; lodging_name omitted (not in metadata)"
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 0,
+            "good_sources": 1,
+            "good_notes": 1
+          },
+          "total": 3
+        }
+      },
+      "winner": "new"
+    },
+    {
+      "index": 10,
+      "name": "Google Maps restaurant should suggest restaurants",
+      "input": {
+        "finalUrl": "https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/",
+        "category": "articles",
+        "categorySuggestionAllowed": true,
+        "categorySuggestionReason": "blocked_or_sparse_fetch",
+        "title": null,
+        "subtitle": null,
+        "description": null,
+        "image_url": null,
+        "structured": {},
+        "rawMetadata": {
+          "fetched_at": "2026-05-16T00:00:00.000Z",
+          "final_url": "https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/",
+          "status_code": 403,
+          "open_graph": {},
+          "twitter": {},
+          "json_ld": [],
+          "parser": "generic"
+        }
+      },
+      "expected": {
+        "titleContains": "Cafe De Jaren",
+        "categorySuggestion": "restaurants",
+        "structuredFieldsPresent": [
+          "place_name"
+        ],
+        "structuredFieldsAbsent": [
+          "address",
+          "cuisine",
+          "price_level"
+        ],
+        "validSourcesOnly": true
+      },
+      "prompts": {
+        "old": "You are normalizing metadata for a private visual bookmark library called Theque.\nThe deterministic category is fixed: articles.\nCategory suggestion is allowed because: blocked_or_sparse_fetch.\nUse only the provided URL and metadata evidence.\nReturn category_suggestion and category_confidence only if evidence supports a better category.\nWhen returning category_suggestion, structured fields must match the suggested category.\nFor blocked or sparse pages, still return useful display metadata when it is evident from the URL; restaurant URLs can use a clear venue name as title and structured.place_name.\nOmit fields when evidence is insufficient. Do not invent prices, ratings, authors, years, or addresses.\n\nURL: https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/\nTitle: \nSubtitle: \nDescription: \nImage URL: \nStructured: {}\nOpen Graph: {}\nTwitter: {}\nJSON-LD: []\nParser: generic",
+        "new": "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.\nYour job: improve the item's title, description, and structured fields using ONLY the evidence supplied below.\n\n## Error-page guard\nIf the title, description, or OG metadata contains error indicators (e.g. \"404\", \"Not Found\", \"Access Denied\", \"Page Not Available\", \"Forbidden\", \"Bot or Not\"), treat those fields as ABSENT — do not copy them into your output. If ALL supplied metadata is error/blocked content, return only confidence, sources, and notes explaining the situation.\n\n## Evidence rules\n- \"Evidence\" means a value explicitly present in the URL, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields supplied below.\n- Do NOT use general world knowledge to fill in authors, directors, ratings, prices, dates, addresses, or any structured field. If you recognize the item but the metadata lacks the value, omit the field.\n- URL path segments are valid evidence for item names, venue names, and destinations (e.g. \"/selva-restaurant/\" → place_name: \"Selva\").\n- Prefer structured metadata (JSON-LD > Open Graph > Twitter > title tag) when sources conflict.\n\n## Category\nDeterministic category: **articles**\nCategory suggestion is allowed (reason: blocked_or_sparse_fetch).\nYou MAY return category_suggestion + category_confidence ONLY if the supplied metadata clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is \"recipes\", not \"articles\"; an Amazon book listing is \"books\", not \"products\". Classify the SPECIFIC ITEM the user saved, not the website's general genre.\nWhen you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.\nIf evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.\n\n## Category meanings\n- books: a specific book (Goodreads, Amazon book listing, Storytel, publisher page)\n- movies_and_tv: a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)\n- restaurants: a specific restaurant or food venue (Google Maps, Yelp, venue's own site)\n- products: a specific purchasable product (Amazon, Etsy, brand product page)\n- gifts: a gift guide or wishlist page with gift/wishlist in URL path\n- travel: a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)\n- recipes: a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)\n- articles: news, blog post, essay, magazine article — this is the DEFAULT fallback\n\n## Allowed structured fields\nReturn ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.\n- books → authors: string[], isbn: string, published_year: integer (1000–3000), page_count: positive integer, average_rating: number, ratings_count: integer ≥ 0\n- movies_and_tv → year: integer (1000–3000), directors: string[], runtime_minutes: positive integer, genres: string[], media_type: string, rating: number, rating_scale: number\n- restaurants → cuisine: string, price_level: string (e.g. \"$$\"), address: string, place_name: string\n- products → brand: string, price: { amount: number, currency: string }, availability: string\n- gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }\n- travel → destination: string, travel_dates: string | null, lodging_name: string\n- recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]\n- articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string\n\n## Field rules\n- title: The item's specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip \"Amazon.com:\" prefixes).\n- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.\n- description: 1–2 sentence summary of the SPECIFIC item, not the website. Omit if only generic site boilerplate is available.\n- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.\n- structured: Only fields from the schema above with values directly supported by evidence. Omit rather than guess.\n- confidence: 0.0–1.0 reflecting how much supplied metadata you could use. 0.3 = sparse/mostly URL-derived. 0.7+ = rich metadata present.\n- sources: Array of evidence source LABELS you actually used. Valid values: \"url\", \"open_graph\", \"twitter\", \"json_ld\", \"title_tag\", \"existing_structured\". Do NOT use raw URLs. Do NOT use \"model\", \"general_knowledge\", \"description\", or \"image_url\". Do NOT use \"description\". Do NOT use \"image_url\".\n- notes: A single string with per-field provenance. Example: \"title from og:title; year from JSON-LD datePublished; authors omitted (not in metadata)\". Always explain omitted important fields.\n- If notes say a structured field was extracted or sourced, that key MUST appear in structured with the extracted value. If a field is omitted from structured, notes must say it was omitted.\n\n## Blocked/sparse page\nThe page fetch was blocked or returned very little HTML. Use URL structure as primary evidence. Extract venue names, product names, or destinations from URL path segments when clearly readable. Set confidence to 0.2–0.4 for URL-only evidence.\n\n## When to omit fields\n- Omit title if the only available title is an error page, a bare domain, or the site name.\n- Omit description if only boilerplate (\"Welcome to our site\") or error text is available.\n- Omit ALL structured fields rather than guessing. An empty structured object is valid.\n- Omit image_url rather than inventing a URL.\n\n## Supplied metadata\nURL: https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/\nTitle: (none)\nSubtitle: (none)\nDescription: (none)\nImage URL: (none)\nExisting structured: {}\nOpen Graph: {}\nTwitter card: {}\nJSON-LD: []\nParser used: generic"
+      },
+      "old": {
+        "variant": "old",
+        "status": "enhanced",
+        "latencyMs": 2497,
+        "rawText": "{\"title\":\"Cafe De Jaren\",\"confidence\":1,\"sources\":[\"https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/\"],\"category_suggestion\":\"restaurants\",\"category_confidence\":1}",
+        "parsedPayload": {
+          "title": "Cafe De Jaren",
+          "confidence": 1,
+          "sources": [
+            "https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/"
+          ],
+          "category_suggestion": "restaurants",
+          "category_confidence": 1
+        },
+        "validation": {
+          "ok": true,
+          "reason": null
+        },
+        "enhancement": {
+          "category_suggestion": "restaurants",
+          "category_confidence": 1,
+          "title": "Cafe De Jaren",
+          "confidence": 1,
+          "sources": [
+            "https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/"
+          ]
+        },
+        "score": {
+          "dimensions": {
+            "valid": 1,
+            "no_hallucination": 0,
+            "correct_category": 1,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 2
+        }
+      },
+      "new": {
+        "variant": "new",
+        "status": "failed",
+        "latencyMs": 2235,
+        "rawText": null,
+        "parsedPayload": null,
+        "validation": {
+          "ok": false,
+          "reason": "call_failed"
+        },
+        "enhancement": null,
+        "error": "{\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\"status\":\"UNAVAILABLE\"}}",
+        "score": {
+          "dimensions": {
+            "valid": 0,
+            "no_hallucination": 0,
+            "correct_category": 0,
+            "good_sources": 0,
+            "good_notes": 0
+          },
+          "total": 0
+        }
+      },
+      "winner": "old"
+    }
+  ]
+}
