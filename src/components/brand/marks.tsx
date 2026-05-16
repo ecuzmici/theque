@@ -103,7 +103,7 @@ export function ShelfRoundedMark({ className, title, style }: MarkProps) {
   );
 }
 
-/** Index card with title lines — very legible alone. */
+/** Tri diagonal bands (matches `app/icon.svg`), scaled to 24×24. */
 export function IndexCardMark({ className, title, style }: MarkProps) {
   return (
     <svg
@@ -117,19 +117,16 @@ export function IndexCardMark({ className, title, style }: MarkProps) {
       aria-label={title}
     >
       {title ? <title>{title}</title> : null}
-      <rect
-        x="4"
-        y="4.5"
-        width="16"
-        height="15"
-        rx="1.75"
-        className="fill-[#fffefb] stroke-[#d6d3d1] stroke-[0.85] dark:fill-stone-900 dark:stroke-stone-600"
-      />
-      <path
-        d="M7.5 9.5h9M7.5 13h6.5"
-        className="stroke-[#78716c] stroke-[1.25] stroke-linecap-round dark:stroke-[#a8a29e]"
-      />
-      <circle cx="17" cy="8" r="1.35" className="fill-[#b45309] dark:fill-[#fbbf24]" />
+      <defs>
+        <clipPath id="theque-index-card-clip">
+          <rect width="24" height="24" rx="5.25" ry="5.25" />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#theque-index-card-clip)">
+        <path d="M0 0h8.25L0 8.25V0Z" fill="#57534e" />
+        <path d="M8.25 0h15.75v10.5L10.5 24H0V8.25L8.25 0Z" fill="#faf8f5" />
+        <path d="M24 24V10.5L10.5 24H24z" fill="#b45309" />
+      </g>
     </svg>
   );
 }

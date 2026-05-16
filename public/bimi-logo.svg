@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- BIMI square mark; tri diagonal bands (3x icon.svg). Validate after deploy. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny-ps" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <clipPath id="bimi-theque-clip">
+      <rect width="96" height="96" rx="21" ry="21" />
+    </clipPath>
+  </defs>
+  <g clip-path="url(#bimi-theque-clip)">
+    <path d="M0 0h33L0 33V0Z" fill="#57534e" />
+    <path d="M33 0h63v42L42 96H0V33L33 0Z" fill="#faf8f5" />
+    <path d="M96 96V42L42 96H96z" fill="#b45309" />
+  </g>
+</svg>

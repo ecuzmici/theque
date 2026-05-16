@@ -10,10 +10,17 @@ major_version = 17
 
 [auth]
 enabled = true
-site_url = "https://theque.vercel.app"
+site_url = "https://theque.app"
 additional_redirect_urls = [
   "http://localhost:3000/**",
   "http://localhost:3000/auth/callback",
+  "https://theque.app/**",
+  "https://theque.app/auth/callback",
   "https://theque.vercel.app/**",
   "https://theque.vercel.app/auth/callback",
 ]
+
+# Magic link HTML for local Supabase; hosted projects copy this file into Dashboard → Authentication → Email Templates → Magic link.
+[auth.email.template.magic_link]
+subject = "Welcome to — theque"
+content_path = "./supabase/templates/magic_link.html"

@@ -52,7 +52,7 @@ export function ThequeLogo({
           textSize[size],
         )}
       >
-        theque
+        thèque
       </span>
     </>
   );
@@ -60,7 +60,7 @@ export function ThequeLogo({
   return (
     <Link
       href={href}
-      aria-label="theque home"
+      aria-label="thèque home"
       className={cn(
         "inline-flex items-center rounded-md text-foreground outline-none ring-ring/50 focus-visible:ring-3",
         mark === "none" ? "gap-0" : "gap-2",

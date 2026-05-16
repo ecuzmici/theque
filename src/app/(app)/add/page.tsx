@@ -54,7 +54,7 @@ export default function AddPage() {
     <div>
       <PageHeader
         title="Add a link"
-        description="Paste any URL — theque captures it and fills in the card when enrichment finishes."
+        description="Paste any URL — thèque captures it and fills in the card when enrichment finishes."
       />
 
       <Card>

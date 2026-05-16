@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <title>Finish signing in</title>
+    <!--
+      Supabase Auth → Magic link (Dashboard → Authentication → Email Templates).
+      Suggested subject: Finish signing in
+      Docs: https://supabase.com/docs/guides/auth/auth-email-templates
+    -->
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      background-color: #faf8f5;
+      -webkit-font-smoothing: antialiased;
+    "
+  >
+    <!-- Wrapper -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #faf8f5">
+      <tr>
+        <td align="center" style="padding: 48px 20px">
+          <!-- Card -->
+          <table
+            role="presentation"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            width="100%"
+            style="
+              max-width: 440px;
+              background-color: #fffefb;
+              border-radius: 18px;
+              border: 1px solid rgba(28, 25, 23, 0.08);
+              box-shadow: 0 8px 32px rgba(28, 25, 23, 0.06);
+            "
+          >
+            <!-- Accent stripe (keep thin — avoid tall cell + &nbsp; in Gmail) -->
+            <tr>
+              <td
+                height="3"
+                style="
+                  height: 3px;
+                  max-height: 3px;
+                  font-size: 1px;
+                  line-height: 1px;
+                  mso-line-height-rule: exactly;
+                  background-color: #b45309;
+                  border-radius: 18px 18px 0 0;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 36px 36px 32px 36px">
+                <!-- Brand -->
+                <p
+                  style="
+                    margin: 0 0 28px 0;
+                    font-family: Georgia, 'Times New Roman', Times, serif;
+                    font-size: 22px;
+                    font-weight: 600;
+                    letter-spacing: 0.05em;
+                    text-transform: lowercase;
+                    color: #1c1917;
+                    line-height: 1;
+                  "
+                >
+                  thèque
+                </p>
+
+                <p
+                  style="
+                    margin: 0 0 8px 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 13px;
+                    font-weight: 600;
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                    color: #92400e;
+                    line-height: 1.4;
+                  "
+                >
+                  Email sign-in
+                </p>
+
+                <h1
+                  style="
+                    margin: 0 0 16px 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 24px;
+                    font-weight: 600;
+                    color: #1c1917;
+                    line-height: 1.25;
+                    letter-spacing: -0.02em;
+                  "
+                >
+                  Finish signing in
+                </h1>
+
+                <p
+                  style="
+                    margin: 0 0 32px 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #57534e;
+                  "
+                >
+                  Tap the button to open your library. For your security, this link expires soon and works only once.
+                </p>
+
+                <!-- CTA -->
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                  <tr>
+                    <td align="left">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                        <tr>
+                          <td style="border-radius: 999px; background-color: #b45309">
+                            <a
+                              href="{{ .ConfirmationURL }}"
+                              style="
+                                display: inline-block;
+                                padding: 15px 36px;
+                                font-family:
+                                  ui-sans-serif,
+                                  system-ui,
+                                  -apple-system,
+                                  Segoe UI,
+                                  Roboto,
+                                  Helvetica,
+                                  Arial,
+                                  sans-serif;
+                                font-size: 15px;
+                                font-weight: 600;
+                                color: #fffefb !important;
+                                text-decoration: none;
+                                border-radius: 999px;
+                                line-height: 1;
+                              "
+                              >Sign in</a
+                            >
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+
+                <p
+                  style="
+                    margin: 32px 0 0 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 13px;
+                    line-height: 1.55;
+                    color: #78716c;
+                  "
+                >
+                  Didn’t request this? You can ignore this email — nothing will change on your account.
+                </p>
+
+                <p
+                  style="
+                    margin: 24px 0 0 0;
+                    padding-top: 24px;
+                    border-top: 1px solid rgba(28, 25, 23, 0.08);
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 12px;
+                    line-height: 1.55;
+                    color: #78716c;
+                  "
+                >
+                  Trouble with the button?
+                  <a href="{{ .ConfirmationURL }}" style="color: #b45309; text-decoration: underline; font-weight: 600">Open this link</a>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 0 36px 28px 36px">
+                <p
+                  style="
+                    margin: 0;
+                    font-family:
+                      ui-sans-serif,
+                      system-ui,
+                      -apple-system,
+                      Segoe UI,
+                      Roboto,
+                      Helvetica,
+                      Arial,
+                      sans-serif;
+                    font-size: 11px;
+                    line-height: 1.6;
+                    color: #a8a29e;
+                  "
+                >
+                  <span style="color: #78716c">thèque</span>
+                  ·
+                  <a href="{{ .SiteURL }}" style="color: #92400e; text-decoration: underline">{{ .SiteURL }}</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
