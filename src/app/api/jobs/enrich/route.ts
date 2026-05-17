@@ -13,7 +13,7 @@ function hasValidCronSecret(bearer: string | null, secret: string | undefined): 
   return bearerBuffer.length === secretBuffer.length && timingSafeEqual(bearerBuffer, secretBuffer);
 }
 
-export async function POST(req: Request) {
+async function handleEnrichJob(req: Request) {
   const secret = process.env.CRON_SECRET;
   const bearer = parseBearerToken(req.headers.get("authorization"));
   if (!hasValidCronSecret(bearer, secret)) {
@@ -41,4 +41,12 @@ export async function POST(req: Request) {
 
   const body: EnrichJobResponseBody = { processed, failed };
   return Response.json(body);
+}
+
+export async function GET(req: Request) {
+  return handleEnrichJob(req);
+}
+
+export async function POST(req: Request) {
+  return handleEnrichJob(req);
 }

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => {
   const lookupCaptureTokenUser = vi.fn();
   const getSessionUserOrNull = vi.fn();
   const enrichItem = vi.fn();
+  const afterResults: unknown[] = [];
   const insertSpy = vi.fn();
   const adminFrom = vi.fn();
 
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => {
     lookupCaptureTokenUser,
     getSessionUserOrNull,
     enrichItem,
+    afterResults,
     insertSpy,
     adminFrom,
     makeItemsTable,
@@ -31,7 +33,9 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("next/server", () => ({
-  after: (callback: () => void) => callback(),
+  after: (callback: () => unknown) => {
+    mocks.afterResults.push(callback());
+  },
 }));
 
 vi.mock("@/lib/auth/capture-token", () => ({
@@ -63,8 +67,71 @@ describe("POST /api/capture category hints", () => {
     mocks.lookupCaptureTokenUser.mockReset();
     mocks.getSessionUserOrNull.mockReset();
     mocks.enrichItem.mockReset();
+    mocks.afterResults.length = 0;
     mocks.insertSpy.mockReset();
     mocks.adminFrom.mockReset();
+  });
+
+  it("returns the enrichment promise from the after callback for new captures", async () => {
+    const createdRow = {
+      id: "item-1",
+      url: "https://example.com/story",
+      canonical_url: "https://example.com/story",
+      domain: "example.com",
+      title: null,
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: null,
+      category_confidence: null,
+      status: "inbox",
+      processing_status: "pending",
+      source: "chrome_extension",
+      note: null,
+      created_at: "2026-05-17T12:00:00.000Z",
+    };
+    const itemsTable = mocks.makeItemsTable(createdRow);
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+    let resolveEnrichment!: (value: string) => void;
+    const enrichmentPromise = new Promise<string>((resolve) => {
+      resolveEnrichment = resolve;
+    });
+    mocks.enrichItem.mockReturnValue(enrichmentPromise);
+
+    const { POST } = await import("./route");
+
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer bmly_test_secret",
+        },
+        body: JSON.stringify({
+          url: "https://example.com/story",
+          source: "chrome_extension",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(mocks.enrichItem).toHaveBeenCalledWith("item-1");
+    const afterPromise = mocks.afterResults[0] as Promise<unknown>;
+    let afterSettled = false;
+    void afterPromise.then(() => {
+      afterSettled = true;
+    });
+
+    await Promise.resolve();
+
+    expect(afterSettled).toBe(false);
+    resolveEnrichment("ready");
+    await expect(afterPromise).resolves.toBeUndefined();
+    expect(afterSettled).toBe(true);
   });
 
   it("rejects an invalid category_hint for a new URL after auth", async () => {

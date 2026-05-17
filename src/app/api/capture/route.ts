@@ -216,8 +216,8 @@ export async function POST(req: Request) {
     }
   }
 
-  after(() => {
-    void enrichItem(createdRow.id);
+  after(async () => {
+    await enrichItem(createdRow.id);
   });
 
   const res: CaptureResponseBody = {

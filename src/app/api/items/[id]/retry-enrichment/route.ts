@@ -32,8 +32,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  after(() => {
-    void enrichItem(id);
+  after(async () => {
+    await enrichItem(id);
   });
 
   const body: RetryEnrichmentResponseBody = {
