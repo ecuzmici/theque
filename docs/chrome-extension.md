@@ -22,9 +22,9 @@ After code changes to `popup.ts` / `background.ts`, run `npm run build:extension
 
 1. Click the thèque toolbar icon to open the popup.
 2. Expand **Settings**.
-3. Click **Connect to thèque** and finish the flow in the opened thèque tab.
+3. Click **Connect your account** and finish the flow in the opened thèque tab.
 
-When connected, **Open thèque** opens the library. When disconnected, it opens the extension connection flow.
+When connected, **Open library** opens the library. When disconnected, it opens the extension connection flow.
 
 The extension connects to `https://theque.app`. The token is stored in **`chrome.storage.local`** only on your machine.
 

@@ -554,7 +554,7 @@ function setPopupHtml() {
         <p id="ks-tab-title" class="ks-tab-title">Current tab</p>
         <p id="ks-tab-url" class="ks-tab-url"></p>
         <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
-        <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">Connect to thèque</button>
+        <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">Connect your account</button>
       </section>
       <label class="ks-label" for="ks-category">Category hint <span class="ks-optional">(optional)</span></label>
       <select id="ks-category" class="ks-input ks-select">
@@ -701,7 +701,7 @@ Replace the content inside `<main class="ks-popup">` in `extension/popup.html` w
   </div>
   <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
   <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">
-    Connect to thèque
+    Connect your account
   </button>
 </section>
 
@@ -996,7 +996,7 @@ Immediately below the payload, add:
 `category_hint` is optional. The popup shows shelf-style labels (`Books`, `Watch`, `Eat`, `Shop`, `Travel`, `Read`, `Cook`) and sends the matching category only when the user chooses a value other than `Auto`. The hint is enrichment input, not a manual override.
 ```
 
-In the First-time setup section, keep `Connect to thèque` and add one sentence:
+In the First-time setup section, keep `Connect your account` and add one sentence:
 
 ```markdown
 When connected, **Open thèque** opens the library. When disconnected, it opens the extension connection flow.

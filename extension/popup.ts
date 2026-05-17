@@ -42,25 +42,6 @@ async function getActiveTab(): Promise<{ url: string; title: string } | null> {
   return { url, title: tab.title?.trim() || "Current tab" };
 }
 
-function formatTabHostname(tabUrl: string): string {
-  try {
-    return new URL(tabUrl).hostname;
-  } catch {
-    return tabUrl;
-  }
-}
-
-async function hydrateCaptureCard(tabTitleEl: HTMLParagraphElement, tabUrlEl: HTMLParagraphElement) {
-  const tab = await getActiveTab();
-  if (!tab) {
-    tabTitleEl.textContent = "Restricted page";
-    tabUrlEl.textContent = "This page cannot be captured.";
-    return;
-  }
-  tabTitleEl.textContent = tab.title;
-  tabUrlEl.textContent = formatTabHostname(tab.url);
-}
-
 async function openConnectPage() {
   await chrome.storage.local.set({ [STORAGE_KEYS.baseUrl]: THEQUE_APP_URL });
   const url = new URL("/settings/extension-connect", THEQUE_APP_URL);
@@ -71,18 +52,19 @@ async function openConnectPage() {
 document.addEventListener("DOMContentLoaded", async () => {
   const noteEl = $("ks-note") as HTMLTextAreaElement;
   const categoryEl = $("ks-category") as HTMLSelectElement;
-  const tabTitleEl = $("ks-tab-title") as HTMLParagraphElement;
-  const tabUrlEl = $("ks-tab-url") as HTMLParagraphElement;
-
-  await hydrateCaptureCard(tabTitleEl, tabUrlEl);
+  const connectBtn = $("ks-connect-session") as HTMLButtonElement;
+  const activeTab = await getActiveTab();
 
   const { token, email } = await loadSettings();
-  setStatus(
-    token ? `Connected${email ? ` as ${email}` : ""}.` : "Connect to thèque to save pages.",
-    token ? "ok" : "muted",
-  );
+  const isConnected = token.startsWith("bmly_");
+  connectBtn.hidden = isConnected;
+  if (!activeTab) {
+    setStatus("This page cannot be captured.", "err");
+  } else {
+    setStatus(isConnected ? `Connected${email ? ` as ${email}` : ""}.` : "Not connected yet.", "muted");
+  }
 
-  $("ks-connect-session").addEventListener("click", async () => {
+  connectBtn.addEventListener("click", async () => {
     try {
       await openConnectPage();
       setStatus("Opened thèque to connect this extension.", "muted");
@@ -112,7 +94,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       const { token: tok, baseUrl: apiBase } = await loadSettings();
       if (!tok.startsWith("bmly_")) {
-        setStatus("Connect to thèque before saving pages.", "err");
+        setStatus("Connect your account before saving pages.", "err");
         return;
       }
 

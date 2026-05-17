@@ -64,7 +64,7 @@ The popup should include a contextual `Open thèque` action.
 - When connected, it opens the web app library.
 - When disconnected, it guides the user to connect the extension instead of opening a generic app page.
 - It remains secondary to the save button when the user is connected.
-- It should not remove or hide the existing `Connect to thèque` path.
+- It should not remove or hide the existing account connection path.
 
 ## Visual structure
 
