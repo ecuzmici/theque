@@ -11,6 +11,7 @@ import {
   categoryPlaceholderLabel,
 } from "@/lib/category-placeholder";
 import { cardAspectRatio } from "@/lib/item-display";
+import { formatStatus } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
@@ -113,7 +114,7 @@ export function ItemCard({ item, inboxActionsEnabled, onItemPatch }: ItemCardPro
           ) : null}
           {item.status === "inbox" ? (
             <Badge variant="secondary" className="mt-2 text-[10px]">
-              Inbox
+              {formatStatus(item.status)}
             </Badge>
           ) : null}
         </div>

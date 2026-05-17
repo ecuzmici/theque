@@ -17,7 +17,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CATEGORY_LABELS } from "@/lib/item-labels";
+import { CATEGORY_LABELS, formatCategory } from "@/lib/item-labels";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ItemCategory[];
@@ -93,7 +93,7 @@ export function InboxActions({ itemId, category, onOptimistic }: InboxActionsPro
                   className={category === c ? "font-semibold text-accent-foreground" : undefined}
                   onClick={() => void apply({ category: c, status: "want" }, { remove: true })}
                 >
-                  {CATEGORY_LABELS[c]}
+                  {formatCategory(c)}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuSubContent>

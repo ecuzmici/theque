@@ -34,9 +34,9 @@ function buildSearchUrl(filters: ItemSearchFilters): string | null {
 export function useDebouncedItemSearch(filters: ItemSearchFilters) {
   const [items, setItems] = useState<ItemSummaryPayload[]>([]);
   const [loading, setLoading] = useState(false);
+  const url = buildSearchUrl(filters);
 
   useEffect(() => {
-    const url = buildSearchUrl(filters);
     const handle = window.setTimeout(async () => {
       if (!url) {
         setItems([]);
@@ -58,7 +58,7 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(handle);
-  }, [filters]);
+  }, [url]);
 
-  return { items, loading, hasQuery: buildSearchUrl(filters) != null };
+  return { items, loading, hasQuery: url != null };
 }

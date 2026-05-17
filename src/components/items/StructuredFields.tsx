@@ -1,12 +1,13 @@
 import type { Json } from "@/lib/database.types";
+import { formatItemMetadataValue } from "@/lib/item-labels";
 
 function formatKey(key: string): string {
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatValue(value: unknown): string {
+function formatValue(key: string, value: unknown): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return formatItemMetadataValue(key, value);
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (Array.isArray(value)) {
     if (value.every((x) => typeof x === "string" || typeof x === "number")) {
@@ -43,7 +44,7 @@ export function StructuredFields({ structured }: { structured: Json | null }) {
             <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {formatKey(key)}
             </dt>
-            <dd className="mt-1 text-sm text-foreground">{formatValue(value)}</dd>
+            <dd className="mt-1 text-sm text-foreground">{formatValue(key, value)}</dd>
           </div>
         ))}
       </dl>

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CATEGORY_LABELS, STATUS_LABELS } from "@/lib/item-labels";
+import { CATEGORY_LABELS, STATUS_LABELS, formatCategory, formatStatus } from "@/lib/item-labels";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 
 const STATUSES = Object.keys(STATUS_LABELS) as ItemStatus[];
@@ -121,12 +121,12 @@ function ItemEditForm({
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => v && setStatus(v as ItemStatus)}>
               <SelectTrigger className="h-11 w-full min-h-11">
-                <SelectValue />
+                <SelectValue>{formatStatus(status)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {STATUS_LABELS[s]}
+                    {formatStatus(s)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -136,13 +136,17 @@ function ItemEditForm({
             <Label>Category</Label>
             <Select value={categoryValue} onValueChange={(v) => v && setCategoryValue(v)}>
               <SelectTrigger className="h-11 w-full min-h-11">
-                <SelectValue />
+                <SelectValue>
+                  {categoryValue === UNCATEGORIZED
+                    ? "Uncategorized"
+                    : formatCategory(categoryValue as ItemCategory)}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={UNCATEGORIZED}>Uncategorized</SelectItem>
                 {CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>
-                    {CATEGORY_LABELS[c]}
+                    {formatCategory(c)}
                   </SelectItem>
                 ))}
               </SelectContent>

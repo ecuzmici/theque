@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDebouncedItemSearch } from "@/hooks/useItems";
-import { CATEGORY_LABELS, STATUS_LABELS } from "@/lib/item-labels";
+import { CATEGORY_LABELS, STATUS_LABELS, formatCategory, formatStatus } from "@/lib/item-labels";
 import type { CollectionListEntry } from "@/lib/types/api";
 import { libraryItemFromSummary } from "@/lib/types/library-item";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
@@ -56,6 +56,7 @@ export default function SearchPage() {
     (status !== ANY ? 1 : 0) +
     (tag.trim() ? 1 : 0) +
     (collectionId !== ANY ? 1 : 0);
+  const selectedCollection = collections.find((c) => c.id === collectionId);
 
   const clearFilters = () => {
     setCategory(ANY);
@@ -89,13 +90,15 @@ export default function SearchPage() {
           <Label className="text-xs text-muted-foreground">Category</Label>
           <Select value={category} onValueChange={(v) => setCategory(v ?? ANY)}>
             <SelectTrigger className="h-11 w-full min-h-11">
-              <SelectValue placeholder="Any" />
+              <SelectValue>
+                {category === ANY ? "Any category" : formatCategory(category as ItemCategory)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ANY}>Any category</SelectItem>
               {CATEGORIES.map((c) => (
                 <SelectItem key={c} value={c}>
-                  {CATEGORY_LABELS[c]}
+                  {formatCategory(c)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -105,13 +108,15 @@ export default function SearchPage() {
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select value={status} onValueChange={(v) => setStatus(v ?? ANY)}>
             <SelectTrigger className="h-11 w-full min-h-11">
-              <SelectValue placeholder="Any" />
+              <SelectValue>
+                {status === ANY ? "Any status" : formatStatus(status as ItemStatus)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ANY}>Any status</SelectItem>
               {STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {formatStatus(s)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -133,7 +138,9 @@ export default function SearchPage() {
           <Label className="text-xs text-muted-foreground">Collection</Label>
           <Select value={collectionId} onValueChange={(v) => setCollectionId(v ?? ANY)}>
             <SelectTrigger className="h-11 w-full min-h-11">
-              <SelectValue placeholder="Any" />
+              <SelectValue>
+                {collectionId === ANY ? "Any collection" : (selectedCollection?.name ?? "Collection")}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={ANY}>Any collection</SelectItem>
