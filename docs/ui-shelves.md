@@ -4,7 +4,7 @@ Shelves are **fixed smart views** defined in code — not database tables. Users
 
 ## Navigation
 
-**Primary:** Library (default) · Search · Add · Settings
+**Primary:** Library (default) · Collections · Search · Add link · Settings
 
 **Library header:** Horizontal shelf tabs (scroll on mobile)
 
@@ -20,7 +20,7 @@ Each shelf maps to a query over `items`:
 | `eat` | Eat | `category = restaurants` AND `status != dismissed` |
 | `shop` | Shop | `category IN (products, gifts)` AND `status != dismissed` |
 | `travel` | Travel | `category = travel` AND `status != dismissed` |
-| `read` | Read | `category = articles` AND `status != dismissed` |
+| `read` | Read | `category = articles` AND `status != dismissed` AND `status != inbox` |
 | `cook` | Cook | `category = recipes` AND `status != dismissed` |
 | `inbox` | Inbox | `status = inbox` |
 

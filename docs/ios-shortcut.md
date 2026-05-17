@@ -1,11 +1,11 @@
 # Theque — iOS Shortcut (Share sheet)
 
-Send URLs from Safari or any app’s Share sheet to **`POST /api/capture`** using your personal Bearer token. Auth matches [`docs/api-contract.md`](./api-contract.md).
+Send URLs from Safari or any app’s Share sheet to **`POST /api/capture`** using your personal Bearer token. Auth matches [`docs/api-contract.md`](./api-contract.md). Production captures should use `https://theque.app/api/capture`.
 
 ## Prerequisites
 
 - **Shortcut app** on iPhone or iPad.
-- A capture token created in Theque (**Settings → Capture tokens**). You only see the full secret once — store it in **Shortcuts → … → Sensitive data** or equivalent (never commit tokens).
+- A capture token created in thèque (**Settings → Capture tokens**). You only see the full secret once — store it in **Shortcuts → … → Sensitive data** or equivalent (never commit tokens).
 
 ## Configure once
 
@@ -13,12 +13,13 @@ Create a Shortcut named **Theque capture** with:
 
 1. **Receive** — turn on **Show in Share Sheet**, accepted types **URLs** (and optionally **Rich text** if you want to paste URLs manually).
 2. **URL** — set to your deployed API endpoint:  
-   `https://YOUR_DOMAIN/api/capture`  
+   `https://theque.app/api/capture`<br>
    For local testing on the same Wi‑Fi you’d need a tunnel (e.g. ngrok); Shortcuts cannot reach `localhost` on your Mac directly.
 
 Optional: add a **Dictionary** or **Ask Each Time** step for:
 
 - **note** — optional string (max 2000 characters).
+- **category_hint** — optional category hint (`books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, or `recipes`).
 - **tag_names** — optional list of strings (normalized lowercase server-side).
 
 ## Shortcut steps (recommended layout)
@@ -51,6 +52,7 @@ With optional fields:
 {
   "url": "https://www.goodreads.com/book/show/123",
   "note": "Borrow from library",
+  "category_hint": "books",
   "tag_names": ["fiction", "queue"],
   "collection_ids": ["00000000-0000-0000-0000-000000000000"],
   "source": "ios_shortcut"
@@ -62,6 +64,7 @@ With optional fields:
 | `url` | yes | Must be `http` or `https`. |
 | `source` | yes | Use **`ios_shortcut`** for this flow. |
 | `note` | no | Max 2000 chars. |
+| `category_hint` | no | Enrichment hint only; deterministic classification can still override it. |
 | `tag_names` | no | Lowercase normalization on server. |
 | `collection_ids` | no | UUIDs must belong to your account or you get **403**. |
 

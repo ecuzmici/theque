@@ -1,7 +1,7 @@
 # QA Integration Session — Theque
 
 **Purpose:** Validate capture, enrichment, shelves, and card/detail UI per category.  
-**Out of scope:** Magic-link login (tested manually by owner). **Do not** open `/login` or submit the email form.
+**Out of scope:** Interactive email login (tested manually by owner). **Do not** open `/login` or submit the email form.
 
 **Audience:** QA agent with **Playwright MCP**.  
 **Default environment:** **local** (`http://localhost:3000`) to avoid Supabase email rate limits.
@@ -35,7 +35,7 @@ Copy the printed URL. **First Playwright step:** navigate to that URL → redire
 
 ## Setup (production — optional)
 
-Only if explicitly asked. User must **already be logged in** in the browser context Playwright uses. **Never** submit the magic-link form (rate limits). Start at `/library` after user confirms auth.
+Only if explicitly asked. User must **already be logged in** in the browser context Playwright uses. **Never** submit the email OTP form (rate limits). Start at `/library` after user confirms auth.
 
 ## Reference URLs
 

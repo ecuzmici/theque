@@ -13,7 +13,7 @@ You are auditing and fixing **mobile UX and accessibility** for **Theque** — a
 
 - Repo root: bookmarkly / theque.
 - `npm run dev` running on http://localhost:3000.
-- **Auth:** Do NOT use magic-link flows unless the human asks. Prefer `npm run qa:session-url` (needs `QA_DEV_SESSION_SECRET` + `QA_DEV_EMAIL` in `.env.local`) and open the printed URL once; confirm landing on `/library`. See `docs/sessions/qa-integration-prompt.md`.
+- **Auth:** Do NOT use interactive email login unless the human asks. Prefer `npm run qa:session-url` (needs `QA_DEV_SESSION_SECRET` + `QA_DEV_EMAIL` in `.env.local`) and open the printed URL once; confirm landing on `/library`. See `docs/sessions/qa-integration-prompt.md`.
 - Use **Playwright MCP** for verification (viewport resize, snapshots, clicks, keyboard).
 
 ## Viewports to test

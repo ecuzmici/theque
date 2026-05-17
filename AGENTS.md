@@ -6,7 +6,7 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 
 - **Single user**, private; no multi-tenant or social features.
 - **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. **Collections** are user-created in Postgres.
-- **Classification**: domain map + schema.org + heuristics only (no LLM).
+- **Classification/enrichment**: deterministic domain map + schema.org + heuristics first; optional gated Gemini enrichment can fill sparse metadata and, when allowed, set `category_source = llm`.
 - **Web auth**: email OTP is primary; magic-link callback remains as fallback. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
 - **iOS Shortcut** is documented but lower priority than Chrome + web QA.
 
@@ -22,7 +22,7 @@ Public thèque URL (users, redirects, Chrome extension default): **`https://theq
 GitHub: https://github.com/ecuzmici/theque  
 Vercel project: **theque** (linked to repo `master`).
 
-Required env vars: see `.env.local.example`. Never commit `.env.local`.
+Required env vars: see `.env.local.example`. Never commit `.env.local`. Gemini env vars are optional and server-only.
 
 ## Commands
 
@@ -30,7 +30,7 @@ Required env vars: see `.env.local.example`. Never commit `.env.local`.
 npm install
 npm run dev              # Next.js on :3000
 npm run build            # extension tsc + next build
-npm test                 # Vitest (parsers, classify, auth utils, timestamps, url)
+npm test                 # Vitest (parsers, classify, auth utils, timestamps, url, LLM helpers)
 npm run seed             # optional demo rows (needs SEED_USER_ID)
 npm run supabase:sync-auth   # optional; needs SUPABASE_ACCESS_TOKEN
 ```
@@ -47,7 +47,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
-| `src/lib/classify/` | Domain + schema.org → `ItemCategory` |
+| `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
 | `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, … Inbox) |
 | `src/components/items/` | `ItemCard`, `ItemDetail`, `StructuredFields` |
 | `extension/` | MV3 popup + background; storage keys `theque_capture_token`, `theque_api_base_url` |
@@ -104,6 +104,7 @@ After cloning, run once: `npm run qa:install-browsers`.
 - Touch UX uses Tailwind custom variants in `src/app/globals.css`: `pointer-coarse`, `lg-fine`, `--tap-target-min`, and `.ks-pointer-coarse-min-hit`. Prefer `<Button />` for controls so coarse-pointer hit targets stay at roughly 44px without making desktop layouts bulky.
 - Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
+- LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus `GEMINI_API_KEY`; deterministic extraction must still work without it.
 - Do not commit secrets, `.env.local`, or `.vercel/`.
 
 ## Documentation index

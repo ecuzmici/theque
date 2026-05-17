@@ -2,7 +2,7 @@
 
 **Paste this entire document into a new agent session** to implement fixes and re-verify.  
 **Product:** Theque (repo `bookmarkly`) — personal visual taste library, PoC, single user.  
-**Do not** test magic-link login. Use local `http://localhost:3000` unless told otherwise.
+**Do not** test interactive email login. Use local `http://localhost:3000` unless told otherwise.
 
 ---
 

@@ -11,7 +11,7 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 ## Solution
 
 1. **Capture** — Chrome extension, iOS Shortcut, or paste URL (optional note/tags/collection).
-2. **Enrich** — Server fetches OG/schema.org metadata and classifies the item.
+2. **Enrich** — Server fetches OG/schema.org metadata, classifies the item, and can optionally ask Gemini to fill sparse category-specific fields.
 3. **Library** — Image-forward shelves (smart views by category) plus user **collections** (trip, gifts, date night).
 4. **Inbox** — Secondary triage queue for low-confidence or unprocessed items.
 
@@ -46,7 +46,7 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 
 - Multi-user product, public lists, social features
 - Native iOS app / Share Extension (Shortcut only)
-- AI classification (rules + schema.org only)
+- Always-on AI-driven category decisions. The default pipeline is deterministic; Gemini enrichment is optional, server-side, and gated by env vars.
 - Google Places API (restaurants may have sparse cards)
 - Offline sync, email import, collaborative editing
 - Full-text search engine beyond Postgres
@@ -63,12 +63,12 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 
 | Layer | Choice |
 |-------|--------|
-| App | Next.js 15+ (App Router), TypeScript, Tailwind |
+| App | Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4 |
 | Backend | Supabase (Auth, Postgres, RLS, Storage, Realtime) |
 | Deploy | Vercel (app) + Supabase (data) |
 | Desktop capture | Chrome extension (MV3) |
 | Mobile capture | iOS Shortcut → `POST /api/capture` with personal token |
-| Auth (web) | Supabase Auth (magic link email) |
+| Auth (web) | Supabase Auth email OTP, with magic-link callback fallback |
 | Auth (capture clients) | Personal capture token (scoped) |
 
 ## Related docs
@@ -77,5 +77,5 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 - [API contract](./api-contract.md)
 - [Category schemas](./category-schemas.md)
 - [UI shelves](./ui-shelves.md)
-- [Design spec](./superpowers/specs/2026-05-15-Theque-design.md)
-- [Implementation plan](./superpowers/plans/2026-05-15-Theque.md)
+- [Design spec](./superpowers/specs/2026-05-15-theque-design.md)
+- [Implementation plan](./superpowers/plans/2026-05-15-theque.md)

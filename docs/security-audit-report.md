@@ -3,13 +3,34 @@
 **Date:** 2026-05-17  
 **Auditor:** Claude Opus (automated)  
 **Scope:** Full application (web, API, DB, extension)  
-**Commit:** `9f3f35f83747c817c4e3b50263047186180ac530`
+**Original audit commit:** `9f3f35f83747c817c4e3b50263047186180ac530`<br>
+**Current-code status:** Updated 2026-05-17 against the working tree after the hardening follow-up.
 
 ## Executive Summary
 
 Theque demonstrates a **solid security foundation** for a PoC single-user application. Row Level Security is consistently applied across all tables, session handling follows Supabase best practices, and there are no instances of `dangerouslySetInnerHTML` or `innerHTML` anywhere in the codebase. Secrets are properly separated from public environment variables.
 
-However, the audit identified **19 findings**, including **3 HIGH severity** issues that should be addressed before any broader production use. The most critical findings are: (1) **Server-Side Request Forgery (SSRF)** via the enrichment fetch pipeline with no URL scheme or hostname restrictions, (2) **unrestricted Next.js image proxy** (`hostname: "**"`) enabling SSRF via the image optimization endpoint, and (3) **open redirect vulnerabilities** in the middleware and QA session route. Additionally, there are no rate limits on any endpoint, no resource quotas, and missing HTTP security headers.
+The original audit identified **19 findings**. The current code has since addressed the highest-impact implementation gaps: the enrichment fetcher validates URL schemes/hosts/IP ranges, follows redirects manually with revalidation, and caps response bodies; the open redirect paths use `sanitizeRedirectPath()`; broad Next image proxying is no longer configured; security headers are set in `next.config.ts`; sensitive error details are logged server-side instead of returned; input length/array limits are enforced; and `.cursor/` is gitignored. Remaining notable gaps are app-level rate limiting, per-user resource quotas, and continued caution around outbound enrichment.
+
+## Current Status Addendum
+
+| Finding | Current status |
+|---------|----------------|
+| FINDING-001 SSRF via enrichment fetch | Mitigated in `src/lib/enrichment/fetch.ts` with scheme checks, DNS/IP blocking, manual redirect validation, timeout, and 2 MB body cap. Keep testing DNS rebinding and edge-case IPv6 forms before broader production use. |
+| FINDING-002 Next image proxy wildcard | Resolved: `next.config.ts` no longer configures wildcard `images.remotePatterns`. |
+| FINDING-003 Open redirect | Resolved: middleware and QA session route use `sanitizeRedirectPath()`. |
+| FINDING-004 No rate limiting | Still open at the app layer. |
+| FINDING-005 PostgREST filter injection | Partially mitigated by length limits and escaping; still worth revisiting if search grows beyond single-user scope. |
+| FINDING-006 Missing HTTP security headers | Resolved: CSP, frame, content-type, referrer, permissions, HSTS headers, and `poweredByHeader: false` are configured in `next.config.ts`. |
+| FINDING-007 Prototype pollution risk | Resolved: blocked JSON keys are filtered before merging `display`. |
+| FINDING-008/009 Missing input limits | Resolved for current capture/item/collection/token inputs via `src/lib/input-limits.ts`. |
+| FINDING-010 Error message exposure | Resolved for current API handlers reviewed here: raw database errors are logged server-side and generic codes are returned. |
+| FINDING-015 Extension domain mismatch | Accepted/resolved by using the public app domain `https://theque.app` in the extension manifest and runtime defaults. |
+| FINDING-016 Resource quotas | Still open. |
+| FINDING-017 CRON secret comparison | Resolved with `timingSafeEqual()`. |
+| FINDING-019 `.cursor` not ignored | Resolved in `.gitignore`. |
+
+The detailed findings below are preserved as the original audit trail; use this addendum for current status.
 
 The codebase is well-structured with consistent patterns for authentication and authorization checks. The main risks stem from defense-in-depth gaps rather than fundamental architectural flaws.
 

@@ -42,6 +42,7 @@ create type category_source as enum (
   'domain',
   'schema_org',
   'heuristic',
+  'llm',
   'manual'
 );
 ```
@@ -76,7 +77,7 @@ Central entity. One row per saved URL per user (deduped by fingerprint).
 | `enrichment_attempts` | `smallint` NOT NULL | Default 0, max 3 |
 | `enriched_at` | `timestamptz` | |
 | `structured` | `jsonb` NOT NULL | Default `{}` — category fields |
-| `raw_metadata` | `jsonb` NOT NULL | Default `{}` — OG, JSON-LD snapshot |
+| `raw_metadata` | `jsonb` NOT NULL | Default `{}` — OG, JSON-LD snapshot plus optional LLM/debug metadata |
 | `display` | `jsonb` NOT NULL | Default `{}` — UI overrides |
 | `created_at` | `timestamptz` NOT NULL | Default `now()` |
 | `updated_at` | `timestamptz` NOT NULL | Default `now()` |
@@ -147,7 +148,7 @@ Primary key `(collection_id, item_id)`.
 
 ### `capture_tokens`
 
-For Chrome extension and iOS Shortcut. **Store hash only.**
+For Chrome extension, iOS Shortcut, and other capture clients. **Store hash only.**
 
 | Column | Type |
 |--------|------|
@@ -190,7 +191,7 @@ Apply the same `user_id = auth.uid()` pattern to `tags`, `collections`, `capture
 
 For `item_tags` and `collection_items`, use EXISTS subquery on parent `items` / `collections` owned by `auth.uid()`.
 
-**Capture API note:** Route handlers use **service role** only inside server code to insert on behalf of token-validated user. Do not expose service role to clients. Alternative: use `security definer` RPC in private schema — PoC uses service role in Next.js server only.
+**Capture API note:** Route handlers accept either a web session or a `bmly_...` Bearer token. Token-authenticated requests use the service role only inside server code to insert on behalf of the validated user. Do not expose service role to clients.
 
 ## Triggers
 
@@ -213,7 +214,7 @@ Bucket: `item-images` (private)
 On capture, compute `url_fingerprint` from `canonical_url`. If row exists for `(user_id, url_fingerprint)`:
 
 - Return existing item (`200`, `created: false`)
-- Optionally append note to existing (PoC: ignore duplicate note, return message)
+- Ignore duplicate notes/tags/collections/hints and return the existing row
 
 ## Status defaults after enrichment
 
@@ -223,6 +224,10 @@ On capture, compute `url_fingerprint` from `canonical_url`. If row exists for `(
 | else | `inbox` |
 
 User can always override.
+
+## Optional LLM enrichment
+
+The deterministic pipeline remains the default source of truth. When `LLM_ENRICHMENT_ENABLED=true` and `GEMINI_API_KEY` is present, the enrichment job may call Gemini to fill sparse structured fields and can set `category_source = 'llm'` only when the eligibility gate allows a category suggestion. User-set `manual` categories are preserved except for intentionally sparse/blocked metadata recovery paths documented in `docs/category-schemas.md`.
 
 ## Realtime
 

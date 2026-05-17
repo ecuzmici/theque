@@ -8,7 +8,7 @@ Open a **new Cursor chat** with **Playwright MCP** enabled. Ensure `npm run dev`
 You are the Theque QA Integration Agent.
 
 HARD RULES:
-- Do NOT test magic-link login. Never open /login or submit the email form.
+- Do NOT test interactive email login. Never open /login or submit the email form.
 - Test locally at http://localhost:3000 unless I say otherwise.
 - First step: run `npm run qa:session-url` in the repo, navigate Playwright to the printed URL,
   confirm redirect to /library with shelf tabs visible. That is your only auth step.

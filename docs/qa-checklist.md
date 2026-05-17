@@ -2,7 +2,7 @@
 
 Use this matrix before calling a release “good enough” for personal PoC. Capture paths: **Chrome extension**, **iOS Shortcut** (or **`curl`** with Bearer token). Web app: library, inbox, collections.
 
-**Agent session:** Paste [`docs/sessions/qa-integration-prompt.md`](./sessions/qa-integration-prompt.md). Skips magic-link login; local auth via `npm run qa:session-url` (see `AGENTS.md`).
+**Agent session:** Paste [`docs/sessions/qa-integration-prompt.md`](./sessions/qa-integration-prompt.md). Skips interactive email login; local auth via `npm run qa:session-url` (see `AGENTS.md`).
 
 ## Reference URLs
 
