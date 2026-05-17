@@ -19,6 +19,24 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
+export function getSupabaseAuthCookieNames(supabaseUrl: string | undefined) {
+  if (!supabaseUrl) return [];
+
+  try {
+    const projectRef = new URL(supabaseUrl).hostname.split(".")[0];
+    if (!projectRef) return [];
+
+    return [
+      `sb-${projectRef}-auth-token`,
+      `sb-${projectRef}-auth-token.0`,
+      `sb-${projectRef}-auth-token.1`,
+      `sb-${projectRef}-auth-token-code-verifier`,
+    ];
+  } catch {
+    return [];
+  }
+}
+
 /** Keep refreshed Supabase cookies when returning a new Response (e.g. redirect). */
 function redirectPreservingCookies(from: NextResponse, url: URL): NextResponse {
   const redirect = NextResponse.redirect(url);
@@ -26,6 +44,17 @@ function redirectPreservingCookies(from: NextResponse, url: URL): NextResponse {
     redirect.cookies.set(name, value, opts);
   }
   return redirect;
+}
+
+function expireSupabaseAuthCookies(response: NextResponse, supabaseUrl: string | undefined) {
+  getSupabaseAuthCookieNames(supabaseUrl).forEach((name) => {
+    response.cookies.set(name, "", {
+      path: "/",
+      maxAge: 0,
+      sameSite: "lax",
+      secure: true,
+    });
+  });
 }
 
 export async function middleware(request: NextRequest) {
@@ -59,7 +88,12 @@ export async function middleware(request: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+
+  if (authError) {
+    expireSupabaseAuthCookies(response, url);
+  }
 
   const pathname = request.nextUrl.pathname;
 
