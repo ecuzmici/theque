@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
@@ -12,9 +13,22 @@ function sanitizeRedirectPath(value: string | null) {
   return value;
 }
 
+function isEmailOtpType(value: string | null): value is EmailOtpType {
+  return (
+    value === "signup" ||
+    value === "invite" ||
+    value === "magiclink" ||
+    value === "recovery" ||
+    value === "email_change" ||
+    value === "email"
+  );
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
   const oauthError = searchParams.get("error");
   const oauthDescription = searchParams.get("error_description");
   const next = sanitizeRedirectPath(searchParams.get("next"));
@@ -26,7 +40,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!code) {
+  if (!code && (!tokenHash || !isEmailOtpType(type))) {
     return NextResponse.redirect(`${origin}/login?error=auth&reason=missing_code`);
   }
 
@@ -52,10 +66,15 @@ export async function GET(request: Request) {
     },
   });
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type,
+      });
 
   if (error) {
-    console.error("[auth/callback] exchangeCodeForSession:", error.message);
+    console.error("[auth/callback] session exchange:", error.message);
     return NextResponse.redirect(
       `${origin}/login?error=auth&reason=${encodeURIComponent(error.message)}`,
     );

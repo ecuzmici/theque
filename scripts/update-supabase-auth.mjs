@@ -29,6 +29,8 @@ const headers = {
 const addUrls = [
   "http://localhost:3000/**",
   "http://localhost:3000/auth/callback",
+  "https://theque.app/**",
+  "https://theque.app/auth/callback",
   "https://theque.vercel.app/**",
   "https://theque.vercel.app/auth/callback",
 ];
@@ -55,9 +57,9 @@ const patchAuth = await fetch(`https://api.supabase.com/v1/projects/${ref}/confi
   method: "PATCH",
   headers,
   body: JSON.stringify({
-    site_url: "https://theque.vercel.app",
+    site_url: "https://theque.app",
     uri_allow_list: allow.join(","),
-    mailer_subjects_confirmation: "Confirm your email address",
+    mailer_subjects_confirmation: "Your thèque sign-in code",
     mailer_templates_confirmation_content: confirmationTemplate,
     mailer_subjects_magic_link: "Your thèque sign-in code",
     mailer_templates_magic_link_content: magicLinkTemplate,

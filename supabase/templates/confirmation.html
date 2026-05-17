@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
-    <title>Confirm your email address</title>
+    <title>Your sign-in code</title>
     <!--
       Supabase Auth -> Confirm sign up (Dashboard -> Authentication -> Email Templates).
-      Suggested subject: Confirm your email address
+      Suggested subject: Your thèque sign-in code
       Docs: https://supabase.com/docs/guides/auth/auth-email-templates
     -->
   </head>
@@ -87,7 +87,7 @@
                         line-height: 1.4;
                       "
                     >
-                      Welcome
+                      Email sign-in
                     </p>
 
                     <h1
@@ -109,7 +109,7 @@
                         letter-spacing: -0.02em;
                       "
                     >
-                      Save your first thing
+                      Your sign-in code
                     </h1>
 
                     <p
@@ -129,9 +129,63 @@
                         color: #57534e;
                       "
                     >
-                      Confirm your email to start building a private visual library of books, films, places, products,
-                      recipes, and ideas.
+                      Copy this code into thèque. For your security, it expires soon and works only once.
                     </p>
+
+                    <div
+                      style="
+                        margin: 0 0 28px 0;
+                        padding: 18px 20px;
+                        border: 1px dashed #d97706;
+                        border-radius: 16px;
+                        background-color: #fffbeb;
+                        text-align: center;
+                      "
+                    >
+                      <p
+                        style="
+                          margin: 0 0 8px 0;
+                          font-family:
+                            ui-sans-serif,
+                            system-ui,
+                            -apple-system,
+                            Segoe UI,
+                            Roboto,
+                            Helvetica,
+                            Arial,
+                            sans-serif;
+                          font-size: 12px;
+                          font-weight: 700;
+                          letter-spacing: 0.08em;
+                          text-transform: uppercase;
+                          color: #92400e;
+                          line-height: 1.4;
+                        "
+                      >
+                        One-time code
+                      </p>
+                      <p
+                        style="
+                          margin: 0;
+                          font-family:
+                            ui-monospace,
+                            SFMono-Regular,
+                            Menlo,
+                            Monaco,
+                            Consolas,
+                            Liberation Mono,
+                            Courier New,
+                            monospace;
+                          font-size: 34px;
+                          font-weight: 800;
+                          letter-spacing: 0.22em;
+                          color: #1c1917;
+                          line-height: 1.2;
+                        "
+                      >
+                        {{ .Token }}
+                      </p>
+                    </div>
 
                     <!-- CTA -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -141,7 +195,7 @@
                             <tr>
                               <td style="border-radius: 999px; background-color: #b45309">
                                 <a
-                                  href="{{ .ConfirmationURL }}"
+                                  href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email"
                                   style="
                                     display: inline-block;
                                     padding: 15px 36px;
@@ -161,7 +215,7 @@
                                     border-radius: 999px;
                                     line-height: 1;
                                   "
-                                  >Confirm email address</a
+                                  >Open thèque instead</a
                                 >
                               </td>
                             </tr>
@@ -187,7 +241,7 @@
                         color: #78716c;
                       "
                     >
-                      This link only works for this sign-up request and opens thèque when it succeeds.
+                      If copying the code is inconvenient, this button opens thèque and signs you in directly.
                     </p>
 
                     <p
@@ -207,7 +261,7 @@
                         color: #78716c;
                       "
                     >
-                      Didn't create a thèque account? You can ignore this email - nothing will change.
+                      Didn't request this? You can ignore this email - nothing will change.
                     </p>
 
                     <p
@@ -230,8 +284,10 @@
                       "
                     >
                       Trouble with the button?
-                      <a href="{{ .ConfirmationURL }}" style="color: #b45309; text-decoration: underline; font-weight: 600"
-                        >Confirm email address</a
+                      <a
+                        href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email"
+                        style="color: #b45309; text-decoration: underline; font-weight: 600"
+                        >Open thèque instead</a
                       >
                     </p>
                   </div>
