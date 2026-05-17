@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
+import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { ShelfId } from "@/lib/shelves";
+import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+
+const PENDING_REFRESH_INTERVAL_MS = 2000;
 
 type LibraryItemsSectionProps = {
   userId: string;
@@ -18,10 +22,46 @@ type LibraryItemsSectionProps = {
   initialItems: LibraryItemRow[];
 };
 
+function hasPendingEnrichment(items: LibraryItemRow[]): boolean {
+  return items.some(
+    (item) => item.processing_status === "pending" || item.processing_status === "processing",
+  );
+}
+
 export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryItemsSectionProps) {
   const [items, setItems] = useState<LibraryItemRow[]>(() => initialItems);
+  const hasPendingItems = hasPendingEnrichment(items);
 
   useItemRealtime(userId, shelfId, setItems);
+
+  useEffect(() => {
+    if (!hasPendingItems) return;
+
+    let cancelled = false;
+    let inFlight = false;
+    const supabase = createClient();
+
+    const refreshPendingItems = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const rows = await fetchLibraryItemsForShelf(supabase, shelfId);
+        if (!cancelled) setItems(rows);
+      } catch {
+        // Keep the current card state; the next interval or Realtime event can still update it.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void refreshPendingItems();
+    const intervalId = window.setInterval(() => void refreshPendingItems(), PENDING_REFRESH_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [hasPendingItems, shelfId]);
 
   const onItemPatch = useCallback(
     (
