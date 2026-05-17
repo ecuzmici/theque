@@ -15,9 +15,9 @@
     "128": "icons/icon-128.png"
   },
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://theque.app/*", "https://theque.vercel.app/*"],
+  "host_permissions": ["https://theque.app/*"],
   "externally_connectable": {
-    "matches": ["https://theque.app/*", "https://theque.vercel.app/*"]
+    "matches": ["https://theque.app/*"]
   },
   "background": {
     "service_worker": "background.js"
