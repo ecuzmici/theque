@@ -66,17 +66,22 @@ export async function GET(request: Request) {
     },
   });
 
-  const { error } = code
-    ? await supabase.auth.exchangeCodeForSession(code)
-    : await supabase.auth.verifyOtp({
-        token_hash: tokenHash,
-        type,
-      });
+  let exchangeError: Error | null = null;
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    exchangeError = error;
+  } else if (tokenHash && isEmailOtpType(type)) {
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type,
+    });
+    exchangeError = error;
+  }
 
-  if (error) {
-    console.error("[auth/callback] session exchange:", error.message);
+  if (exchangeError) {
+    console.error("[auth/callback] session exchange:", exchangeError.message);
     return NextResponse.redirect(
-      `${origin}/login?error=auth&reason=${encodeURIComponent(error.message)}`,
+      `${origin}/login?error=auth&reason=${encodeURIComponent(exchangeError.message)}`,
     );
   }
 
