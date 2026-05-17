@@ -1,5 +1,6 @@
 import "server-only";
 
+import { captureCategoryHintFromStructured } from "@/lib/capture/category-hint";
 import type { CategorySource, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
@@ -115,6 +116,11 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
+    // Transient capture input: `capture_category_hint` is read once for `classify()` and is not
+    // merged into the final `structured` written below—keeping internal capture metadata out of
+    // user-facing structured fields. Preserving it in DB `structured` would require hiding it in
+    // the item UI (out of scope here).
+    const categoryHint = preserveManual ? null : captureCategoryHintFromStructured(row.structured);
 
     const classification = preserveManual
       ? {
@@ -126,6 +132,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
           domain: urlObj.hostname,
           pathname: urlObj.pathname,
           jsonLd: extracted.raw_metadata.json_ld as unknown[],
+          categoryHint,
         });
 
     const titleHint =

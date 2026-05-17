@@ -36,6 +36,7 @@ Create or return existing item. **Must respond in <500ms** — enqueue enrichmen
 {
   "url": "https://www.goodreads.com/book/show/123",
   "note": "optional",
+  "category_hint": "books",
   "tag_names": ["sci-fi"],
   "collection_ids": ["uuid"],
   "source": "ios_shortcut"
@@ -46,9 +47,12 @@ Create or return existing item. **Must respond in <500ms** — enqueue enrichmen
 |-------|----------|-------|
 | `url` | yes | Must be `http` or `https` |
 | `note` | no | Max 2000 chars |
+| `category_hint` | no | Optional enrichment signal from capture clients (e.g. Chrome extension shelf picker). Accepted values extension hint subset: `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, `recipes`. Not a manual category override (`PATCH /api/items/:id` is). |
 | `tag_names` | no | Created if missing; normalized lowercase |
 | `collection_ids` | no | Must belong to user |
 | `source` | yes | Enum `item_source` |
+
+Duplicate URLs: the handler resolves an existing item and returns **`200`** with `created: false` **before** optional hints influence the outcome, so **`category_hint` is not validated for duplicate captures** — an invalid hint does **not** change the duplicate response into an error.
 
 **Response `201` (new)**
 
@@ -84,6 +88,7 @@ Same shape with `"created": false` and existing item fields.
 | Status | Code | When |
 |--------|------|------|
 | 400 | `invalid_url` | Malformed URL |
+| 400 | `invalid_category_hint` | `category_hint` present but not one of `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, `recipes` (skipped for duplicates; see above) |
 | 401 | `unauthorized` | Missing/invalid auth |
 | 403 | `forbidden` | Collection not owned |
 | 429 | `rate_limited` | Too many requests |

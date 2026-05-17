@@ -21,6 +21,7 @@
 /build
 
 .agent/
+.worktrees/
 
 # misc
 .DS_Store

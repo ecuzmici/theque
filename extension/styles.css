@@ -16,11 +16,20 @@ body {
   font-size: 13px;
   color: #1c1917;
   background: #faf8f5;
-  width: 320px;
+  width: 340px;
 }
 
 .ks-popup {
+  display: grid;
+  gap: 12px;
   padding: 14px;
+}
+
+.ks-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .ks-header h1 {
@@ -38,9 +47,53 @@ body {
   font-size: 12px;
 }
 
+.ks-link-btn {
+  border: 1px solid rgba(28, 25, 23, 0.09);
+  border-radius: 999px;
+  background: #fffefb;
+  color: #92400e;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 9px;
+}
+
+.ks-link-btn:hover {
+  background: #f5f0e8;
+}
+
+.ks-capture-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(28, 25, 23, 0.09);
+  border-radius: 14px;
+  background: #fffefb;
+}
+
+.ks-tab-title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-serif, Georgia, "Times New Roman", serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ks-tab-url {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #78716c;
+  font-size: 11px;
+}
+
 .ks-status {
-  margin: 10px 0;
-  min-height: 2.6em;
+  margin: 0;
+  min-height: 1.35em;
   line-height: 1.35;
   font-size: 12px;
 }
@@ -89,6 +142,11 @@ body {
   outline-offset: 1px;
 }
 
+.ks-select {
+  appearance: auto;
+  min-height: 38px;
+}
+
 .ks-textarea {
   resize: vertical;
   min-height: 4.5rem;
@@ -103,10 +161,10 @@ body {
 
 .ks-btn {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 0;
   padding: 10px 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -127,7 +185,6 @@ body {
 }
 
 .ks-btn-secondary {
-  margin-top: 10px;
   background: #e7e5e4;
   color: #1c1917;
 }
@@ -137,7 +194,7 @@ body {
 }
 
 .ks-settings {
-  margin-top: 16px;
+  margin-top: 2px;
   padding-top: 10px;
   border-top: 1px solid rgba(28, 25, 23, 0.09);
 }

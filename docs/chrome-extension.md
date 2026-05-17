@@ -6,7 +6,7 @@ Capture the active tab into your library using a personal capture token (`bmly_�
 
 1. Node.js and this repo cloned on your machine.
 2. Run **`npm install`** once.
-3. Run **`npm run build`** so TypeScript compiles `extension/popup.ts` and `extension/background.ts` into `popup.js` / `background.js` (these outputs are gitignored).
+3. To compile extension TypeScript (`extension/popup.ts`, `extension/background.ts`) into `popup.js` / `background.js` (gitignored), run **`npm run build:extension`**. **`npm run build`** remains valid when you want the full pipeline (extension compile + Next.js app build).
 
 ## Load unpacked (Chrome)
 
@@ -16,7 +16,7 @@ Capture the active tab into your library using a personal capture token (`bmly_�
 4. Select the **`extension`** folder inside this repo  
    (`extension/` in this repo), **not** the repo root.
 
-After code changes to `popup.ts` / `background.ts`, run `npm run build` again and click **Reload** on the extension card.
+After code changes to `popup.ts` / `background.ts`, run `npm run build:extension` again (or `npm run build` if you prefer the full app build too) and click **Reload** on the extension card.
 
 ## First-time setup
 
@@ -24,13 +24,15 @@ After code changes to `popup.ts` / `background.ts`, run `npm run build` again an
 2. Expand **Settings**.
 3. Click **Connect to thèque** and finish the flow in the opened thèque tab.
 
+When connected, **Open thèque** opens the library. When disconnected, it opens the extension connection flow.
+
 The extension connects to `https://theque.app`. The token is stored in **`chrome.storage.local`** only on your machine.
 
 ## Capture
 
 1. Open any normal web tab (`http` / `https`).
 2. Open the popup, optionally add a **note**.
-3. Click **Save current tab**.
+3. Click **Save to thèque**.
 
 The extension sends:
 
@@ -44,9 +46,12 @@ Content-Type: application/json
 {
   "url": "<current tab URL>",
   "note": "optional",
+  "category_hint": "movies_and_tv",
   "source": "chrome_extension"
 }
 ```
+
+`category_hint` is optional. The popup shows shelf-style labels (`Books`, `Watch`, `Eat`, `Shop`, `Travel`, `Read`, `Cook`) and sends the matching category only when the user chooses a value other than `Auto`. The hint is enrichment input, not a manual override, and does not override stronger classification from domain map or schema.org signals when those apply.
 
 Restricted URLs (`chrome://`, extension pages, etc.) cannot be read by extensions and will show an error.
 

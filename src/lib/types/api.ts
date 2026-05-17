@@ -1,3 +1,4 @@
+import type { ExtensionCategoryHint } from "@/lib/capture/category-hint";
 import type {
   Database,
   ItemCategory,
@@ -11,6 +12,7 @@ import type {
 export type CaptureRequestBody = {
   url: string;
   note?: string | null;
+  category_hint?: ExtensionCategoryHint | null;
   tag_names?: string[];
   collection_ids?: string[];
   source: ItemSource;

@@ -1,3 +1,4 @@
+import type { ExtensionCategoryHint } from "@/lib/capture/category-hint";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
 import { flattenJsonLd, typesOf } from "@/lib/jsonld";
 
@@ -65,6 +66,7 @@ export function classify(input: {
   domain: string;
   pathname: string;
   jsonLd: unknown[];
+  categoryHint?: ExtensionCategoryHint | null;
 }): Classification {
   const domainHit = classifyFromDomain(input.domain);
   if (domainHit) {
@@ -81,6 +83,14 @@ export function classify(input: {
       category: schemaHit.category,
       category_confidence: schemaHit.category_confidence,
       category_source: "schema_org",
+    };
+  }
+
+  if (input.categoryHint) {
+    return {
+      category: input.categoryHint,
+      category_confidence: 0.6,
+      category_source: "heuristic",
     };
   }
 

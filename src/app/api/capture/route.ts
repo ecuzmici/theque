@@ -1,6 +1,7 @@
 import { after } from "next/server";
 
-import type { Database, ItemSource } from "@/lib/database.types";
+import { parseCaptureCategoryHint } from "@/lib/capture/category-hint";
+import type { Database, ItemSource, Json } from "@/lib/database.types";
 import {
   lookupCaptureTokenUser,
   parseBearerToken,
@@ -105,6 +106,11 @@ export async function POST(req: Request) {
     return jsonResponse(res);
   }
 
+  const categoryHint = parseCaptureCategoryHint(body.category_hint);
+  if (categoryHint === "invalid") {
+    return jsonResponse({ code: "invalid_category_hint" }, { status: 400 });
+  }
+
   if (body.collection_ids?.length) {
     const { data: owned } = await admin
       .from("collections")
@@ -127,6 +133,7 @@ export async function POST(req: Request) {
     note: body.note ?? null,
     status: "inbox" as const,
     processing_status: "pending" as const,
+    structured: (categoryHint ? { capture_category_hint: categoryHint } : {}) as Json,
   };
 
   const { data: createdRow, error: insertErr } = await db

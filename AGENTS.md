@@ -17,6 +17,8 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 | Production | https://theque.vercel.app | `jucaqjkgyhyzixzaisjr` (dashboard name: **theque**) |
 | Local | http://localhost:3000 | Same project; keys in `.env.local` |
 
+Public thèque URL (users, redirects, Chrome extension default): **`https://theque.app`**. Vercel production deployment hostname (shown above): **`https://theque.vercel.app`** — keep both straight when pairing extension/docs with infra.
+
 GitHub: https://github.com/ecuzmici/theque  
 Vercel project: **theque** (linked to repo `master`).
 

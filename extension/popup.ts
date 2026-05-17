@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
 } as const;
 
 const THEQUE_APP_URL = "https://theque.app";
+const SAVE_BUTTON_LABEL_DEFAULT = "Save to thèque";
 
 function $(id: string): HTMLElement {
   const el = document.getElementById(id);
@@ -32,36 +33,82 @@ async function loadSettings(): Promise<{ token: string; baseUrl: string; email: 
   return { token, baseUrl: THEQUE_APP_URL, email };
 }
 
-async function getActiveTabUrl(): Promise<string | null> {
+async function getActiveTab(): Promise<{ url: string; title: string } | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url;
   if (!url || url.startsWith("chrome://") || url.startsWith("chrome-extension://")) {
     return null;
   }
-  return url;
+  return { url, title: tab.title?.trim() || "Current tab" };
+}
+
+function formatTabHostname(tabUrl: string): string {
+  try {
+    return new URL(tabUrl).hostname;
+  } catch {
+    return tabUrl;
+  }
+}
+
+async function hydrateCaptureCard(tabTitleEl: HTMLParagraphElement, tabUrlEl: HTMLParagraphElement) {
+  const tab = await getActiveTab();
+  if (!tab) {
+    tabTitleEl.textContent = "Restricted page";
+    tabUrlEl.textContent = "This page cannot be captured.";
+    return;
+  }
+  tabTitleEl.textContent = tab.title;
+  tabUrlEl.textContent = formatTabHostname(tab.url);
+}
+
+async function openConnectPage() {
+  await chrome.storage.local.set({ [STORAGE_KEYS.baseUrl]: THEQUE_APP_URL });
+  const url = new URL("/settings/extension-connect", THEQUE_APP_URL);
+  url.searchParams.set("extensionId", chrome.runtime.id);
+  await chrome.tabs.create({ url: url.toString() });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   const noteEl = $("ks-note") as HTMLTextAreaElement;
+  const categoryEl = $("ks-category") as HTMLSelectElement;
+  const tabTitleEl = $("ks-tab-title") as HTMLParagraphElement;
+  const tabUrlEl = $("ks-tab-url") as HTMLParagraphElement;
+
+  await hydrateCaptureCard(tabTitleEl, tabUrlEl);
 
   const { token, email } = await loadSettings();
-  setStatus(token ? `Connected${email ? ` as ${email}` : ""}.` : "Connect to thèque to save pages.", token ? "ok" : "muted");
+  setStatus(
+    token ? `Connected${email ? ` as ${email}` : ""}.` : "Connect to thèque to save pages.",
+    token ? "ok" : "muted",
+  );
 
   $("ks-connect-session").addEventListener("click", async () => {
     try {
-      await chrome.storage.local.set({ [STORAGE_KEYS.baseUrl]: THEQUE_APP_URL });
-      const url = new URL("/settings/extension-connect", THEQUE_APP_URL);
-      url.searchParams.set("extensionId", chrome.runtime.id);
-      await chrome.tabs.create({ url: url.toString() });
+      await openConnectPage();
       setStatus("Opened thèque to connect this extension.", "muted");
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Could not open connect page.", "err");
     }
   });
 
+  $("ks-open-theque").addEventListener("click", async () => {
+    try {
+      const { token: tok } = await loadSettings();
+      if (tok.startsWith("bmly_")) {
+        await chrome.tabs.create({ url: `${THEQUE_APP_URL}/library` });
+      } else {
+        await openConnectPage();
+      }
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Could not open thèque.", "err");
+    }
+  });
+
   $("ks-save").addEventListener("click", async () => {
     const saveBtn = $("ks-save") as HTMLButtonElement;
     saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+    saveBtn.setAttribute("aria-busy", "true");
     try {
       const { token: tok, baseUrl: apiBase } = await loadSettings();
       if (!tok.startsWith("bmly_")) {
@@ -69,13 +116,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
-      const tabUrl = await getActiveTabUrl();
-      if (!tabUrl) {
+      const tab = await getActiveTab();
+      if (!tab) {
         setStatus("This page cannot be captured (restricted URL).", "err");
         return;
       }
 
       const note = noteEl.value.trim();
+      const categoryHint = categoryEl.value.trim();
       const res = await fetch(`${apiBase}/api/capture`, {
         method: "POST",
         headers: {
@@ -83,8 +131,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          url: tabUrl,
+          url: tab.url,
           ...(note ? { note } : {}),
+          ...(categoryHint ? { category_hint: categoryHint } : {}),
           source: "chrome_extension",
         }),
       });
@@ -107,6 +156,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       setStatus("Network error — check API URL and connection.", "err");
     } finally {
       saveBtn.disabled = false;
+      saveBtn.textContent = SAVE_BUTTON_LABEL_DEFAULT;
+      saveBtn.removeAttribute("aria-busy");
     }
   });
 });

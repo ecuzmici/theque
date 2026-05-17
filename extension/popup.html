@@ -9,19 +9,48 @@
   <body>
     <main class="ks-popup">
       <header class="ks-header">
-        <h1>thèque</h1>
-        <p class="ks-tagline">Save this tab</p>
+        <div>
+          <h1>thèque</h1>
+          <p class="ks-tagline">Save this page</p>
+        </div>
+        <button type="button" id="ks-open-theque" class="ks-link-btn">Open thèque</button>
       </header>
 
-      <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
-      <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">
-        Connect to thèque
-      </button>
+      <section class="ks-capture-card" aria-label="Current tab capture">
+        <div>
+          <p id="ks-tab-title" class="ks-tab-title">Current tab</p>
+          <p id="ks-tab-url" class="ks-tab-url"></p>
+        </div>
+        <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
+        <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary">
+          Connect to thèque
+        </button>
+      </section>
+
+      <label class="ks-label" for="ks-category">
+        Category hint <span class="ks-optional">(optional)</span>
+      </label>
+      <select id="ks-category" class="ks-input ks-select">
+        <option value="">Auto</option>
+        <option value="books">Books</option>
+        <option value="movies_and_tv">Watch</option>
+        <option value="restaurants">Eat</option>
+        <option value="products">Shop</option>
+        <option value="travel">Travel</option>
+        <option value="articles">Read</option>
+        <option value="recipes">Cook</option>
+      </select>
 
       <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
-      <textarea id="ks-note" class="ks-input ks-textarea" rows="3" maxlength="2000" placeholder="Why are you saving this?"></textarea>
+      <textarea
+        id="ks-note"
+        class="ks-input ks-textarea"
+        rows="3"
+        maxlength="2000"
+        placeholder="Add a note for future you"
+      ></textarea>
 
-      <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save current tab</button>
+      <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save to thèque</button>
 
       <details class="ks-settings">
         <summary>Settings</summary>

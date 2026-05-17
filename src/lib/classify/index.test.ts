@@ -45,4 +45,54 @@ describe("classify", () => {
     expect(r.category_confidence).toBe(0.4);
     expect(r.category_source).toBe("heuristic");
   });
+
+  it("uses a category hint when there is no stronger classification evidence", () => {
+    const r = classify({
+      domain: "unknown.example",
+      pathname: "/post/hello",
+      jsonLd: [],
+      categoryHint: "movies_and_tv",
+    });
+
+    expect(r.category).toBe("movies_and_tv");
+    expect(r.category_confidence).toBe(0.6);
+    expect(r.category_source).toBe("heuristic");
+  });
+
+  it("prefers a category hint over path heuristics when both apply", () => {
+    const r = classify({
+      domain: "unknown.example",
+      pathname: "/recipes/soup",
+      jsonLd: [],
+      categoryHint: "movies_and_tv",
+    });
+
+    expect(r.category).toBe("movies_and_tv");
+    expect(r.category_confidence).toBe(0.6);
+    expect(r.category_source).toBe("heuristic");
+  });
+
+  it("lets domain evidence beat a category hint", () => {
+    const r = classify({
+      domain: "goodreads.com",
+      pathname: "/book/show/1",
+      jsonLd: [],
+      categoryHint: "movies_and_tv",
+    });
+
+    expect(r.category).toBe("books");
+    expect(r.category_source).toBe("domain");
+  });
+
+  it("lets schema.org evidence beat a category hint", () => {
+    const r = classify({
+      domain: "example.org",
+      pathname: "/story",
+      jsonLd: [{ "@type": "Recipe", name: "Soup" }],
+      categoryHint: "travel",
+    });
+
+    expect(r.category).toBe("recipes");
+    expect(r.category_source).toBe("schema_org");
+  });
 });
