@@ -44,7 +44,7 @@ function LoginForm() {
 
     try {
       const supabase = createClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
+      const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent(safeNext)}`;
 
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
