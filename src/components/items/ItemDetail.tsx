@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Pencil, RefreshCw, Sparkles } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
@@ -180,14 +179,14 @@ export function ItemDetail({
 
       <div className="relative mt-4 h-[min(40vh,28rem)] w-full overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10">
         {imgSrc ? (
-          <Image
-            src={imgSrc}
-            alt=""
-            fill
-            priority
-            className="object-cover"
-            sizes="(max-width:768px) 100vw, min(896px, 100vw)"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
+            <img
+              src={imgSrc}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </>
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
             {item.processing_status === "pending" || item.processing_status === "processing"

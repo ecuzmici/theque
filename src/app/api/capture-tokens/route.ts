@@ -4,6 +4,7 @@ import type {
   CaptureTokensListResponseBody,
 } from "@/lib/types/api";
 import { mintCaptureTokenParts } from "@/lib/auth/capture-token";
+import { hasMaxLength, MAX_CAPTURE_TOKEN_NAME_LENGTH } from "@/lib/input-limits";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -18,7 +19,8 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return Response.json({ code: "query_failed", detail: error.message }, { status: 500 });
+    console.error("[api/capture-tokens] query_failed:", error.message);
+    return Response.json({ code: "query_failed" }, { status: 500 });
   }
 
   const body: CaptureTokensListResponseBody = { tokens: data ?? [] };
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
   }
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
+  if (!name || !hasMaxLength(name, MAX_CAPTURE_TOKEN_NAME_LENGTH)) {
     return Response.json({ code: "invalid_name" }, { status: 400 });
   }
 
@@ -56,7 +58,8 @@ export async function POST(req: Request) {
     .single();
 
   if (error || !row) {
-    return Response.json({ code: "insert_failed", detail: error?.message }, { status: 500 });
+    console.error("[api/capture-tokens] insert_failed:", error?.message);
+    return Response.json({ code: "insert_failed" }, { status: 500 });
   }
 
   const res: CaptureTokenCreateResponseBody = {

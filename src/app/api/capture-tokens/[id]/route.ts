@@ -17,7 +17,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     .select("id");
 
   if (error) {
-    return Response.json({ code: "update_failed", detail: error.message }, { status: 500 });
+    console.error("[api/capture-tokens/:id] update_failed:", error.message);
+    return Response.json({ code: "update_failed" }, { status: 500 });
   }
 
   if (!rows?.length) {

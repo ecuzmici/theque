@@ -1,5 +1,10 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { Database } from "@/lib/database.types";
+import {
+  hasMaxLength,
+  MAX_COLLECTION_DESCRIPTION_LENGTH,
+  MAX_COLLECTION_NAME_LENGTH,
+} from "@/lib/input-limits";
 import { createClient } from "@/lib/supabase/server";
 
 type CollectionUpdate = Database["public"]["Tables"]["collections"]["Update"];
@@ -19,11 +24,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const patch: CollectionUpdate = {};
   if (typeof body.name === "string") {
     const name = body.name.trim();
-    if (!name) return Response.json({ code: "invalid_name" }, { status: 400 });
+    if (!name || !hasMaxLength(name, MAX_COLLECTION_NAME_LENGTH)) {
+      return Response.json({ code: "invalid_name" }, { status: 400 });
+    }
     patch.name = name;
   }
 
   if (typeof body.description === "string" || body.description === null) {
+    if (typeof body.description === "string" && !hasMaxLength(body.description, MAX_COLLECTION_DESCRIPTION_LENGTH)) {
+      return Response.json({ code: "invalid_description" }, { status: 400 });
+    }
     patch.description = body.description === null ? null : body.description;
   }
 
@@ -43,7 +53,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (error.code === "23505") {
       return Response.json({ code: "duplicate_name" }, { status: 409 });
     }
-    return Response.json({ code: "update_failed", detail: error.message }, { status: 500 });
+    console.error("[api/collections/:id] update_failed:", error.message);
+    return Response.json({ code: "update_failed" }, { status: 500 });
   }
 
   if (!rows?.length) {
@@ -68,7 +79,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     .select("id");
 
   if (error) {
-    return Response.json({ code: "delete_failed", detail: error.message }, { status: 500 });
+    console.error("[api/collections/:id] delete_failed:", error.message);
+    return Response.json({ code: "delete_failed" }, { status: 500 });
   }
 
   if (!deleted?.length) {

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { sanitizeRedirectPath } from "@/app/login/login-utils";
 import type { Database } from "@/lib/database.types";
 
 /** Routes that require a session; must stay in sync with matcher (excluding public entries). */
@@ -68,7 +69,7 @@ export async function middleware(request: NextRequest) {
 
   if (user && pathname === "/login") {
     const next = request.nextUrl.searchParams.get("next");
-    const dest = next?.startsWith("/") ? next : "/library";
+    const dest = sanitizeRedirectPath(next);
     return redirectPreservingCookies(response, new URL(dest, request.url));
   }
 

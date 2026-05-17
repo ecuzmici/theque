@@ -1,5 +1,6 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { Database } from "@/lib/database.types";
+import { hasMaxLength, MAX_SEARCH_QUERY_LENGTH } from "@/lib/input-limits";
 import type { ItemSummaryPayload, ItemsListResponseBody } from "@/lib/types/api";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,7 +27,7 @@ function intersectIds(a: string[], b: string[]): string[] {
 }
 
 function escapeIlike(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
 async function loadTagsAndCollections(
@@ -207,9 +208,14 @@ export async function GET(req: Request) {
   }
 
   if (q && q.trim()) {
-    const esc = escapeIlike(q.trim());
+    const trimmedQuery = q.trim();
+    if (!hasMaxLength(trimmedQuery, MAX_SEARCH_QUERY_LENGTH)) {
+      return Response.json({ code: "invalid_query" }, { status: 400 });
+    }
+
+    const esc = escapeIlike(trimmedQuery);
     query = query.or(
-      `title.ilike.%${esc}%,description.ilike.%${esc}%,domain.ilike.%${esc}%,note.ilike.%${esc}%`,
+      `title.ilike."%${esc}%",description.ilike."%${esc}%",domain.ilike."%${esc}%",note.ilike."%${esc}%"`,
     );
   }
 
@@ -217,7 +223,8 @@ export async function GET(req: Request) {
   const { data: rows, error } = await query.range(offset, rangeEnd);
 
   if (error) {
-    return Response.json({ code: "query_failed", detail: error.message }, { status: 500 });
+    console.error("[api/items] query_failed:", error.message);
+    return Response.json({ code: "query_failed" }, { status: 500 });
   }
 
   const list = rows ?? [];

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "thèque capture",
+  "name": "thèque",
   "short_name": "thèque",
   "version": "0.1.0",
   "description": "Save the current tab to your thèque library.",
@@ -9,9 +9,9 @@
     "default_title": "Save to thèque"
   },
   "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://theque.app/*"],
+  "host_permissions": ["https://theque.app/*", "https://theque.vercel.app/*"],
   "externally_connectable": {
-    "matches": ["https://theque.app/*"]
+    "matches": ["https://theque.app/*", "https://theque.vercel.app/*"]
   },
   "background": {
     "service_worker": "background.js"

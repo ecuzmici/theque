@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { sanitizeRedirectPath } from "@/app/login/login-utils";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const next = searchParams.get("next")?.startsWith("/") ? searchParams.get("next")! : "/library";
+  const next = sanitizeRedirectPath(searchParams.get("next"));
   const email = process.env.QA_DEV_EMAIL?.trim();
   if (!email) {
     return NextResponse.json(
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
 
   if (verifyError) {
     console.error("[dev/qa-session] verifyOtp:", verifyError.message);
-    return NextResponse.json({ error: "verify_failed", message: verifyError.message }, { status: 500 });
+    return NextResponse.json({ error: "verify_failed" }, { status: 500 });
   }
 
   const response = NextResponse.redirect(`${origin}${next}`);

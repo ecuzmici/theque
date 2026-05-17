@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback } from "react";
 
@@ -79,12 +78,11 @@ export function ItemCard({ item, inboxActionsEnabled, onItemPatch }: ItemCardPro
         >
           {imgSrc ? (
             <>
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
+              <img
                 src={imgSrc}
                 alt=""
-                fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px"
-                className={cn("object-cover transition", processing && "opacity-75")}
+                className={cn("absolute inset-0 h-full w-full object-cover transition", processing && "opacity-75")}
               />
               {processing ? (
                 <div className="pointer-events-none absolute inset-0 ks-shimmer bg-transparent" />

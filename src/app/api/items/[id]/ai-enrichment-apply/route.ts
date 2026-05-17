@@ -79,7 +79,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     .eq("id", id);
 
   if (updateError) {
-    return Response.json({ code: "update_failed", detail: updateError.message }, { status: 500 });
+    console.error("[api/items/:id/ai-enrichment-apply] update_failed:", updateError.message);
+    return Response.json({ code: "update_failed" }, { status: 500 });
   }
 
   const { data: updated } = await supabase.from("items").select("*").eq("id", id).single();

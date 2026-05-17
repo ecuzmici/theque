@@ -8,6 +8,15 @@ import {
 } from "@/lib/auth/capture-token";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { CaptureItemPayload, CaptureRequestBody, CaptureResponseBody } from "@/lib/types/api";
+import {
+  hasMaxItems,
+  hasMaxLength,
+  MAX_COLLECTION_IDS_PER_ITEM,
+  MAX_NOTE_LENGTH,
+  MAX_TAGS_PER_ITEM,
+  MAX_URL_LENGTH,
+  normalizeLimitedTagNames,
+} from "@/lib/input-limits";
 import { enrichItem } from "@/lib/jobs/enrich-item";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -21,16 +30,6 @@ const SOURCES = new Set<ItemSource>([
   "manual",
   "mobile_share_extension",
 ]);
-
-function normalizeTagNames(names?: string[]): string[] {
-  if (!names?.length) return [];
-  const set = new Set<string>();
-  for (const raw of names) {
-    const n = raw.trim().toLowerCase();
-    if (n) set.add(n);
-  }
-  return [...set];
-}
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return Response.json(body, init);
@@ -50,14 +49,47 @@ export async function POST(req: Request) {
     return jsonResponse({ code: "invalid_url" }, { status: 400 });
   }
 
+  if (!hasMaxLength(body.url, MAX_URL_LENGTH)) {
+    return jsonResponse({ code: "invalid_url" }, { status: 400 });
+  }
+
   if (!body.source || !SOURCES.has(body.source)) {
     return jsonResponse({ code: "invalid_source" }, { status: 400 });
   }
 
   if (body.note !== undefined && body.note !== null) {
-    if (typeof body.note !== "string" || body.note.length > 2000) {
+    if (typeof body.note !== "string" || !hasMaxLength(body.note, MAX_NOTE_LENGTH)) {
       return jsonResponse({ code: "invalid_note" }, { status: 400 });
     }
+  }
+
+  let tagNames: string[] = [];
+  if (body.tag_names !== undefined) {
+    if (
+      !Array.isArray(body.tag_names) ||
+      !hasMaxItems(body.tag_names, MAX_TAGS_PER_ITEM) ||
+      body.tag_names.some((name) => typeof name !== "string")
+    ) {
+      return jsonResponse({ code: "invalid_tags" }, { status: 400 });
+    }
+
+    const normalized = normalizeLimitedTagNames(body.tag_names);
+    if (!normalized) {
+      return jsonResponse({ code: "invalid_tags" }, { status: 400 });
+    }
+    tagNames = normalized;
+  }
+
+  let collectionIds: string[] = [];
+  if (body.collection_ids !== undefined) {
+    if (
+      !Array.isArray(body.collection_ids) ||
+      !hasMaxItems(body.collection_ids, MAX_COLLECTION_IDS_PER_ITEM) ||
+      body.collection_ids.some((id) => typeof id !== "string")
+    ) {
+      return jsonResponse({ code: "invalid_collections" }, { status: 400 });
+    }
+    collectionIds = [...new Set(body.collection_ids)];
   }
 
   let canonical: string;
@@ -111,14 +143,14 @@ export async function POST(req: Request) {
     return jsonResponse({ code: "invalid_category_hint" }, { status: 400 });
   }
 
-  if (body.collection_ids?.length) {
+  if (collectionIds.length) {
     const { data: owned } = await admin
       .from("collections")
       .select("id")
       .eq("user_id", userId)
-      .in("id", body.collection_ids);
+      .in("id", collectionIds);
 
-    if (!owned || owned.length !== body.collection_ids.length) {
+    if (!owned || owned.length !== collectionIds.length) {
       return jsonResponse({ code: "forbidden" }, { status: 403 });
     }
   }
@@ -143,10 +175,10 @@ export async function POST(req: Request) {
     .single();
 
   if (insertErr || !createdRow) {
-    return jsonResponse({ code: "insert_failed", detail: insertErr?.message }, { status: 500 });
+    console.error("[api/capture] insert_failed:", insertErr?.message);
+    return jsonResponse({ code: "insert_failed" }, { status: 500 });
   }
 
-  const tagNames = normalizeTagNames(body.tag_names);
   const tagIds: string[] = [];
 
   for (const name of tagNames) {
@@ -157,7 +189,8 @@ export async function POST(req: Request) {
       .single();
 
     if (tagErr || !tagRow) {
-      return jsonResponse({ code: "tag_failed", detail: tagErr?.message }, { status: 500 });
+      console.error("[api/capture] tag_failed:", tagErr?.message);
+      return jsonResponse({ code: "tag_failed" }, { status: 500 });
     }
     tagIds.push(tagRow.id);
   }
@@ -166,18 +199,20 @@ export async function POST(req: Request) {
     const rows = tagIds.map((tag_id) => ({ item_id: createdRow.id, tag_id }));
     const { error: linkErr } = await admin.from("item_tags").insert(rows);
     if (linkErr) {
-      return jsonResponse({ code: "tag_link_failed", detail: linkErr.message }, { status: 500 });
+      console.error("[api/capture] tag_link_failed:", linkErr.message);
+      return jsonResponse({ code: "tag_link_failed" }, { status: 500 });
     }
   }
 
-  if (body.collection_ids?.length) {
-    const ciRows = body.collection_ids.map((collection_id) => ({
+  if (collectionIds.length) {
+    const ciRows = collectionIds.map((collection_id) => ({
       collection_id,
       item_id: createdRow.id,
     }));
     const { error: ciErr } = await admin.from("collection_items").insert(ciRows);
     if (ciErr) {
-      return jsonResponse({ code: "collection_link_failed", detail: ciErr.message }, { status: 500 });
+      console.error("[api/capture] collection_link_failed:", ciErr.message);
+      return jsonResponse({ code: "collection_link_failed" }, { status: 500 });
     }
   }
 

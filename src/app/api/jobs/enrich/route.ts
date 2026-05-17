@@ -1,12 +1,22 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { parseBearerToken } from "@/lib/auth/capture-token";
 import { enrichItem } from "@/lib/jobs/enrich-item";
 import type { EnrichJobResponseBody } from "@/lib/types/api";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+function hasValidCronSecret(bearer: string | null, secret: string | undefined): boolean {
+  if (!bearer || !secret) return false;
+
+  const bearerBuffer = Buffer.from(bearer);
+  const secretBuffer = Buffer.from(secret);
+  return bearerBuffer.length === secretBuffer.length && timingSafeEqual(bearerBuffer, secretBuffer);
+}
+
 export async function POST(req: Request) {
   const secret = process.env.CRON_SECRET;
   const bearer = parseBearerToken(req.headers.get("authorization"));
-  if (!secret || bearer !== secret) {
+  if (!hasValidCronSecret(bearer, secret)) {
     return Response.json({ code: "unauthorized" }, { status: 401 });
   }
 
@@ -16,7 +26,8 @@ export async function POST(req: Request) {
   });
 
   if (error) {
-    return Response.json({ code: "claim_failed", detail: error.message }, { status: 500 });
+    console.error("[api/jobs/enrich] claim_failed:", error.message);
+    return Response.json({ code: "claim_failed" }, { status: 500 });
   }
 
   let processed = 0;

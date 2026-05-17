@@ -1,6 +1,15 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { Database, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { loadItemExtras } from "@/lib/items/extras";
+import {
+  hasMaxItems,
+  hasMaxLength,
+  MAX_COLLECTION_IDS_PER_ITEM,
+  MAX_NOTE_LENGTH,
+  MAX_TAGS_PER_ITEM,
+  MAX_TITLE_LENGTH,
+  normalizeLimitedTagNames,
+} from "@/lib/input-limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,6 +26,8 @@ const CATEGORIES = new Set<ItemCategory>([
   "articles",
 ]);
 
+const BLOCKED_JSON_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function mergeJsonRecord(existing: Json, patch: unknown): Json {
   const base =
     existing && typeof existing === "object" && !Array.isArray(existing)
@@ -24,18 +35,11 @@ function mergeJsonRecord(existing: Json, patch: unknown): Json {
       : {};
   const p =
     patch && typeof patch === "object" && !Array.isArray(patch)
-      ? { ...(patch as Record<string, unknown>) }
+      ? Object.fromEntries(
+          Object.entries(patch as Record<string, unknown>).filter(([key]) => !BLOCKED_JSON_KEYS.has(key)),
+        )
       : {};
   return { ...base, ...p } as Json;
-}
-
-function normalizeTagNames(names: string[]): string[] {
-  const set = new Set<string>();
-  for (const raw of names) {
-    const n = raw.trim().toLowerCase();
-    if (n) set.add(n);
-  }
-  return [...set];
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -94,10 +98,16 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   if (typeof body.note === "string" || body.note === null) {
+    if (typeof body.note === "string" && !hasMaxLength(body.note, MAX_NOTE_LENGTH)) {
+      return Response.json({ code: "invalid_note" }, { status: 400 });
+    }
     patch.note = body.note === null ? null : body.note;
   }
 
   if (typeof body.title === "string" || body.title === null) {
+    if (typeof body.title === "string" && !hasMaxLength(body.title, MAX_TITLE_LENGTH)) {
+      return Response.json({ code: "invalid_title" }, { status: 400 });
+    }
     patch.title = body.title === null ? null : body.title;
   }
 
@@ -122,14 +132,25 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   if (Object.keys(patch).length) {
     const { error: upErr } = await supabase.from("items").update(patch).eq("id", id);
     if (upErr) {
-      return Response.json({ code: "update_failed", detail: upErr.message }, { status: 500 });
+      console.error("[api/items/:id] update_failed:", upErr.message);
+      return Response.json({ code: "update_failed" }, { status: 500 });
     }
   }
 
   const admin = createAdminClient();
 
   if (Array.isArray(body.tag_names)) {
-    const names = normalizeTagNames(body.tag_names.filter((x): x is string => typeof x === "string"));
+    if (
+      !hasMaxItems(body.tag_names, MAX_TAGS_PER_ITEM) ||
+      body.tag_names.some((name) => typeof name !== "string")
+    ) {
+      return Response.json({ code: "invalid_tags" }, { status: 400 });
+    }
+
+    const names = normalizeLimitedTagNames(body.tag_names);
+    if (!names) {
+      return Response.json({ code: "invalid_tags" }, { status: 400 });
+    }
 
     await admin.from("item_tags").delete().eq("item_id", id);
 
@@ -142,7 +163,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
         .single();
 
       if (tagErr || !tagRow) {
-        return Response.json({ code: "tag_failed", detail: tagErr?.message }, { status: 500 });
+        console.error("[api/items/:id] tag_failed:", tagErr?.message);
+        return Response.json({ code: "tag_failed" }, { status: 500 });
       }
       tagIds.push(tagRow.id);
     }
@@ -151,13 +173,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       const rows = tagIds.map((tag_id) => ({ item_id: id, tag_id }));
       const { error: linkErr } = await admin.from("item_tags").insert(rows);
       if (linkErr) {
-        return Response.json({ code: "tag_link_failed", detail: linkErr.message }, { status: 500 });
+        console.error("[api/items/:id] tag_link_failed:", linkErr.message);
+        return Response.json({ code: "tag_link_failed" }, { status: 500 });
       }
     }
   }
 
   if (Array.isArray(body.collection_ids)) {
-    const collection_ids = body.collection_ids.filter((x): x is string => typeof x === "string");
+    if (
+      !hasMaxItems(body.collection_ids, MAX_COLLECTION_IDS_PER_ITEM) ||
+      body.collection_ids.some((collectionId) => typeof collectionId !== "string")
+    ) {
+      return Response.json({ code: "invalid_collections" }, { status: 400 });
+    }
+
+    const collection_ids = [...new Set(body.collection_ids)];
 
     if (collection_ids.length) {
       const { data: owned } = await admin
@@ -180,7 +210,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       }));
       const { error: ciErr } = await admin.from("collection_items").insert(ciRows);
       if (ciErr) {
-        return Response.json({ code: "collection_link_failed", detail: ciErr.message }, { status: 500 });
+        console.error("[api/items/:id] collection_link_failed:", ciErr.message);
+        return Response.json({ code: "collection_link_failed" }, { status: 500 });
       }
     }
   }
@@ -215,7 +246,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     .select("id");
 
   if (error) {
-    return Response.json({ code: "delete_failed", detail: error.message }, { status: 500 });
+    console.error("[api/items/:id] delete_failed:", error.message);
+    return Response.json({ code: "delete_failed" }, { status: 500 });
   }
 
   if (!deleted?.length) {

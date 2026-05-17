@@ -53,7 +53,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   if (result.status === "failed") {
-    return Response.json({ code: "proposal_failed", detail: result.reason }, { status: 502 });
+    console.error("[api/items/:id/ai-enrichment-proposal] proposal_failed:", result.reason);
+    return Response.json({ code: "proposal_failed" }, { status: 502 });
   }
 
   const body: AiEnrichmentProposalResponseBody = {

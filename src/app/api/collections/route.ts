@@ -1,4 +1,9 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import {
+  hasMaxLength,
+  MAX_COLLECTION_DESCRIPTION_LENGTH,
+  MAX_COLLECTION_NAME_LENGTH,
+} from "@/lib/input-limits";
 import type { CollectionsListResponseBody } from "@/lib/types/api";
 import { createClient } from "@/lib/supabase/server";
 
@@ -14,7 +19,8 @@ export async function GET() {
     .order("name");
 
   if (error) {
-    return Response.json({ code: "query_failed", detail: error.message }, { status: 500 });
+    console.error("[api/collections] query_failed:", error.message);
+    return Response.json({ code: "query_failed" }, { status: 500 });
   }
 
   const ids = collections?.map((c) => c.id) ?? [];
@@ -50,7 +56,7 @@ export async function POST(req: Request) {
   }
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
-  if (!name) {
+  if (!name || !hasMaxLength(name, MAX_COLLECTION_NAME_LENGTH)) {
     return Response.json({ code: "invalid_name" }, { status: 400 });
   }
 
@@ -60,6 +66,9 @@ export async function POST(req: Request) {
       : body.description === null
         ? null
         : null;
+  if (description !== null && !hasMaxLength(description, MAX_COLLECTION_DESCRIPTION_LENGTH)) {
+    return Response.json({ code: "invalid_description" }, { status: 400 });
+  }
 
   const supabase = await createClient();
   const { data: row, error } = await supabase
@@ -76,7 +85,8 @@ export async function POST(req: Request) {
     if (error.code === "23505") {
       return Response.json({ code: "duplicate_name" }, { status: 409 });
     }
-    return Response.json({ code: "insert_failed", detail: error.message }, { status: 500 });
+    console.error("[api/collections] insert_failed:", error.message);
+    return Response.json({ code: "insert_failed" }, { status: 500 });
   }
 
   return Response.json(row, { status: 201 });

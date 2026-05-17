@@ -21,6 +21,7 @@
 /build
 
 .agent/
+.cursor/
 .worktrees/
 
 # misc
