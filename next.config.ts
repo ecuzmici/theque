@@ -10,6 +10,13 @@ function getSupabaseOrigin(): string {
 }
 
 const supabaseOrigin = getSupabaseOrigin();
+const scriptSrc = [
+  "script-src",
+  "'self'",
+  "'unsafe-inline'",
+  ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
+  "https://va.vercel-scripts.com",
+].join(" ");
 
 const securityHeaders = [
   {
@@ -23,7 +30,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
-      "script-src 'self' 'unsafe-inline' https://va.vercel-scripts.com",
+      scriptSrc,
       `connect-src 'self' ${supabaseOrigin} https://vitals.vercel-insights.com`,
       "upgrade-insecure-requests",
     ].join("; "),
