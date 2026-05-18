@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 async function loadCspHeader(nodeEnv: string) {
   vi.resetModules();
   vi.stubEnv("NODE_ENV", nodeEnv);
+  vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
 
   const { default: nextConfig } = await import("./next.config");
   const headerRules = await nextConfig.headers?.();
@@ -24,5 +25,11 @@ describe("security headers", () => {
 
   it("does not allow eval in production CSP", async () => {
     await expect(loadCspHeader("production")).resolves.not.toContain("'unsafe-eval'");
+  });
+
+  it("allows Supabase Realtime websocket connections", async () => {
+    await expect(loadCspHeader("production")).resolves.toContain(
+      "wss://example.supabase.co",
+    );
   });
 });

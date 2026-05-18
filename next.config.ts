@@ -1,15 +1,19 @@
 import type { NextConfig } from "next";
 
-function getSupabaseOrigin(): string {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return "https://*.supabase.co";
+function getSupabaseConnectSources(): string[] {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return ["https://*.supabase.co", "wss://*.supabase.co"];
+  }
+
   try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin;
+    const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    return [url.origin, `wss://${url.host}`];
   } catch {
-    return "https://*.supabase.co";
+    return ["https://*.supabase.co", "wss://*.supabase.co"];
   }
 }
 
-const supabaseOrigin = getSupabaseOrigin();
+const supabaseConnectSources = getSupabaseConnectSources();
 const scriptSrc = [
   "script-src",
   "'self'",
@@ -31,7 +35,7 @@ const securityHeaders = [
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       scriptSrc,
-      `connect-src 'self' ${supabaseOrigin} https://vitals.vercel-insights.com`,
+      `connect-src 'self' ${supabaseConnectSources.join(" ")} https://vitals.vercel-insights.com`,
       "upgrade-insecure-requests",
     ].join("; "),
   },

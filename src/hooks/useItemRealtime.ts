@@ -16,36 +16,40 @@ export function useItemRealtime(
     if (!userId) return;
 
     const supabase = createClient();
-    const channel = supabase
-      .channel(`items:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "items",
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const row = payload.new as LibraryItemRow;
-          setItems((prev) => {
-            const idx = prev.findIndex((i) => i.id === row.id);
-            const matches = itemMatchesShelf(row, shelfId);
-            if (!matches) {
+    try {
+      const channel = supabase
+        .channel(`items:${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "items",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            const row = payload.new as LibraryItemRow;
+            setItems((prev) => {
+              const idx = prev.findIndex((i) => i.id === row.id);
+              const matches = itemMatchesShelf(row, shelfId);
+              if (!matches) {
+                if (idx === -1) return prev;
+                return prev.filter((i) => i.id !== row.id);
+              }
               if (idx === -1) return prev;
-              return prev.filter((i) => i.id !== row.id);
-            }
-            if (idx === -1) return prev;
-            const next = [...prev];
-            next[idx] = { ...next[idx], ...row };
-            return next;
-          });
-        },
-      )
-      .subscribe();
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...row };
+              return next;
+            });
+          },
+        )
+        .subscribe();
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+      return () => {
+        void supabase.removeChannel(channel);
+      };
+    } catch {
+      // Realtime is progressive enhancement; the library still loads through REST.
+    }
   }, [userId, shelfId, setItems]);
 }
