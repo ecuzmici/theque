@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   FolderOpen,
   LayoutGrid,
@@ -27,16 +28,35 @@ function NavLink({
   icon: Icon,
   active,
   compact,
+  onNavigate,
 }: {
   href: string;
   label: string;
   icon: typeof LayoutGrid;
   active: boolean;
   compact?: boolean;
+  onNavigate?: (href: string) => void;
 }) {
+  function handleClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.currentTarget.target
+    ) {
+      return;
+    }
+
+    onNavigate?.(href);
+  }
+
   return (
     <Link
       href={href}
+      onClick={handleClick}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
@@ -57,7 +77,16 @@ function NavLink({
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const onAdd = pathname === "/add";
+  const [pendingNav, setPendingNav] = useState<{ from: string; to: string } | null>(null);
+  const activePath = pendingNav?.from === pathname ? pendingNav.to : pathname;
+  const onAdd = activePath === "/add";
+
+  function markPending(href: string) {
+    const targetPath = href.split("?")[0] || href;
+    if (targetPath !== pathname) {
+      setPendingNav({ from: pathname, to: targetPath });
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-col lg:flex-row">
@@ -77,7 +106,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               label={item.label}
               icon={item.icon}
-              active={item.match(pathname)}
+              active={item.match(activePath)}
+              onNavigate={markPending}
             />
           ))}
         </nav>
@@ -85,6 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mt-auto pt-8">
           <Link
             href="/add"
+            onClick={() => markPending("/add")}
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90",
               onAdd && "ring-2 ring-ring",
@@ -119,22 +150,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
-                active={item.match(pathname)}
+                active={item.match(activePath)}
                 compact
+                onNavigate={markPending}
               />
             </div>
           ))}
           <div className="flex min-w-0 flex-1 flex-col items-center justify-end pb-0.5">
             <Link
               href="/add"
+              onClick={() => markPending("/add")}
               className={cn(
-                "flex size-12 shrink-0 -translate-y-1.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-4 ring-background transition hover:opacity-90",
+                "flex size-[3.75rem] shrink-0 -translate-y-2.5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md ring-[5px] ring-background transition hover:opacity-90",
                 onAdd && "ring-accent",
               )}
               aria-label="Add link"
               aria-current={onAdd ? "page" : undefined}
             >
-              <Plus className="size-6" />
+              <Plus className="size-8" />
             </Link>
           </div>
           {nav.slice(2).map((item) => (
@@ -143,8 +176,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 label={item.label}
                 icon={item.icon}
-                active={item.match(pathname)}
+                active={item.match(activePath)}
                 compact
+                onNavigate={markPending}
               />
             </div>
           ))}
