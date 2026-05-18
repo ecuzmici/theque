@@ -107,7 +107,7 @@ export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsP
               type="button"
               size="xs"
               variant="secondary"
-              className="h-11 min-h-11 min-w-11 gap-1 bg-card/95 px-3 shadow-sm backdrop-blur lg-fine:h-7 lg-fine:min-h-7 lg-fine:w-auto lg-fine:min-w-0"
+              className="h-11 min-h-11 w-[3.125rem] min-w-[3.125rem] rounded-full gap-1 bg-card/95 px-3 shadow-sm backdrop-blur lg-fine:h-7 lg-fine:min-h-7 lg-fine:w-auto lg-fine:min-w-0 lg-fine:rounded-[min(var(--radius-md),10px)]"
               disabled={busy || deleteBusy}
               aria-label="Item actions"
               onClick={(e) => {
