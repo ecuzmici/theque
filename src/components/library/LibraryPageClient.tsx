@@ -105,12 +105,18 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
   const cachedItems = itemsCache[activeShelf];
   const isLoadingShelf = cachedItems === undefined && loadError == null;
   const activeLabel = SHELVES.find((s) => s.id === activeShelf)?.label ?? "All";
+  const updateActiveShelfItems = useCallback(
+    (items: LibraryItemRow[]) => {
+      setItemsCache((prev) => ({ ...prev, [activeShelf]: items }));
+    },
+    [activeShelf],
+  );
 
   return (
     <div>
       <PageHeader
         title="Library"
-        description="Browse your taste by shelf — categories, not folders."
+        description="Browse your taste by shelf."
       />
 
       {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
@@ -181,6 +187,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
           userId={userId}
           shelfId={activeShelf}
           initialItems={cachedItems ?? []}
+          onItemsChange={updateActiveShelfItems}
         />
       )}
     </div>

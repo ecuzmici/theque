@@ -20,6 +20,7 @@ type LibraryItemsSectionProps = {
   userId: string;
   shelfId: ShelfId;
   initialItems: LibraryItemRow[];
+  onItemsChange?: (items: LibraryItemRow[]) => void;
 };
 
 function hasPendingEnrichment(items: LibraryItemRow[]): boolean {
@@ -28,11 +29,20 @@ function hasPendingEnrichment(items: LibraryItemRow[]): boolean {
   );
 }
 
-export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryItemsSectionProps) {
+export function LibraryItemsSection({
+  userId,
+  shelfId,
+  initialItems,
+  onItemsChange,
+}: LibraryItemsSectionProps) {
   const [items, setItems] = useState<LibraryItemRow[]>(() => initialItems);
   const hasPendingItems = hasPendingEnrichment(items);
 
   useItemRealtime(userId, shelfId, setItems);
+
+  useEffect(() => {
+    onItemsChange?.(items);
+  }, [items, onItemsChange]);
 
   useEffect(() => {
     if (!hasPendingItems) return;
@@ -96,5 +106,5 @@ export function LibraryItemsSection({ userId, shelfId, initialItems }: LibraryIt
     );
   }
 
-  return <ItemGrid items={items} shelfId={shelfId} onItemPatch={onItemPatch} />;
+  return <ItemGrid items={items} shelfId={shelfId} itemActionsEnabled onItemPatch={onItemPatch} />;
 }

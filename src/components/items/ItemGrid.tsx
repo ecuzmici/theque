@@ -9,6 +9,7 @@ import { ItemCard } from "./ItemCard";
 type ItemGridProps = {
   items: LibraryItemRow[];
   shelfId: ShelfId;
+  itemActionsEnabled?: boolean;
   onItemPatch?: (
     itemId: string,
     patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
@@ -16,7 +17,7 @@ type ItemGridProps = {
   ) => void;
 };
 
-export function ItemGrid({ items, shelfId, onItemPatch }: ItemGridProps) {
+export function ItemGrid({ items, shelfId, itemActionsEnabled, onItemPatch }: ItemGridProps) {
   const inboxShelf = shelfId === "inbox";
 
   return (
@@ -25,6 +26,8 @@ export function ItemGrid({ items, shelfId, onItemPatch }: ItemGridProps) {
         <li key={item.id}>
           <ItemCard
             item={item}
+            shelfId={shelfId}
+            itemActionsEnabled={itemActionsEnabled}
             inboxActionsEnabled={inboxShelf && item.status === "inbox"}
             onItemPatch={onItemPatch}
           />

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Pencil, RefreshCw, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ExternalLink, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
@@ -9,6 +10,14 @@ import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { StructuredFields } from "@/components/items/StructuredFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatCategory, formatStatus } from "@/lib/item-labels";
 import type {
   AiEnrichmentApplyRequestBody,
@@ -71,9 +80,13 @@ export function ItemDetail({
   initial: ItemDetailModel;
   collections: { id: string; name: string }[];
 }) {
+  const router = useRouter();
   const [item, setItem] = useState(initial);
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [aiReviewOpen, setAiReviewOpen] = useState(false);
   const [aiProposalBusy, setAiProposalBusy] = useState(false);
   const [aiApplyBusy, setAiApplyBusy] = useState(false);
@@ -156,6 +169,23 @@ export function ItemDetail({
       setAiProposalMetadata(null);
     } finally {
       setAiApplyBusy(false);
+    }
+  };
+
+  const onDelete = async () => {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setDeleteError("Could not delete this item.");
+        return;
+      }
+      setDeleteOpen(false);
+      router.replace("/library");
+      router.refresh();
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -274,6 +304,19 @@ export function ItemDetail({
             <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
             {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
           </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={deleteBusy}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            onClick={() => {
+              setDeleteError(null);
+              setDeleteOpen(true);
+            }}
+          >
+            <Trash2 className="size-4" />
+            Delete item
+          </Button>
         </div>
 
         {item.enrichment_error ? (
@@ -310,6 +353,26 @@ export function ItemDetail({
         collections={collections}
         onSave={syncPatch}
       />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete item?</DialogTitle>
+            <DialogDescription>
+              Delete &quot;{item.title ?? item.domain}&quot; permanently from your library. This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={deleteBusy} onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={deleteBusy} onClick={() => void onDelete()}>
+              {deleteBusy ? "Deleting..." : "Delete item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

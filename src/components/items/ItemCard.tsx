@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback } from "react";
 
 import { InboxActions } from "@/components/inbox/InboxActions";
+import { ItemCardActions } from "@/components/items/ItemCardActions";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/category-placeholder";
 import { cardAspectRatio } from "@/lib/item-display";
 import { formatStatus } from "@/lib/item-labels";
+import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
@@ -29,6 +31,8 @@ function safeRemoteImageUrl(url: string | null): string | null {
 
 type ItemCardProps = {
   item: LibraryItemRow;
+  shelfId: ShelfId;
+  itemActionsEnabled?: boolean;
   inboxActionsEnabled?: boolean;
   onItemPatch?: (
     itemId: string,
@@ -37,7 +41,13 @@ type ItemCardProps = {
   ) => void;
 };
 
-export function ItemCard({ item, inboxActionsEnabled, onItemPatch }: ItemCardProps) {
+export function ItemCard({
+  item,
+  shelfId,
+  itemActionsEnabled,
+  inboxActionsEnabled,
+  onItemPatch,
+}: ItemCardProps) {
   const aspect = cardAspectRatio(item.category, item.display);
   const [aw, ah] = aspect.split("/").map(Number);
   const ratioStyle =
@@ -62,6 +72,10 @@ export function ItemCard({ item, inboxActionsEnabled, onItemPatch }: ItemCardPro
       {inboxActionsEnabled ? (
         <div className="absolute right-2 top-2 z-10">
           <InboxActions itemId={item.id} category={item.category} onOptimistic={handleOptimistic} />
+        </div>
+      ) : itemActionsEnabled ? (
+        <div className="absolute right-2 top-2 z-10">
+          <ItemCardActions item={item} shelfId={shelfId} onItemPatch={onItemPatch} />
         </div>
       ) : null}
 

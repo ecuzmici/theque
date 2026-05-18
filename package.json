@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest",
     "seed": "tsx scripts/seed.ts",
+    "screenshots:extension-store": "node scripts/generate-extension-store-screenshots.mjs",
     "supabase:sync-auth": "node scripts/update-supabase-auth.mjs",
     "qa:install-browsers": "playwright install chromium",
     "qa:session-url": "node scripts/qa-local-session-url.mjs"

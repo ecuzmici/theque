@@ -5,7 +5,7 @@ import { SHELVES, type ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 const LIBRARY_ITEM_COLUMNS =
-  "id, title, subtitle, image_url, domain, category, status, processing_status, created_at, display";
+  "id, title, subtitle, image_url, domain, category, status, processing_status, created_at, display, canonical_url";
 
 export async function fetchLibraryItemsForShelf(
   supabase: SupabaseClient<Database>,

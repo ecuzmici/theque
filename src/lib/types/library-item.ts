@@ -14,6 +14,7 @@ export type LibraryItemRow = Pick<
   | "processing_status"
   | "created_at"
   | "display"
+  | "canonical_url"
 >;
 
 export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
@@ -28,5 +29,6 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     processing_status: summary.processing_status,
     created_at: summary.created_at,
     display: summary.display,
+    canonical_url: summary.canonical_url,
   };
 }

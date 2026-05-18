@@ -26,6 +26,10 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: mocks.createClient,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
+
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
     id: "item-1",
@@ -38,6 +42,7 @@ function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
     processing_status: "pending",
     created_at: "2026-05-17T12:00:00.000Z",
     display: {},
+    canonical_url: "https://www.goodreads.com/book/show/123",
     ...patch,
   };
 }

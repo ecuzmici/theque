@@ -1,11 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemGrid } from "@/components/items/ItemGrid";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ItemsListResponseBody } from "@/lib/types/api";
 import { libraryItemFromSummary } from "@/lib/types/library-item";
 
@@ -14,9 +25,13 @@ type CollectionDetailClientProps = {
 };
 
 export function CollectionDetailClient({ collection }: CollectionDetailClientProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState(() => [] as ReturnType<typeof libraryItemFromSummary>[]);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,6 +61,23 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
     };
   }, [collection.id]);
 
+  async function deleteCollection() {
+    setDeleteBusy(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/collections/${collection.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setDeleteError("Could not delete this collection.");
+        return;
+      }
+      setDeleteOpen(false);
+      router.replace("/collections");
+      router.refresh();
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
+
   return (
     <div>
       <Link
@@ -58,6 +90,22 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
         title={collection.name}
         description={collection.description ?? "Items you grouped in this collection."}
       />
+
+      <div className="mb-6 flex justify-end">
+        <Button
+          type="button"
+          variant="destructive"
+          disabled={deleteBusy}
+          className="min-h-11 gap-1.5 lg-fine:min-h-8"
+          onClick={() => {
+            setDeleteError(null);
+            setDeleteOpen(true);
+          }}
+        >
+          <Trash2 className="size-4" />
+          Delete collection
+        </Button>
+      </div>
 
       {error ? (
         <p className="text-center text-sm text-muted-foreground">{error}</p>
@@ -76,6 +124,26 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
       ) : (
         <ItemGrid items={items} shelfId="all" />
       )}
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete collection?</DialogTitle>
+            <DialogDescription>
+              Delete &quot;{collection.name}&quot; permanently. Items in this collection will remain in your library.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={deleteBusy} onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={deleteBusy} onClick={() => void deleteCollection()}>
+              {deleteBusy ? "Deleting..." : "Delete collection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
