@@ -20,10 +20,12 @@ const CATEGORIES = new Set<ItemCategory>([
   "movies_and_tv",
   "restaurants",
   "products",
-  "gifts",
   "travel",
   "recipes",
   "articles",
+  "music",
+  "videos",
+  "apps",
 ]);
 
 const BLOCKED_JSON_KEYS = new Set(["__proto__", "constructor", "prototype"]);

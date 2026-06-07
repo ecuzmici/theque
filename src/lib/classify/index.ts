@@ -5,7 +5,7 @@ import { flattenJsonLd, typesOf } from "@/lib/jsonld";
 import { classifyFromDomain } from "@/lib/classify/domain-map";
 
 export type Classification = {
-  category: ItemCategory;
+  category: ItemCategory | null;
   category_confidence: number;
   category_source: CategorySource;
 };
@@ -14,9 +14,6 @@ function pathHeuristic(pathname: string): Pick<Classification, "category" | "cat
   const p = pathname.toLowerCase();
   if (p.includes("/recipe") || p.includes("/recipes/")) {
     return { category: "recipes", category_confidence: 0.7 };
-  }
-  if (p.includes("/gift") || p.includes("/wishlist")) {
-    return { category: "gifts", category_confidence: 0.7 };
   }
   if (p.includes("/travel") || p.includes("/hotel") || p.includes("/flight")) {
     return { category: "travel", category_confidence: 0.65 };
@@ -35,6 +32,11 @@ function classifyFromJsonLd(jsonLdRoots: unknown[]): Pick<
       match: (types) => types.some((t) => t === "Movie" || t === "TVSeries" || t === "TVEpisode"),
       category: "movies_and_tv",
     },
+    {
+      match: (types) =>
+        types.some((t) => t === "MusicRecording" || t === "MusicAlbum" || t === "MusicGroup" || t === "Podcast"),
+      category: "music",
+    },
     { match: (types) => types.includes("Book"), category: "books" },
     { match: (types) => types.includes("Recipe"), category: "recipes" },
     {
@@ -42,6 +44,7 @@ function classifyFromJsonLd(jsonLdRoots: unknown[]): Pick<
         types.some((t) => t === "Restaurant" || t === "FoodEstablishment" || t === "LocalBusiness"),
       category: "restaurants",
     },
+    { match: (types) => types.includes("SoftwareApplication"), category: "apps" },
     { match: (types) => types.includes("Product"), category: "products" },
     {
       match: (types) =>
@@ -68,8 +71,9 @@ export function classify(input: {
   jsonLd: unknown[];
   categoryHint?: ExtensionCategoryHint | null;
 }): Classification {
+  // 1. Authoritative domain (strong signal — wins over schema.org)
   const domainHit = classifyFromDomain(input.domain);
-  if (domainHit) {
+  if (domainHit?.tier === "authoritative") {
     return {
       category: domainHit.category,
       category_confidence: domainHit.category_confidence,
@@ -77,6 +81,7 @@ export function classify(input: {
     };
   }
 
+  // 2. schema.org structured data
   const schemaHit = classifyFromJsonLd(input.jsonLd);
   if (schemaHit) {
     return {
@@ -86,6 +91,16 @@ export function classify(input: {
     };
   }
 
+  // 3. Ambiguous domain (after schema.org so page data can override)
+  if (domainHit?.tier === "ambiguous") {
+    return {
+      category: domainHit.category,
+      category_confidence: domainHit.category_confidence,
+      category_source: "domain",
+    };
+  }
+
+  // 4. Capture hint from extension
   if (input.categoryHint) {
     return {
       category: input.categoryHint,
@@ -94,6 +109,7 @@ export function classify(input: {
     };
   }
 
+  // 5. Path heuristic
   const pathHit = pathHeuristic(input.pathname);
   if (pathHit) {
     return {
@@ -103,9 +119,10 @@ export function classify(input: {
     };
   }
 
+  // 6. Unknown — land in Inbox for triage
   return {
-    category: "articles",
-    category_confidence: 0.4,
+    category: null,
+    category_confidence: 0.3,
     category_source: "heuristic",
   };
 }

@@ -33,10 +33,12 @@ const importantFieldsByCategory: Record<ItemCategory, string[]> = {
   movies_and_tv: ["year", "directors"],
   restaurants: ["place_name", "cuisine", "address"],
   products: ["brand", "price"],
-  gifts: ["recipient_hint", "occasion"],
   travel: ["destination", "lodging_name"],
   recipes: ["author", "ingredients"],
   articles: ["author", "publisher", "published_at"],
+  music: ["artist", "album"],
+  videos: ["channel"],
+  apps: ["developer"],
 };
 
 function hasUsefulValue(value: unknown): boolean {

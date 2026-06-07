@@ -9,7 +9,7 @@
 **Every fresh session: read this first.** Update it as workstreams land (mark done, note anything deferred or blocked). Sessions don't share memory — this is the shared state.
 
 - [x] **Prelim** — `https://theque.app` IS the live production domain (200 OK via Cloudflare → Vercel; `x-vercel-id` confirmed; CSP shows correct Supabase project `jucaqjkgyhyzixzaisjr`). H1 implication: the hardcoded `THEQUE_APP_URL = "https://theque.app"` constant is correct for production capture — but `loadSettings()` still ignores the stored baseUrl and must be fixed so localhost dev capture works.
-- [ ] **A** — Category model redesign (ship A1 → A2 → A3). *A1 migration = Opus-worth-it.*
+- [x] **A** — Category model redesign (A1+A2+A3 shipped in one PR; migration applied; `gifts` gone; `music`/`videos`/`apps` added; classify pipeline reordered; all 152 tests green, build clean).
 - [ ] **B** — Multi-tenant hardening. *B3 RPC + B4 SSRF = Opus review.*
 - [ ] **C** — Image durability (depends on B4 guard)
 - [ ] **D** — Enrichment reliability & freshness
