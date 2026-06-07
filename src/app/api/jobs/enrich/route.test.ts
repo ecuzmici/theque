@@ -57,6 +57,7 @@ describe("/api/jobs/enrich", () => {
     await expect(res.json()).resolves.toEqual({ processed: 1, failed: 1 });
     expect(mocks.rpc).toHaveBeenCalledWith("claim_pending_enrichment_items", {
       batch_size: 10,
+      per_user_cap: 3,
     });
     expect(mocks.enrichItem).toHaveBeenNthCalledWith(1, "item-1");
     expect(mocks.enrichItem).toHaveBeenNthCalledWith(2, "item-2");

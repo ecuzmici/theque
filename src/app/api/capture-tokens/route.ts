@@ -5,6 +5,8 @@ import type {
 } from "@/lib/types/api";
 import { mintCaptureTokenParts } from "@/lib/auth/capture-token";
 import { hasMaxLength, MAX_CAPTURE_TOKEN_NAME_LENGTH } from "@/lib/input-limits";
+import { rateLimit } from "@/lib/rate-limit";
+import { checkQuota, MAX_CAPTURE_TOKENS_PER_USER } from "@/lib/quotas";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -31,6 +33,14 @@ export async function POST(req: Request) {
   const user = await getSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
 
+  const rl = await rateLimit(`capture-tokens:${user.id}`, 5, 60);
+  if (!rl.ok) {
+    return Response.json(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -43,8 +53,14 @@ export async function POST(req: Request) {
     return Response.json({ code: "invalid_name" }, { status: 400 });
   }
 
-  const parts = mintCaptureTokenParts();
   const supabase = await createClient();
+
+  const quota = await checkQuota(supabase, user.id, "capture_tokens", MAX_CAPTURE_TOKENS_PER_USER);
+  if (!quota.ok) {
+    return Response.json({ code: "quota_exceeded" }, { status: 409 });
+  }
+
+  const parts = mintCaptureTokenParts();
 
   const { data: row, error } = await supabase
     .from("capture_tokens")

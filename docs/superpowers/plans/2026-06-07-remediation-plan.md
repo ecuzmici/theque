@@ -10,7 +10,7 @@
 
 - [x] **Prelim** — `https://theque.app` IS the live production domain (200 OK via Cloudflare → Vercel; `x-vercel-id` confirmed; CSP shows correct Supabase project `jucaqjkgyhyzixzaisjr`). H1 implication: the hardcoded `THEQUE_APP_URL = "https://theque.app"` constant is correct for production capture — but `loadSettings()` still ignores the stored baseUrl and must be fixed so localhost dev capture works.
 - [x] **A** — Category model redesign (A1+A2+A3 shipped in one PR; migration applied; `gifts` gone; `music`/`videos`/`apps` added; classify pipeline reordered; all 152 tests green, build clean).
-- [ ] **B** — Multi-tenant hardening. *B3 RPC + B4 SSRF = Opus review.*
+- [x] **B** — Multi-tenant hardening. B1 rate limiting + B2 quotas + B3 per-user-cap RPC + B4 SSRF tightening (credentials, IPv6 hex, export) shipped. B4 DNS-rebinding TOCTOU documented and deferred for Opus-level undici Agent implementation. B5 signup stays open; all mutating endpoints rate-limited.
 - [ ] **C** — Image durability (depends on B4 guard)
 - [ ] **D** — Enrichment reliability & freshness
 - [ ] **E** — UX polish & scale

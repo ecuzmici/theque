@@ -3,11 +3,20 @@ import { after } from "next/server";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { RetryEnrichmentResponseBody } from "@/lib/types/api";
 import { enrichItem } from "@/lib/jobs/enrich-item";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
+
+  const rl = await rateLimit(`retry-enrichment:${user.id}`, 10, 60);
+  if (!rl.ok) {
+    return Response.json(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
 
   const { id } = await ctx.params;
   const supabase = await createClient();
