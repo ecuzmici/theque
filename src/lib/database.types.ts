@@ -11,10 +11,12 @@ export type ItemCategory =
   | "movies_and_tv"
   | "restaurants"
   | "products"
-  | "gifts"
   | "travel"
   | "recipes"
-  | "articles";
+  | "articles"
+  | "music"
+  | "videos"
+  | "apps";
 
 export type ItemStatus =
   | "inbox"

@@ -6,10 +6,12 @@ const GRADIENTS: Record<ItemCategory, string> = {
   movies_and_tv: "from-violet-950/50 via-indigo-900/30 to-stone-900/40",
   restaurants: "from-rose-950/50 via-orange-900/25 to-stone-900/40",
   products: "from-sky-950/50 via-blue-900/25 to-stone-900/40",
-  gifts: "from-pink-950/50 via-fuchsia-900/25 to-stone-900/40",
   travel: "from-teal-950/50 via-cyan-900/25 to-stone-900/40",
   recipes: "from-lime-950/50 via-green-900/25 to-stone-900/40",
   articles: "from-stone-800/50 via-stone-700/30 to-stone-900/40",
+  music: "from-purple-950/50 via-pink-900/25 to-stone-900/40",
+  videos: "from-red-950/50 via-orange-900/25 to-stone-900/40",
+  apps: "from-emerald-950/50 via-green-900/25 to-stone-900/40",
 };
 
 export function categoryPlaceholderClass(category: ItemCategory | null): string {

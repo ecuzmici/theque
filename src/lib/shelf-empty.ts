@@ -20,8 +20,12 @@ export const SHELF_EMPTY: Record<
     title: "No restaurants saved",
     description: "Capture a Maps or Yelp link when you find a place to try.",
   },
+  listen: {
+    title: "Nothing to listen to",
+    description: "Save albums, songs, or podcasts from Spotify, Bandcamp, and Apple Music.",
+  },
   shop: {
-    title: "No products or gifts",
+    title: "No products saved",
     description: "Save wishlist items from Amazon, Etsy, and other shops.",
   },
   travel: {
@@ -35,6 +39,10 @@ export const SHELF_EMPTY: Record<
   cook: {
     title: "No recipes yet",
     description: "Capture recipe blogs and cooking pages with schema.org Recipe data.",
+  },
+  tools: {
+    title: "No apps or tools saved",
+    description: "Save GitHub repos, Product Hunt listings, and software pages.",
   },
   inbox: {
     title: "Inbox is clear",
