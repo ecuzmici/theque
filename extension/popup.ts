@@ -1,9 +1,12 @@
+import { CATEGORY_HINT_OPTIONS } from "./category-hints.js";
+
 const STORAGE_KEYS = {
   token: "theque_capture_token",
   baseUrl: "theque_api_base_url",
   email: "theque_connected_email",
 } as const;
 
+/** Default production URL — used when no baseUrl is stored (first run, or connect not yet done). */
 const THEQUE_APP_URL = "https://theque.app";
 const SAVE_BUTTON_LABEL_DEFAULT = "Save to thèque";
 
@@ -30,7 +33,11 @@ async function loadSettings(): Promise<{ token: string; baseUrl: string; email: 
   ]);
   const token = typeof stored[STORAGE_KEYS.token] === "string" ? stored[STORAGE_KEYS.token] : "";
   const email = typeof stored[STORAGE_KEYS.email] === "string" ? stored[STORAGE_KEYS.email] : "";
-  return { token, baseUrl: THEQUE_APP_URL, email };
+  // Honor the stored baseUrl (set by background.ts when the user connects) so localhost
+  // dev capture works. Fall back to the default production URL on first run.
+  const storedBase = stored[STORAGE_KEYS.baseUrl];
+  const baseUrl = typeof storedBase === "string" && storedBase ? storedBase : THEQUE_APP_URL;
+  return { token, baseUrl, email };
 }
 
 async function getActiveTab(): Promise<{ url: string; title: string } | null> {
@@ -53,6 +60,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const noteEl = $("ks-note") as HTMLTextAreaElement;
   const categoryEl = $("ks-category") as HTMLSelectElement;
   const connectBtn = $("ks-connect-session") as HTMLButtonElement;
+
+  // Populate shelf-hint dropdown from the shared CATEGORY_HINT_OPTIONS constant
+  // so the list here always matches what the capture API validates against.
+  categoryEl.innerHTML = '<option value="">Auto detect</option>';
+  for (const { value, label } of CATEGORY_HINT_OPTIONS) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    categoryEl.appendChild(opt);
+  }
+
   const activeTab = await getActiveTab();
 
   const { token, email } = await loadSettings();
@@ -75,9 +93,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   $("ks-open-theque").addEventListener("click", async () => {
     try {
-      const { token: tok } = await loadSettings();
+      const { token: tok, baseUrl } = await loadSettings();
       if (tok.startsWith("bmly_")) {
-        await chrome.tabs.create({ url: `${THEQUE_APP_URL}/library` });
+        await chrome.tabs.create({ url: `${baseUrl}/library` });
       } else {
         await openConnectPage();
       }
