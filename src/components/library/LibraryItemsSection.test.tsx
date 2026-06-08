@@ -75,8 +75,8 @@ describe("LibraryItemsSection", () => {
       subtitle: "Thomas R. Weaver · 2023",
       processing_status: "ready",
     });
-    let resolveRefresh: (items: LibraryItemRow[]) => void = () => {};
-    const refreshPromise = new Promise<LibraryItemRow[]>((resolve) => {
+    let resolveRefresh: (result: { items: LibraryItemRow[]; hasMore: boolean }) => void = () => {};
+    const refreshPromise = new Promise<{ items: LibraryItemRow[]; hasMore: boolean }>((resolve) => {
       resolveRefresh = resolve;
     });
 
@@ -95,7 +95,7 @@ describe("LibraryItemsSection", () => {
     expect(container.textContent).toContain("Gathering details");
 
     await act(async () => {
-      resolveRefresh([readyItem]);
+      resolveRefresh({ items: [readyItem], hasMore: false });
       await refreshPromise;
     });
 

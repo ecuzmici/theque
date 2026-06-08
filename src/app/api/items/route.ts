@@ -26,9 +26,6 @@ function intersectIds(a: string[], b: string[]): string[] {
   return a.filter((x) => bs.has(x));
 }
 
-function escapeIlike(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/%/g, "\\%").replace(/_/g, "\\_");
-}
 
 async function loadTagsAndCollections(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -214,10 +211,7 @@ export async function GET(req: Request) {
       return Response.json({ code: "invalid_query" }, { status: 400 });
     }
 
-    const esc = escapeIlike(trimmedQuery);
-    query = query.or(
-      `title.ilike."%${esc}%",description.ilike."%${esc}%",domain.ilike."%${esc}%",note.ilike."%${esc}%"`,
-    );
+    query = query.textSearch("search_vector", trimmedQuery, { type: "websearch" });
   }
 
   const rangeEnd = offset + limit;

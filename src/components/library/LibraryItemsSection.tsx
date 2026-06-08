@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
+import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
@@ -20,6 +21,7 @@ type LibraryItemsSectionProps = {
   userId: string;
   shelfId: ShelfId;
   initialItems: LibraryItemRow[];
+  initialHasMore?: boolean;
   onItemsChange?: (items: LibraryItemRow[]) => void;
 };
 
@@ -33,9 +35,14 @@ export function LibraryItemsSection({
   userId,
   shelfId,
   initialItems,
+  initialHasMore = false,
   onItemsChange,
 }: LibraryItemsSectionProps) {
   const [items, setItems] = useState<LibraryItemRow[]>(() => initialItems);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const offsetRef = useRef(initialItems.length);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const hasPendingItems = hasPendingEnrichment(items);
 
   useItemRealtime(userId, shelfId, setItems);
@@ -55,8 +62,14 @@ export function LibraryItemsSection({
       if (inFlight) return;
       inFlight = true;
       try {
-        const rows = await fetchLibraryItemsForShelf(supabase, shelfId);
-        if (!cancelled) setItems(rows);
+        const { items: rows } = await fetchLibraryItemsForShelf(supabase, shelfId, 0);
+        if (!cancelled) {
+          setItems((prev) => {
+            // Merge: replace the first page with fresh data while preserving any extra pages
+            const extra = prev.slice(rows.length);
+            return [...rows, ...extra];
+          });
+        }
       } catch {
         // Keep the current card state; the next interval or Realtime event can still update it.
       } finally {
@@ -72,6 +85,50 @@ export function LibraryItemsSection({
       window.clearInterval(intervalId);
     };
   }, [hasPendingItems, shelfId]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const supabase = createClient();
+      const { items: newRows, hasMore: more } = await fetchLibraryItemsForShelf(
+        supabase,
+        shelfId,
+        offsetRef.current,
+      );
+      if (newRows.length > 0) {
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((r) => r.id));
+          const fresh = newRows.filter((r) => !existingIds.has(r.id));
+          const merged = [...prev, ...fresh];
+          offsetRef.current = merged.length;
+          return merged;
+        });
+      }
+      setHasMore(more);
+    } catch {
+      // Fail silently; user can scroll again
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, shelfId]);
+
+  // IntersectionObserver sentinel
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   const onItemPatch = useCallback(
     (
@@ -106,5 +163,20 @@ export function LibraryItemsSection({
     );
   }
 
-  return <ItemGrid items={items} shelfId={shelfId} itemActionsEnabled onItemPatch={onItemPatch} />;
+  return (
+    <div>
+      <ItemGrid items={items} shelfId={shelfId} itemActionsEnabled onItemPatch={onItemPatch} />
+      {/* Infinite scroll sentinel */}
+      <div ref={sentinelRef} className="h-1" aria-hidden />
+      {loadingMore ? (
+        <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+          {Array.from({ length: 4 }, (_, i) => (
+            <li key={i}>
+              <ItemCardSkeleton />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
