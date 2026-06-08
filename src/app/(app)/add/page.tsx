@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,27 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export default function AddPage() {
+function AddForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-populate from PWA share target (?url=, ?text=, ?title=).
+  // Android share sheet may put the URL in any of these fields.
+  useEffect(() => {
+    const sharedUrl =
+      searchParams.get("url") ?? searchParams.get("text") ?? "";
+    const sharedTitle = searchParams.get("title") ?? "";
+    if (sharedUrl) setUrl(sharedUrl);
+    if (sharedTitle) setNote((prev) => prev || sharedTitle);
+  }, [searchParams]);
+
+  const isSharedCapture = Boolean(
+    searchParams.get("url") ?? searchParams.get("text"),
+  );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +45,7 @@ export default function AddPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url: trimmed,
-          source: "manual",
+          source: isSharedCapture ? "mobile_share_extension" : "manual",
           note: note.trim() || undefined,
         }),
       });
@@ -101,5 +116,13 @@ export default function AddPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AddPage() {
+  return (
+    <Suspense>
+      <AddForm />
+    </Suspense>
   );
 }
