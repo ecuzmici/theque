@@ -73,7 +73,6 @@ function isBlockedAddress(address: string): boolean {
   return true;
 }
 
-// Exported so Workstream C's image fetch can reuse the same guard.
 export async function assertSafeFetchUrl(url: URL): Promise<void> {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error("blocked_fetch_url");
