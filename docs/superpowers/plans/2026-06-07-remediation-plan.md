@@ -244,19 +244,27 @@ Signup stays **open** — anyone can create an account. This makes B1 (rate limi
 
 ---
 
-## Workstream F — AI recommendations (build the spec)
+## Workstream F — AI recommendations (grounded)
 
-**Problem.** `docs/superpowers/specs/2026-05-17-ai-recommendations-design.md` is a complete design, but there is no `src/app/api/recommend/` or `src/components/recommend/`.
+**Spec:** `docs/superpowers/specs/2026-06-08-ai-recommendations-v2.md` (supersedes the 2026-05-17 draft).
 
-### Steps
-- Implement exactly per the spec's File Structure: `app/api/recommend/route.ts` (streaming NDJSON), `lib/recommend/{recommend-prompt,recommend-stream,recommend-types,recommend-config}.ts` + tests, `components/recommend/{RecommendButton,RecommendDrawer,RecommendationCard,useRecommendations}.tsx`.
-- Gate behind `GEMINI_API_KEY` via `isRecommendEnabled()` (mirror the enrichment gate); books + watch shelves only; min 3 items.
-- **Add B1 rate limiting** to `/api/recommend` (the spec's in-memory limiter is insufficient for multi-instance Vercel — reuse `src/lib/rate-limit.ts`).
-- "Save" routes through the existing `/api/capture` → enrichment pipeline.
-- Wire `RecommendButton` into the shelf header in `library/page.tsx` / `LibraryPageClient.tsx`.
-- Tests per the spec's Testing Strategy (prompt builder, config, NDJSON parsing, hook state machine) with mocked Gemini.
+**Why v2.** The original spec had the LLM emit a `suggested_url` (e.g. `goodreads.com/book/show/52376921`). Those are opaque numeric IDs an LLM can't reliably produce, so the headline **Save → capture → enrich** path feeds hallucinated URLs into the pipeline and creates broken/wrong items — and the spec itself defers verified-URL grounding to out-of-scope. v2 splits the work the way the rest of the product already works (deterministic first, gated LLM second): **the LLM does taste reasoning (identity + why), a deterministic resolver does grounding (real URL + cover).**
 
-**Acceptance:** on Books/Watch with ≥3 items, clicking Recommend streams cards into a drawer; Save adds to library; feature is hidden when the key is absent; rate-limited.
+**Problem.** No `src/app/api/recommend/` or `src/components/recommend/` exists yet.
+
+### Steps (build to the v2 spec)
+- **LLM = identity only.** Gemini **2.5 Flash** (not Pro) returns `{ title, creator, year, description, reason }` with **no URL field** in the response schema. Over-request 8, keep `RECOMMEND_COUNT` (5) after drops.
+- **Resolver = grounding.** `lib/recommend/resolve/open-library.ts` (F1, books, **no API key** — Open Library Search → canonical work URL + cover) and `…/tmdb.ts` (F2, movies, `TMDB_API_KEY`). Fetch through the **B4 SSRF guard**. Unresolved candidate → dropped. Use tolerant two-pass matching (split co-author strings; title-only fallback) — see the spec's resolver section and the prototype finding.
+- **Dedup is enforced, not prompted.** `lib/recommend/dedup.ts` filters resolved cards against the user's existing titles for that category (one scoped query) — don't rely on the prompt instruction.
+- **Save the resolved URL.** "Save" → `/api/capture { url: card.canonical_url }` → normal enrichment + Workstream C cover cache. No new write path.
+- **No streaming.** Single JSON response after a parallel `Promise.allSettled` resolve — you must resolve before showing a Save button anyway, so per-token NDJSON parsing buys nothing. Drop the incremental-JSON parser from the old spec entirely.
+- **Containment.** Gate behind `GEMINI_API_KEY` via `isRecommendEnabled()`; F2 Watch button additionally gated on `TMDB_API_KEY`; min 3 items. **B1 rate limit + B2 daily quota** on `/api/recommend`; 24h result cache keyed by `(userId, shelfId, hash(library titles))` so re-clicks don't re-bill.
+- **Files:** `lib/recommend/{recommend-types,recommend-prompt,recommend-config,dedup}.ts` + `resolve/{open-library,tmdb}.ts`, `app/api/recommend/route.ts`, `components/recommend/{RecommendButton,RecommendDrawer,RecommendationCard,useRecommendations}.tsx`. Wire the button into `library/page.tsx` / `LibraryPageClient.tsx`.
+- **Tests:** prompt builder, config/gate, Open Library resolver (matched fixture → url+cover; co-author split; mismatch → null), dedup, API route (auth/validation/ratelimit/gate-off/LLM-failure → 502) with mocked Gemini + resolver, hook state machine.
+
+**Phasing:** **F1 books-only** (Open Library, no new key) is the whole valuable feature — ship it first. **F2** adds TMDB movies. F3 (optional) per-card streaming if still wanted.
+
+**Acceptance:** on Books with ≥3 items, clicking Recommend shows resolved cards in a drawer where **every Save lands a real Open Library item with a real cover**; cards the user already owns are filtered out; feature hidden when `GEMINI_API_KEY` is absent; rate-limited + quota-capped; no hallucinated URLs reach `/api/capture`.
 
 ---
 

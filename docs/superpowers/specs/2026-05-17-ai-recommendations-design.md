@@ -1,7 +1,13 @@
 # AI Recommendations — Design Spec
 
+> **⚠️ SUPERSEDED (2026-06-08) by `2026-06-08-ai-recommendations-v2.md`.** Do not build to this
+> version. Its core mechanic — having the LLM emit a real `suggested_url` (opaque Goodreads/IMDb
+> IDs) — is unreliable: the model hallucinates the IDs, so Save feeds broken URLs into capture. v2
+> keeps the LLM for taste reasoning only and grounds URLs/covers via a deterministic resolver
+> (Open Library / TMDB). Kept here for history.
+
 **Date:** 2026-05-17  
-**Status:** Draft  
+**Status:** Superseded  
 **Scope:** Books and Watch shelves only (PoC)
 
 ## Summary

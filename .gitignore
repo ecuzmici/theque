@@ -55,3 +55,9 @@ extension/background.js
 
 # QA agent screenshots (local only)
 qa-screenshots/
+
+# Claude memory (local only)
+memory/
+
+# Local agent scaffolding (brainstorm/notes)
+.superpowers/
