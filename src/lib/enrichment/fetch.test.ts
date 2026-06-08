@@ -9,7 +9,7 @@ vi.mock("node:dns/promises", () => ({
   lookup: dnsMocks.lookup,
 }));
 
-import { fetchPage, MAX_FETCH_BYTES } from "./fetch";
+import { assertSafeFetchUrl, fetchPage, MAX_FETCH_BYTES } from "./fetch";
 
 describe("fetchPage", () => {
   beforeEach(() => {
@@ -56,5 +56,74 @@ describe("fetchPage", () => {
     dnsMocks.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
 
     await expect(fetchPage("https://example.com/large")).rejects.toThrow("fetch_body_too_large");
+  });
+});
+
+describe("assertSafeFetchUrl", () => {
+  beforeEach(() => {
+    dnsMocks.lookup.mockReset();
+  });
+
+  it("rejects URLs with embedded username credentials", async () => {
+    await expect(assertSafeFetchUrl(new URL("https://user@example.com/page"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects URLs with embedded password credentials", async () => {
+    await expect(assertSafeFetchUrl(new URL("https://:secret@example.com/page"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects IPv6 loopback ::1", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[::1]/"))).rejects.toThrow("blocked_fetch_url");
+  });
+
+  it("rejects IPv6 unspecified ::", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[::]/"))).rejects.toThrow("blocked_fetch_url");
+  });
+
+  it("rejects IPv6 link-local fe80 addresses", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[fe80::1]/"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects IPv4-mapped private range ::ffff:172.16.x", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[::ffff:172.16.0.1]/"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects ::ffff:0: mapped range (RFC 6052 NAT64 prefix)", async () => {
+    // ::ffff:0:0/96 is the IPv4-mapped range; ::ffff:0:0.0.0.1 maps to 0.0.0.1 but the
+    // prefix check covers all ::ffff:0: addresses.
+    await expect(assertSafeFetchUrl(new URL("http://[::ffff:0:0.0.0.1]/"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects ULA fc::/7 private IPv6", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[fc00::1]/"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("rejects ULA fd::/7 private IPv6", async () => {
+    await expect(assertSafeFetchUrl(new URL("http://[fd12:3456:789a::1]/"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
+  });
+
+  it("allows a public hostname that resolves to a public IP", async () => {
+    dnsMocks.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    await expect(assertSafeFetchUrl(new URL("https://example.com/"))).resolves.toBeUndefined();
+  });
+
+  it("rejects non-http/https protocol", async () => {
+    await expect(assertSafeFetchUrl(new URL("ftp://example.com/file"))).rejects.toThrow(
+      "blocked_fetch_url",
+    );
   });
 });

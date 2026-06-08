@@ -11,23 +11,13 @@ import {
   categoryPlaceholderClass,
   categoryPlaceholderLabel,
 } from "@/lib/category-placeholder";
-import { cardAspectRatio } from "@/lib/item-display";
+import { cardAspectRatio, getDisplayImageUrl } from "@/lib/item-display";
 import { formatStatus } from "@/lib/item-labels";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
 
-function safeRemoteImageUrl(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
 
 type ItemCardProps = {
   item: LibraryItemRow;
@@ -55,7 +45,7 @@ export function ItemCard({
 
   const processing =
     item.processing_status === "pending" || item.processing_status === "processing";
-  const imgSrc = safeRemoteImageUrl(item.image_url);
+  const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);
 
   const handleOptimistic = useCallback(
     (

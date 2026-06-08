@@ -32,7 +32,7 @@ export default async function Home() {
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
           Capture links from Chrome or your phone. They become rich cards on shelves — books,
-          films, restaurants, gifts — plus collections for trips and projects.
+          films, music, restaurants — plus collections for trips and projects.
         </p>
         <ul
           className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm text-muted-foreground sm:text-base"

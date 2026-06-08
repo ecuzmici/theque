@@ -6,6 +6,7 @@ import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
 import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
@@ -42,7 +43,7 @@ function hasSparseFetchEvidence(input: {
   );
 }
 
-function buildSubtitle(category: ItemCategory, structured: Record<string, unknown>): string | null {
+function buildSubtitle(category: ItemCategory | null, structured: Record<string, unknown>): string | null {
   switch (category) {
     case "movies_and_tv": {
       const directors = structured.directors as string[] | undefined;
@@ -67,21 +68,24 @@ function buildSubtitle(category: ItemCategory, structured: Record<string, unknow
   }
 }
 
-function defaultCardAspect(category: ItemCategory): string {
+function defaultCardAspect(category: ItemCategory | null): string {
+  if (!category) return "16/9";
   const map: Record<ItemCategory, string> = {
     books: "2/3",
     movies_and_tv: "2/3",
+    videos: "16/9",
+    music: "1/1",
     restaurants: "16/9",
     products: "1/1",
-    gifts: "1/1",
     travel: "16/9",
     recipes: "16/9",
     articles: "16/9",
+    apps: "1/1",
   };
   return map[category];
 }
 
-function mergeDisplay(existing: Json, category: ItemCategory): Record<string, unknown> {
+function mergeDisplay(existing: Json, category: ItemCategory | null): Record<string, unknown> {
   const base =
     existing && typeof existing === "object" && !Array.isArray(existing)
       ? { ...(existing as Record<string, unknown>) }
@@ -157,23 +161,27 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       image_url: mergedImageUrl,
       structured: mergedStructured,
     });
-    const llmEligibility = decideLlmEligibility({
-      enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
-      hasApiKey: Boolean(process.env.GEMINI_API_KEY),
-      fetchBlocked,
-      fetchSparse,
-      category: classification.category,
-      categorySource: classification.category_source,
-      title: mergedTitle,
-      description: mergedDescription,
-      image_url: mergedImageUrl,
-      structured: mergedStructured,
-    });
 
-    if (llmEligibility.eligible) {
+    // LLM enrichment requires a known category — skip when classification returned null.
+    const llmEligibility = mergedCategory
+      ? decideLlmEligibility({
+          enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
+          hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+          fetchBlocked,
+          fetchSparse,
+          category: mergedCategory,
+          categorySource: classification.category_source,
+          title: mergedTitle,
+          description: mergedDescription,
+          image_url: mergedImageUrl,
+          structured: mergedStructured,
+        })
+      : { eligible: false as const, reason: "disabled" as const, categorySuggestionAllowed: false as const, categorySuggestionReason: "disabled" as const };
+
+    if (llmEligibility.eligible && mergedCategory) {
       const llmResult = await enhanceCategoryWithGemini({
         finalUrl: fetchResult.finalUrl,
-        category: classification.category,
+        category: mergedCategory,
         categorySuggestionAllowed: llmEligibility.categorySuggestionAllowed,
         categorySuggestionReason: llmEligibility.categorySuggestionReason,
         title: mergedTitle,
@@ -213,6 +221,11 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       mergedCategorySource = merged.category_source;
     }
 
+    const imageStoragePath =
+      mergedImageUrl && !row.image_storage_path
+        ? await cacheItemImage(admin, row.user_id, itemId, mergedImageUrl)
+        : row.image_storage_path ?? null;
+
     const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
 
     const siteForTitle =
@@ -245,6 +258,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         subtitle,
         description: mergedDescription,
         image_url: mergedImageUrl,
+        image_storage_path: imageStoragePath,
         category: mergedCategory,
         category_confidence: mergedCategoryConfidence,
         category_source: mergedCategorySource,

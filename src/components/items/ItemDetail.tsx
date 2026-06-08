@@ -28,16 +28,6 @@ import type {
 
 export type ItemDetailModel = ItemDetailResponseBody;
 
-function safeRemoteImageUrl(url: string | null): string | null {
-  if (!url) return null;
-  try {
-    const u = new URL(url);
-    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
 
 async function patchItem(itemId: string, body: Record<string, unknown>): Promise<ItemDetailModel | null> {
   const res = await fetch(`/api/items/${itemId}`, {
@@ -111,7 +101,10 @@ export function ItemDetail({
   const [aiProposal, setAiProposal] = useState<AiEnrichmentProposalResponseBody["proposal"] | null>(null);
   const [aiProposalMetadata, setAiProposalMetadata] = useState<AiEnrichmentProposalResponseBody["proposal_metadata"] | null>(null);
 
-  const imgSrc = useMemo(() => safeRemoteImageUrl(item.image_url), [item.image_url]);
+  const imgSrc = useMemo(
+    () => getDisplayImageUrl(item.image_storage_path, item.image_url),
+    [item.image_storage_path, item.image_url],
+  );
 
   const syncPatch = useCallback(
     async (body: Record<string, unknown>) => {

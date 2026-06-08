@@ -39,10 +39,12 @@ const allowedStructuredFields: Record<ItemCategory, Set<string>> = {
   movies_and_tv: new Set(["year", "directors", "runtime_minutes", "genres", "media_type", "rating", "rating_scale"]),
   restaurants: new Set(["cuisine", "price_level", "address", "place_name"]),
   products: new Set(["brand", "price", "availability"]),
-  gifts: new Set(["recipient_hint", "occasion", "price"]),
   travel: new Set(["destination", "travel_dates", "lodging_name"]),
   recipes: new Set(["author", "prep_time_minutes", "cook_time_minutes", "yield", "ingredients"]),
   articles: new Set(["author", "published_at", "reading_time_minutes", "publisher"]),
+  music: new Set(["artist", "album", "release_year", "genre", "track_count"]),
+  videos: new Set(["channel", "duration_seconds", "published_at"]),
+  apps: new Set(["developer", "platform", "version", "category_tag"]),
 };
 
 const allowedCategories = new Set<ItemCategory>([
@@ -50,10 +52,12 @@ const allowedCategories = new Set<ItemCategory>([
   "movies_and_tv",
   "restaurants",
   "products",
-  "gifts",
   "travel",
   "recipes",
   "articles",
+  "music",
+  "videos",
+  "apps",
 ]);
 
 type FieldValidator = (value: unknown) => boolean;
@@ -120,11 +124,6 @@ const fieldValidators: Record<ItemCategory, Record<string, FieldValidator>> = {
     price: isPrice,
     availability: isNonEmptyString,
   },
-  gifts: {
-    recipient_hint: isNonEmptyString,
-    occasion: isNonEmptyString,
-    price: isPrice,
-  },
   travel: {
     destination: isNonEmptyString,
     travel_dates: (value) => value === null || isNonEmptyString(value),
@@ -142,6 +141,24 @@ const fieldValidators: Record<ItemCategory, Record<string, FieldValidator>> = {
     published_at: isNonEmptyString,
     reading_time_minutes: isPositiveInteger,
     publisher: isNonEmptyString,
+  },
+  music: {
+    artist: isNonEmptyString,
+    album: isNonEmptyString,
+    release_year: isYear,
+    genre: isNonEmptyString,
+    track_count: isPositiveInteger,
+  },
+  videos: {
+    channel: isNonEmptyString,
+    duration_seconds: isPositiveInteger,
+    published_at: isNonEmptyString,
+  },
+  apps: {
+    developer: isNonEmptyString,
+    platform: isNonEmptyString,
+    version: isNonEmptyString,
+    category_tag: isNonEmptyString,
   },
 };
 

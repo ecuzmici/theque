@@ -5,6 +5,8 @@ import {
   MAX_COLLECTION_NAME_LENGTH,
 } from "@/lib/input-limits";
 import type { CollectionsListResponseBody } from "@/lib/types/api";
+import { rateLimit } from "@/lib/rate-limit";
+import { checkQuota, MAX_COLLECTIONS_PER_USER } from "@/lib/quotas";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -48,6 +50,14 @@ export async function POST(req: Request) {
   const user = await getSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
 
+  const rl = await rateLimit(`collections:${user.id}`, 20, 60);
+  if (!rl.ok) {
+    return Response.json(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await req.json();
@@ -71,6 +81,12 @@ export async function POST(req: Request) {
   }
 
   const supabase = await createClient();
+
+  const quota = await checkQuota(supabase, user.id, "collections", MAX_COLLECTIONS_PER_USER);
+  if (!quota.ok) {
+    return Response.json({ code: "quota_exceeded" }, { status: 409 });
+  }
+
   const { data: row, error } = await supabase
     .from("collections")
     .insert({

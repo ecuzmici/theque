@@ -3,6 +3,7 @@ import type { RawMetadata } from "@/lib/enrichment/extract";
 import { rewriteItemWithGemini } from "@/lib/enrichment/llm/gemini-item-rewriter";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { AiEnrichmentProposalResponseBody } from "@/lib/types/api";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -27,6 +28,14 @@ function normalizeRawMetadata(value: Json, canonicalUrl: string): RawMetadata {
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
+
+  const rl = await rateLimit(`ai-enrichment:${user.id}`, 10, 60);
+  if (!rl.ok) {
+    return Response.json(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
 
   const { id } = await ctx.params;
   const supabase = await createClient();

@@ -4,11 +4,13 @@ export type ShelfId =
   | "all"
   | "books"
   | "watch"
+  | "listen"
   | "eat"
   | "shop"
   | "travel"
   | "read"
   | "cook"
+  | "tools"
   | "inbox";
 
 export type ShelfDefinition = {
@@ -25,13 +27,14 @@ export type ShelfDefinition = {
 export const SHELVES: ShelfDefinition[] = [
   { id: "all", label: "All", filter: { excludeDismissed: true } },
   { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true } },
-  { id: "watch", label: "Watch", filter: { category: "movies_and_tv", excludeDismissed: true } },
-  { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true } },
   {
-    id: "shop",
-    label: "Shop",
-    filter: { category: ["products", "gifts"], excludeDismissed: true },
+    id: "watch",
+    label: "Watch",
+    filter: { category: ["movies_and_tv", "videos"], excludeDismissed: true },
   },
+  { id: "listen", label: "Listen", filter: { category: "music", excludeDismissed: true } },
+  { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true } },
+  { id: "shop", label: "Shop", filter: { category: "products", excludeDismissed: true } },
   { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true } },
   {
     id: "read",
@@ -39,6 +42,7 @@ export const SHELVES: ShelfDefinition[] = [
     filter: { category: "articles", excludeDismissed: true, excludeInbox: true },
   },
   { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true } },
+  { id: "tools", label: "Tools", filter: { category: "apps", excludeDismissed: true } },
   { id: "inbox", label: "Inbox", filter: { status: "inbox" } },
 ];
 

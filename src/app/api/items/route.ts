@@ -82,6 +82,7 @@ function mapSummary(row: ItemRow, tags: string[], collection_ids: string[]): Ite
     title: row.title,
     subtitle: row.subtitle,
     image_url: row.image_url,
+    image_storage_path: row.image_storage_path,
     domain: row.domain,
     category: row.category,
     status: row.status,

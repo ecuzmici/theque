@@ -47,6 +47,7 @@ export type ItemSummaryPayload = {
   title: string | null;
   subtitle: string | null;
   image_url: string | null;
+  image_storage_path: string | null;
   domain: string;
   category: ItemCategory | null;
   status: ItemStatus;
