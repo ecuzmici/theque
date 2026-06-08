@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function setPopupHtml() {
+  // Mirrors popup.html — options are populated at runtime by popup.ts from category-hints.ts
   document.body.innerHTML = `
     <main class="ks-popup">
       <header class="ks-header">
@@ -12,8 +13,6 @@ function setPopupHtml() {
       <label class="ks-label" for="ks-category">Shelf hint <span class="ks-optional">(optional)</span></label>
       <select id="ks-category" class="ks-input ks-select">
         <option value="">Auto detect</option>
-        <option value="books">Books</option>
-        <option value="movies_and_tv">Watch</option>
       </select>
       <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
       <textarea id="ks-note" class="ks-input ks-textarea"></textarea>
@@ -196,6 +195,78 @@ describe("extension popup", () => {
         "This page cannot be captured (restricted URL).",
       );
     });
+  });
+
+  it("uses stored baseUrl for capture when set (enables localhost dev capture)", async () => {
+    storageGet.mockResolvedValue({
+      theque_capture_token: "bmly_test_secret",
+      theque_api_base_url: "http://localhost:3000",
+      theque_connected_email: "user@example.com",
+    });
+    await loadPopup();
+
+    document.getElementById("ks-save")?.click();
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "http://localhost:3000/api/capture",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
+  it("falls back to theque.app when no baseUrl is stored", async () => {
+    storageGet.mockResolvedValue({
+      theque_capture_token: "bmly_test_secret",
+      theque_connected_email: "user@example.com",
+      // no theque_api_base_url
+    });
+    await loadPopup();
+
+    document.getElementById("ks-save")?.click();
+
+    await vi.waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://theque.app/api/capture",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
+  it("opens library using stored baseUrl when connected", async () => {
+    storageGet.mockResolvedValue({
+      theque_capture_token: "bmly_test_secret",
+      theque_api_base_url: "http://localhost:3000",
+      theque_connected_email: "user@example.com",
+    });
+    await loadPopup();
+
+    document.getElementById("ks-open-theque")?.click();
+
+    await vi.waitFor(() => {
+      expect(tabsCreate).toHaveBeenCalledWith({ url: "http://localhost:3000/library" });
+    });
+  });
+
+  it("populates shelf-hint dropdown from CATEGORY_HINT_OPTIONS", async () => {
+    await loadPopup();
+
+    const select = document.getElementById("ks-category") as HTMLSelectElement;
+    const values = Array.from(select.options).map((o) => o.value);
+    // First option is always "Auto detect" (empty value)
+    expect(values[0]).toBe("");
+    // All category hints are present
+    expect(values).toContain("books");
+    expect(values).toContain("music");
+    expect(values).toContain("videos");
+    expect(values).toContain("apps");
+    // gifts was removed in Workstream A — must not appear
+    expect(values).not.toContain("gifts");
+    // Labels match shelf names
+    const watchOption = Array.from(select.options).find((o) => o.value === "movies_and_tv");
+    expect(watchOption?.textContent).toBe("Watch");
+    const listenOption = Array.from(select.options).find((o) => o.value === "music");
+    expect(listenOption?.textContent).toBe("Listen");
   });
 
   it("shows saving state while capture fetch is pending, then restores label and aria", async () => {

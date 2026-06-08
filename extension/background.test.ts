@@ -57,6 +57,29 @@ describe("extension connect messages", () => {
     });
   });
 
+  it("stores a capture token received from the theque.vercel.app origin", () => {
+    expect(externalListener).toBeTypeOf("function");
+
+    const sendResponse = vi.fn();
+    const keepChannelOpen = externalListener?.(
+      {
+        type: "theque.captureToken.connected",
+        token: "bmly_vercel_secret",
+        baseUrl: "https://theque.vercel.app",
+        email: "user@example.com",
+      },
+      { url: "https://theque.vercel.app/settings/extension-connect" },
+      sendResponse,
+    );
+
+    expect(keepChannelOpen).toBe(true);
+    expect(storageSet).toHaveBeenCalledWith({
+      theque_capture_token: "bmly_vercel_secret",
+      theque_api_base_url: "https://theque.vercel.app",
+      theque_connected_email: "user@example.com",
+    });
+  });
+
   it("rejects a base URL that does not match the sender origin", () => {
     const sendResponse = vi.fn();
 
