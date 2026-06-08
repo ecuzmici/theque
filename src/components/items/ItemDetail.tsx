@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExternalLink, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getDisplayImageUrl } from "@/lib/item-display";
+import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { formatCategory, formatStatus } from "@/lib/item-labels";
 import type {
   AiEnrichmentApplyRequestBody,
@@ -75,6 +75,22 @@ export function ItemDetail({
   const [item, setItem] = useState(initial);
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    };
+  }, []);
+
+  useItemStatusRealtime(item.id, item.user_id, (row) => {
+    setItem((prev) => ({ ...prev, ...row }));
+    if (fallbackTimerRef.current) {
+      clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
+  });
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -111,15 +127,14 @@ export function ItemDetail({
         enrichment_error: null,
       }));
 
-      for (let attempt = 0; attempt < 45; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Realtime fires when enrichment completes. Fall back to a single REST fetch
+      // after 60 s in case the socket never delivers the update.
+      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = setTimeout(async () => {
+        fallbackTimerRef.current = null;
         const next = await fetchItem(item.id);
-        if (!next) continue;
-        if (next.processing_status === "ready" || next.processing_status === "failed") {
-          setItem(next);
-          return;
-        }
-      }
+        if (next) setItem(next);
+      }, 60_000);
     } finally {
       setRetryBusy(false);
     }
