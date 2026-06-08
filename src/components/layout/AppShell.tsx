@@ -9,6 +9,7 @@ import {
   Plus,
   Search,
   Settings,
+  Tag,
 } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -19,6 +20,7 @@ const nav = [
   { href: "/library", label: "Library", icon: LayoutGrid, match: (p: string) => p === "/library" || p.startsWith("/library") },
   { href: "/collections", label: "Collections", icon: FolderOpen, match: (p: string) => p.startsWith("/collections") },
   { href: "/search", label: "Search", icon: Search, match: (p: string) => p === "/search" },
+  { href: "/tags", label: "Tags", icon: Tag, match: (p: string) => p === "/tags" },
   { href: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" },
 ] as const;
 

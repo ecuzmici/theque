@@ -69,6 +69,7 @@ export type Database = {
           structured: Json;
           raw_metadata: Json;
           display: Json;
+          search_vector: unknown;
           created_at: string;
           updated_at: string;
         };

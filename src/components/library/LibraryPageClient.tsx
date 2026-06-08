@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,11 @@ import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
+
+type ShelfCache = {
+  items: LibraryItemRow[];
+  hasMore: boolean;
+};
 
 type LibraryPageClientProps = {
   userId: string;
@@ -38,7 +44,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
   const activeShelf = pendingShelf ?? urlShelf;
 
-  const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, LibraryItemRow[]>>>({});
+  const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
   useEffect(() => {
     itemsCacheRef.current = itemsCache;
@@ -72,9 +78,9 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
     void (async () => {
       setLoadError(null);
       try {
-        const rows = await fetchLibraryItemsForShelf(supabase, targetShelf);
+        const result = await fetchLibraryItemsForShelf(supabase, targetShelf);
         if (cancelled) return;
-        setItemsCache((prev) => ({ ...prev, [targetShelf]: rows }));
+        setItemsCache((prev) => ({ ...prev, [targetShelf]: result }));
       } catch (e) {
         if (cancelled) return;
         setLoadError(e instanceof Error ? e.message : "Could not load items");
@@ -102,12 +108,17 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
     };
   }, [activeShelf]);
 
-  const cachedItems = itemsCache[activeShelf];
-  const isLoadingShelf = cachedItems === undefined && loadError == null;
+  const cachedShelf = itemsCache[activeShelf];
+  const cachedItems = cachedShelf?.items;
+  const cachedHasMore = cachedShelf?.hasMore ?? false;
+  const isLoadingShelf = cachedShelf === undefined && loadError == null;
   const activeLabel = SHELVES.find((s) => s.id === activeShelf)?.label ?? "All";
   const updateActiveShelfItems = useCallback(
     (items: LibraryItemRow[]) => {
-      setItemsCache((prev) => ({ ...prev, [activeShelf]: items }));
+      setItemsCache((prev) => {
+        const existing = prev[activeShelf];
+        return { ...prev, [activeShelf]: { items, hasMore: existing?.hasMore ?? false } };
+      });
     },
     [activeShelf],
   );
@@ -118,6 +129,8 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
         title="Library"
         description="Browse your taste by shelf."
       />
+
+      <LibraryInsights />
 
       {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
@@ -138,7 +151,41 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
 
       <ScrollArea className="w-full pb-4">
         {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
-        <div className="flex w-max gap-2 px-0.5 py-1.5 pb-2" role="tablist" aria-label="Shelves">
+        {/* WAI-ARIA tabs pattern: roving tabIndex + arrow key navigation */}
+        <div
+          className="flex w-max gap-2 px-0.5 py-1.5 pb-2"
+          role="tablist"
+          aria-label="Shelves"
+          onKeyDown={(e) => {
+            const tabs = SHELVES.map((s) => s.id);
+            const currentIndex = tabs.indexOf(activeShelf);
+            let nextIndex = currentIndex;
+            if (e.key === "ArrowRight") {
+              e.preventDefault();
+              nextIndex = (currentIndex + 1) % tabs.length;
+            } else if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              nextIndex = 0;
+            } else if (e.key === "End") {
+              e.preventDefault();
+              nextIndex = tabs.length - 1;
+            } else {
+              return;
+            }
+            const nextShelf = tabs[nextIndex];
+            if (nextShelf) {
+              selectShelf(nextShelf);
+              // Move focus to the newly selected tab
+              const tabEl = document.querySelector<HTMLButtonElement>(
+                `[role="tab"][data-shelf-id="${nextShelf}"]`,
+              );
+              tabEl?.focus();
+            }
+          }}
+        >
           {SHELVES.map((s) => {
             const selected = s.id === activeShelf;
             return (
@@ -147,9 +194,12 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
                 type="button"
                 role="tab"
                 aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
+                data-shelf-id={s.id}
                 onClick={() => selectShelf(s.id)}
                 className={cn(
                   "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   selected
                     ? "border-transparent bg-primary text-primary-foreground"
                     : "border-border bg-muted text-muted-foreground hover:bg-card hover:text-foreground",
@@ -187,6 +237,7 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
           userId={userId}
           shelfId={activeShelf}
           initialItems={cachedItems ?? []}
+          initialHasMore={cachedHasMore}
           onItemsChange={updateActiveShelfItems}
         />
       )}
