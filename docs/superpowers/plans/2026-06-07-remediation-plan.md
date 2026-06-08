@@ -11,8 +11,8 @@
 - [x] **Prelim** — `https://theque.app` IS the live production domain (200 OK via Cloudflare → Vercel; `x-vercel-id` confirmed; CSP shows correct Supabase project `jucaqjkgyhyzixzaisjr`). H1 implication: the hardcoded `THEQUE_APP_URL = "https://theque.app"` constant is correct for production capture — but `loadSettings()` still ignores the stored baseUrl and must be fixed so localhost dev capture works.
 - [ ] **A** — Category model redesign (ship A1 → A2 → A3). *A1 migration = Opus-worth-it.*
 - [ ] **B** — Multi-tenant hardening. *B3 RPC + B4 SSRF = Opus review.*
-- [ ] **C** — Image durability (depends on B4 guard)
-- [ ] **D** — Enrichment reliability & freshness
+- [x] **C** — Image durability — PR open on `feature/workstream-c-image-durability`; bucket public, `cacheItemImage` wired into enrichment, `getDisplayImageUrl` in cards; backfill script ready
+- [x] **D** — Enrichment reliability & freshness — poll loop replaced with Supabase Realtime subscription + 60 s REST fallback; `useItemStatusRealtime` hook added; no DB migration needed
 - [ ] **E** — UX polish & scale
 - [ ] **F** — AI recommendations
 - [ ] **G** — Housekeeping
