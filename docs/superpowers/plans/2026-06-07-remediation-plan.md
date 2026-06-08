@@ -13,10 +13,10 @@
 - [x] **B** — Multi-tenant hardening. B1 rate limiting + B2 quotas + B3 per-user-cap RPC + B4 SSRF tightening (credentials, IPv6 hex, export) shipped. B4 DNS-rebinding TOCTOU documented and deferred for Opus-level undici Agent implementation. B5 signup stays open; all mutating endpoints rate-limited.
 - [x] **C** — Image durability — PR open on `feature/workstream-c-image-durability`; bucket public, `cacheItemImage` wired into enrichment, `getDisplayImageUrl` in cards; backfill script ready
 - [x] **D** — Enrichment reliability & freshness — poll loop replaced with Supabase Realtime subscription + 60 s REST fallback; `useItemStatusRealtime` hook added; no DB migration needed
-- [ ] **E** — UX polish & scale
-- [ ] **F** — AI recommendations
-- [ ] **G** — Housekeeping
-- [ ] **H** — Chrome extension (after A + Prelim answer)
+- [x] **E** — UX polish & scale — E1 tag mgmt (`/api/tags` + `/tags` page), E2 cursor pagination/infinite scroll, E3 FTS (`search_vector` migration `20260608180000` applied+verified; replaces injectable `.or(ilike)`), E4 insights strip, E5 WAI-ARIA roving-tabindex tabs. Merged to master.
+- [x] **F** — AI recommendations — v2 grounded: Gemini 2.5 Flash identity-only + deterministic resolvers (Open Library F1, TMDB F2) through B4 SSRF guard; enforced dedup; gated by `GEMINI_API_KEY`; rate-limit + quota + 24h cache; `/api/recommend` + `components/recommend/*`. Merged to master. (Subagent hit session limit at the end but had already committed+pushed; verified green during integration.)
+- [x] **G** — Housekeeping — G1 Next `16.2.6→16.2.7` + postcss override → `npm audit` 0 vulns; G2 PWA `share_target` → `/add` (uses `mobile_share_extension`); G3 error-hygiene verified clean. Merged to master.
+- [x] **H** — Chrome extension — H1 `loadSettings()` honors stored `baseUrl` (default `theque.app`); `theque.vercel.app/*` added to `host_permissions`+`externally_connectable`; H2 popup options from shared `extension/category-hints.ts` (A taxonomy); H3 manifest `0.1.0→0.2.0`. Merged to master. (H4 skipped.)
 - [ ] **I** — Chrome Web Store listing (after A + H)
 
 ## Context for the executor
