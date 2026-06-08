@@ -120,10 +120,12 @@ const itemCategoryValues: ItemCategory[] = [
   "movies_and_tv",
   "restaurants",
   "products",
-  "gifts",
   "travel",
   "recipes",
   "articles",
+  "music",
+  "videos",
+  "apps",
 ];
 
 const zeroScore: ResponseScore = {

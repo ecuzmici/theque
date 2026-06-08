@@ -18,6 +18,8 @@ import {
   normalizeLimitedTagNames,
 } from "@/lib/input-limits";
 import { enrichItem } from "@/lib/jobs/enrich-item";
+import { rateLimit } from "@/lib/rate-limit";
+import { checkQuota, MAX_ITEMS_PER_USER } from "@/lib/quotas";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fingerprint } from "@/lib/url/fingerprint";
@@ -119,6 +121,14 @@ export async function POST(req: Request) {
     return jsonResponse({ code: "unauthorized" }, { status: 401 });
   }
 
+  const rl = await rateLimit(`capture:${userId}`, 60, 60);
+  if (!rl.ok) {
+    return jsonResponse(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
+
   const admin = createAdminClient();
   const userClient = clientMode === "session" ? await createClient() : null;
   const db = clientMode === "session" && userClient ? userClient : admin;
@@ -136,6 +146,11 @@ export async function POST(req: Request) {
       item: mapCaptureItem(existing),
     };
     return jsonResponse(res);
+  }
+
+  const quota = await checkQuota(admin, userId, "items", MAX_ITEMS_PER_USER);
+  if (!quota.ok) {
+    return jsonResponse({ code: "quota_exceeded" }, { status: 409 });
   }
 
   const categoryHint = parseCaptureCategoryHint(body.category_hint);

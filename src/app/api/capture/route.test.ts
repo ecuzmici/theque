@@ -171,7 +171,7 @@ describe("POST /api/capture category hints", () => {
         body: JSON.stringify({
           url: "https://example.com/unique-new-path",
           source: "chrome_extension",
-          category_hint: "music",
+          category_hint: "wishlist",
         }),
       }),
     );

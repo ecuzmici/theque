@@ -23,6 +23,7 @@ async function handleEnrichJob(req: Request) {
   const admin = createAdminClient();
   const { data: ids, error } = await admin.rpc("claim_pending_enrichment_items", {
     batch_size: 10,
+    per_user_cap: 3,
   });
 
   if (error) {

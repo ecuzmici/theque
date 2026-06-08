@@ -7,6 +7,7 @@ import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentApplyResponseBody,
 } from "@/lib/types/api";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -18,6 +19,14 @@ function asRecord(value: unknown): Record<string, unknown> {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
+
+  const rl = await rateLimit(`ai-enrichment:${user.id}`, 10, 60);
+  if (!rl.ok) {
+    return Response.json(
+      { code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
 
   const { id } = await ctx.params;
   const supabase = await createClient();

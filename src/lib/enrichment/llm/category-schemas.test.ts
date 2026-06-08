@@ -168,7 +168,7 @@ describe("validateLlmItemRewriteProposal", () => {
 
   it("rejects invalid proposed categories", () => {
     const result = validateLlmItemRewriteProposal({
-      category: "music",
+      category: "wishlist",
       category_confidence: 0.7,
       confidence: 0.8,
       sources: ["url"],

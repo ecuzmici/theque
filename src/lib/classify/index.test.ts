@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { classify } from "@/lib/classify/index";
 
 describe("classify", () => {
-  it("imdb domain maps to movies_and_tv", () => {
+  it("imdb domain maps to movies_and_tv (authoritative)", () => {
     const r = classify({
       domain: "www.imdb.com",
       pathname: "/title/tt123",
@@ -14,7 +14,7 @@ describe("classify", () => {
     expect(r.category_source).toBe("domain");
   });
 
-  it("goodreads maps to books", () => {
+  it("goodreads maps to books (authoritative)", () => {
     const r = classify({
       domain: "goodreads.com",
       pathname: "/book/show/1",
@@ -35,14 +35,14 @@ describe("classify", () => {
     expect(r.category_source).toBe("schema_org");
   });
 
-  it("unknown domain falls back to articles with low confidence", () => {
+  it("unknown domain falls back to null with low confidence", () => {
     const r = classify({
       domain: "unknown.example",
       pathname: "/post/hello",
       jsonLd: [],
     });
-    expect(r.category).toBe("articles");
-    expect(r.category_confidence).toBe(0.4);
+    expect(r.category).toBeNull();
+    expect(r.category_confidence).toBe(0.3);
     expect(r.category_source).toBe("heuristic");
   });
 
@@ -93,6 +93,78 @@ describe("classify", () => {
     });
 
     expect(r.category).toBe("recipes");
+    expect(r.category_source).toBe("schema_org");
+  });
+
+  // A2: schema.org wins over ambiguous domain
+  it("schema.org Recipe beats ambiguous domain (amazon)", () => {
+    const r = classify({
+      domain: "amazon.com",
+      pathname: "/dp/B001",
+      jsonLd: [{ "@type": "Recipe", name: "Soup" }],
+    });
+    expect(r.category).toBe("recipes");
+    expect(r.category_source).toBe("schema_org");
+  });
+
+  it("ambiguous domain is used when schema.org is absent", () => {
+    const r = classify({
+      domain: "youtube.com",
+      pathname: "/watch?v=abc",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("videos");
+    expect(r.category_confidence).toBe(0.55);
+    expect(r.category_source).toBe("domain");
+  });
+
+  it("google.com no longer maps to restaurants — returns null", () => {
+    const r = classify({
+      domain: "google.com",
+      pathname: "/search?q=pizza",
+      jsonLd: [],
+    });
+    expect(r.category).toBeNull();
+  });
+
+  // A3: new categories
+  it("spotify maps to music (authoritative)", () => {
+    const r = classify({
+      domain: "open.spotify.com",
+      pathname: "/album/abc",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("music");
+    expect(r.category_confidence).toBe(0.95);
+  });
+
+  it("github maps to apps (authoritative)", () => {
+    const r = classify({
+      domain: "github.com",
+      pathname: "/owner/repo",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("apps");
+    expect(r.category_confidence).toBe(0.95);
+  });
+
+  it("schema.org MusicAlbum maps to music", () => {
+    const r = classify({
+      domain: "example.org",
+      pathname: "/album",
+      jsonLd: [{ "@type": "MusicAlbum", name: "Test" }],
+    });
+    expect(r.category).toBe("music");
+    expect(r.category_source).toBe("schema_org");
+  });
+
+  it("schema.org SoftwareApplication maps to apps", () => {
+    const r = classify({
+      domain: "example.org",
+      pathname: "/app",
+      jsonLd: [{ "@type": "SoftwareApplication", name: "Test" }],
+    });
+    expect(r.category).toBe("apps");
     expect(r.category_source).toBe("schema_org");
   });
 });

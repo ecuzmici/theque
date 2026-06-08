@@ -19,10 +19,12 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   movies_and_tv: "Movies & TV",
   restaurants: "Restaurants",
   products: "Products",
-  gifts: "Gifts",
   travel: "Travel",
   recipes: "Recipes",
   articles: "Articles",
+  music: "Music & Audio",
+  videos: "Videos",
+  apps: "Apps & Tools",
 };
 
 export const CATEGORY_SOURCE_LABELS: Record<CategorySource, string> = {

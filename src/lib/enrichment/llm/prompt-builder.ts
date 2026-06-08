@@ -22,14 +22,18 @@ const categorySchemaDescriptions: Record<ItemCategory, string> = {
     'restaurants → cuisine: string, price_level: string (e.g. "$$"), address: string, place_name: string',
   products:
     "products → brand: string, price: { amount: number, currency: string }, availability: string",
-  gifts:
-    "gifts → recipient_hint: string, occasion: string, price: { amount: number, currency: string }",
   travel:
     "travel → destination: string, travel_dates: string | null, lodging_name: string",
   recipes:
     "recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]",
   articles:
     "articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string",
+  music:
+    "music → artist: string, album: string, release_year: integer (1000–3000), genre: string, track_count: positive integer",
+  videos:
+    "videos → channel: string, duration_seconds: positive integer, published_at: string (ISO 8601)",
+  apps:
+    "apps → developer: string, platform: string, version: string, category_tag: string",
 };
 
 function formatCategorySchema(category: ItemCategory): string {
@@ -41,18 +45,23 @@ function formatCategorySchema(category: ItemCategory): string {
 const categoryMeanings: Record<ItemCategory, string> = {
   books: "a specific book (Goodreads, Amazon book listing, Storytel, publisher page)",
   movies_and_tv:
-    "a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd, YouTube)",
+    "a specific movie, TV show, or episode (IMDb, TMDb, Letterboxd)",
   restaurants:
     "a specific restaurant or food venue (Google Maps, Yelp, venue's own site)",
   products:
     "a specific purchasable product (Amazon, Etsy, brand product page)",
-  gifts: "a gift guide or wishlist page with gift/wishlist in URL path",
   travel:
     "a specific destination, hotel, or travel listing (Booking, Airbnb, TripAdvisor)",
   recipes:
     "a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)",
   articles:
     "news, blog post, essay, magazine article — this is the DEFAULT fallback",
+  music:
+    "a music track, album, artist, or podcast (Spotify, Apple Music, Bandcamp, SoundCloud)",
+  videos:
+    "a video, channel, or playlist (YouTube, Vimeo, and other video platforms)",
+  apps:
+    "a software app, tool, library, or developer resource (GitHub, Product Hunt, app stores)",
 };
 
 // ── Valid source labels ─────────────────────────────────────────
@@ -75,10 +84,12 @@ const allCategories: ItemCategory[] = [
   "movies_and_tv",
   "restaurants",
   "products",
-  "gifts",
   "travel",
   "recipes",
   "articles",
+  "music",
+  "videos",
+  "apps",
 ];
 
 // ── Prompt builder ──────────────────────────────────────────────

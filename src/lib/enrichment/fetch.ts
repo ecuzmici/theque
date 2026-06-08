@@ -33,17 +33,37 @@ function isBlockedIpv4(address: string): boolean {
 
 function isBlockedIpv6(address: string): boolean {
   const normalized = address.toLowerCase();
-  return (
-    normalized === "::" ||
-    normalized === "::1" ||
-    normalized.startsWith("fc") ||
-    normalized.startsWith("fd") ||
-    normalized.startsWith("fe80:") ||
-    normalized.startsWith("::ffff:127.") ||
-    normalized.startsWith("::ffff:10.") ||
-    normalized.startsWith("::ffff:192.168.") ||
-    normalized.startsWith("::ffff:169.254.")
-  );
+
+  if (normalized === "::" || normalized === "::1") return true;
+  if (normalized.startsWith("fc") || normalized.startsWith("fd")) return true;
+  if (normalized.startsWith("fe80")) return true; // link-local
+  if (normalized.startsWith("0100::")) return true; // discard prefix
+
+  // ::ffff:0:/96 — IPv4-translated (SIIT)
+  if (normalized.startsWith("::ffff:0:")) return true;
+
+  // IPv4-mapped ::ffff:x/96.
+  // WHATWG URL normalizes dotted-decimal to hex: ::ffff:172.16.0.1 → ::ffff:ac10:1
+  // dns.lookup may return dotted form: ::ffff:10.0.0.1
+  if (normalized.startsWith("::ffff:")) {
+    const suffix = normalized.slice(7); // "ac10:1" or "10.0.0.1"
+    if (suffix.includes(".")) {
+      // Dotted-decimal form from DNS lookup
+      return isBlockedIpv4(suffix);
+    }
+    // Hex form from WHATWG URL: two colon-separated 16-bit groups
+    const hexGroups = suffix.split(":");
+    if (hexGroups.length === 2) {
+      const high = Number.parseInt(hexGroups[0], 16);
+      const low = Number.parseInt(hexGroups[1], 16);
+      if (!Number.isNaN(high) && !Number.isNaN(low)) {
+        const mapped = `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+        return isBlockedIpv4(mapped);
+      }
+    }
+  }
+
+  return false;
 }
 
 function isBlockedAddress(address: string): boolean {
@@ -58,7 +78,18 @@ export async function assertSafeFetchUrl(url: URL): Promise<void> {
     throw new Error("blocked_fetch_url");
   }
 
-  const hostname = url.hostname.toLowerCase();
+  // Reject URLs with embedded credentials — they bypass auth checks and are never needed.
+  if (url.username || url.password) {
+    throw new Error("blocked_fetch_url");
+  }
+
+  // WHATWG URL wraps IPv6 literals in brackets (e.g. "[::1]"); strip them before isIP/isBlockedIpv6.
+  const rawHostname = url.hostname.toLowerCase();
+  const hostname =
+    rawHostname.startsWith("[") && rawHostname.endsWith("]")
+      ? rawHostname.slice(1, -1)
+      : rawHostname;
+
   if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local")) {
     throw new Error("blocked_fetch_url");
   }
@@ -72,6 +103,11 @@ export async function assertSafeFetchUrl(url: URL): Promise<void> {
   if (!addresses.length || addresses.some(({ address }) => isBlockedAddress(address))) {
     throw new Error("blocked_fetch_url");
   }
+  // NOTE: DNS rebinding (TOCTOU) — assertSafeFetchUrl resolves the hostname here,
+  // but the subsequent fetch() call resolves DNS again independently. A complete fix
+  // requires pinning the resolved IP by using an undici Agent with a custom connect
+  // callback that re-validates at TCP-connect time. That approach is deferred for
+  // Opus-level review (B4 follow-up) as it requires undici internals.
 }
 
 async function readTextLimited(res: Response): Promise<string> {
