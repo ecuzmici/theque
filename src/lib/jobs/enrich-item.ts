@@ -6,6 +6,7 @@ import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
 import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
@@ -213,6 +214,11 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       mergedCategorySource = merged.category_source;
     }
 
+    const imageStoragePath =
+      mergedImageUrl && !row.image_storage_path
+        ? await cacheItemImage(admin, row.user_id, itemId, mergedImageUrl)
+        : row.image_storage_path ?? null;
+
     const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
 
     const siteForTitle =
@@ -245,6 +251,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         subtitle,
         description: mergedDescription,
         image_url: mergedImageUrl,
+        image_storage_path: imageStoragePath,
         category: mergedCategory,
         category_confidence: mergedCategoryConfidence,
         category_source: mergedCategorySource,

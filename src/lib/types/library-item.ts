@@ -8,6 +8,7 @@ export type LibraryItemRow = Pick<
   | "title"
   | "subtitle"
   | "image_url"
+  | "image_storage_path"
   | "domain"
   | "category"
   | "status"
@@ -23,6 +24,7 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     title: summary.title,
     subtitle: summary.subtitle,
     image_url: summary.image_url,
+    image_storage_path: summary.image_storage_path,
     domain: summary.domain,
     category: summary.category,
     status: summary.status,
