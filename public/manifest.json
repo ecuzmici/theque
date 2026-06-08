@@ -15,5 +15,14 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/add",
+    "method": "GET",
+    "params": {
+      "url": "url",
+      "title": "title",
+      "text": "text"
+    }
+  }
 }

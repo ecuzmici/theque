@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
+import { getDisplayImageUrl } from "@/lib/item-display";
 import { formatCategory, formatStatus } from "@/lib/item-labels";
 import type {
   AiEnrichmentApplyRequestBody,
