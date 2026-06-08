@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -17,6 +18,9 @@ import { cn } from "@/lib/utils";
 
 type LibraryPageClientProps = {
   userId: string;
+  /** Passed from the server page to avoid exposing secret env vars to the client. */
+  recommendBooksEnabled?: boolean;
+  recommendWatchEnabled?: boolean;
 };
 
 function LibraryGridSkeleton() {
@@ -31,7 +35,11 @@ function LibraryGridSkeleton() {
   );
 }
 
-export function LibraryPageClient({ userId }: LibraryPageClientProps) {
+export function LibraryPageClient({
+  userId,
+  recommendBooksEnabled = false,
+  recommendWatchEnabled = false,
+}: LibraryPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
@@ -174,6 +182,18 @@ export function LibraryPageClient({ userId }: LibraryPageClientProps) {
       <p className="sr-only" aria-live="polite">
         Showing {activeLabel} shelf
       </p>
+
+      {/* AI Recommendations button — shown on books/watch shelves when feature is enabled */}
+      {((activeShelf === "books" && recommendBooksEnabled) ||
+        (activeShelf === "watch" && recommendWatchEnabled)) &&
+      cachedItems !== undefined ? (
+        <div className="mb-4 flex justify-end">
+          <RecommendButton
+            shelfId={activeShelf as "books" | "watch"}
+            shelfItems={cachedItems}
+          />
+        </div>
+      ) : null}
 
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">

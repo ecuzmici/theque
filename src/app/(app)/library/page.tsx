@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryPageClient } from "@/components/library/LibraryPageClient";
+import { isRecommendEnabled, isWatchRecommendEnabled } from "@/lib/recommend/recommend-config";
 import { createClient } from "@/lib/supabase/server";
 
 function LibrarySuspenseFallback() {
@@ -39,7 +40,11 @@ export default async function LibraryPage() {
 
   return (
     <Suspense fallback={<LibrarySuspenseFallback />}>
-      <LibraryPageClient userId={user.id} />
+      <LibraryPageClient
+        userId={user.id}
+        recommendBooksEnabled={isRecommendEnabled()}
+        recommendWatchEnabled={isWatchRecommendEnabled()}
+      />
     </Suspense>
   );
 }
