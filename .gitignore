@@ -52,6 +52,7 @@ next-env.d.ts
 # chrome extension build artifacts (run npm run build)
 extension/popup.js
 extension/background.js
+extension/category-hints.js
 
 # QA agent screenshots (local only)
 qa-screenshots/
