@@ -47,6 +47,112 @@ const allowedStructuredFields: Record<ItemCategory, Set<string>> = {
   apps: new Set(["developer", "platform", "version", "category_tag"]),
 };
 
+type JsonSchemaFragment = Record<string, unknown>;
+
+const stringSchema: JsonSchemaFragment = { type: "string" };
+const integerSchema: JsonSchemaFragment = { type: "integer" };
+const numberSchema: JsonSchemaFragment = { type: "number" };
+const stringArraySchema: JsonSchemaFragment = { type: "array", items: { type: "string" } };
+const priceSchema: JsonSchemaFragment = {
+  type: "object",
+  properties: { amount: { type: "number" }, currency: { type: "string" } },
+};
+
+/**
+ * JSON-schema fragments for each structured field, mirroring `fieldValidators`.
+ * These are fed to the model so it knows exactly which fields a category
+ * supports and what shape they take, instead of guessing (and returning `{}`).
+ */
+const structuredFieldJsonSchemas: Record<ItemCategory, Record<string, JsonSchemaFragment>> = {
+  books: {
+    authors: stringArraySchema,
+    isbn: stringSchema,
+    published_year: integerSchema,
+    page_count: integerSchema,
+    average_rating: numberSchema,
+    ratings_count: integerSchema,
+  },
+  movies_and_tv: {
+    year: integerSchema,
+    directors: stringArraySchema,
+    runtime_minutes: integerSchema,
+    genres: stringArraySchema,
+    media_type: stringSchema,
+    rating: numberSchema,
+    rating_scale: numberSchema,
+  },
+  restaurants: {
+    cuisine: stringSchema,
+    price_level: stringSchema,
+    address: stringSchema,
+    place_name: stringSchema,
+  },
+  products: {
+    brand: stringSchema,
+    price: priceSchema,
+    availability: stringSchema,
+  },
+  travel: {
+    destination: stringSchema,
+    travel_dates: stringSchema,
+    lodging_name: stringSchema,
+  },
+  recipes: {
+    author: stringSchema,
+    prep_time_minutes: integerSchema,
+    cook_time_minutes: integerSchema,
+    yield: stringSchema,
+    ingredients: stringArraySchema,
+  },
+  articles: {
+    author: stringSchema,
+    published_at: stringSchema,
+    reading_time_minutes: integerSchema,
+    publisher: stringSchema,
+  },
+  music: {
+    artist: stringSchema,
+    album: stringSchema,
+    release_year: integerSchema,
+    genre: stringSchema,
+    track_count: integerSchema,
+  },
+  videos: {
+    channel: stringSchema,
+    duration_seconds: integerSchema,
+    published_at: stringSchema,
+  },
+  apps: {
+    developer: stringSchema,
+    platform: stringSchema,
+    version: stringSchema,
+    category_tag: stringSchema,
+  },
+};
+
+/**
+ * Builds the `structured` object schema for a category. When no category is
+ * given (e.g. the model may reclassify), the union of every category's fields
+ * is offered so the model can populate whichever apply to its chosen category;
+ * `validateLlmItemRewriteProposal` still enforces the per-category allowlist.
+ */
+export function buildStructuredJsonSchema(category?: ItemCategory): JsonSchemaFragment {
+  const properties: Record<string, JsonSchemaFragment> = {};
+  if (category && structuredFieldJsonSchemas[category]) {
+    Object.assign(properties, structuredFieldJsonSchemas[category]);
+  } else {
+    for (const fields of Object.values(structuredFieldJsonSchemas)) {
+      Object.assign(properties, fields);
+    }
+  }
+  return { type: "object", properties };
+}
+
+/** Ordered list of structured field names a category supports, for prompting. */
+export function structuredFieldNamesForCategory(category: ItemCategory): string[] {
+  return Object.keys(structuredFieldJsonSchemas[category] ?? {});
+}
+
 const allowedCategories = new Set<ItemCategory>([
   "books",
   "movies_and_tv",

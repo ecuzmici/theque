@@ -1,3 +1,4 @@
+import { mergeProposedStructured } from "@/lib/enrichment/llm/apply-item-rewrite-proposal";
 import { formatCategory } from "@/lib/item-labels";
 import type { AiItemRewriteProposal } from "@/lib/types/api";
 import type { ItemCategory } from "@/lib/database.types";
@@ -38,6 +39,13 @@ export function buildAiReviewRows(
   current: CurrentItemReviewShape,
   proposal: AiItemRewriteProposal,
 ): AiReviewRow[] {
+  const categoryChanged = current.category !== proposal.category;
+  const effectiveStructured = mergeProposedStructured(
+    current.structured,
+    proposal.structured as Record<string, unknown> | undefined,
+    categoryChanged,
+  );
+
   const rows: AiReviewRow[] = [
     {
       key: "title",
@@ -85,8 +93,8 @@ export function buildAiReviewRows(
       key: "structured",
       label: "Structured fields",
       current: formatValue(current.structured),
-      proposed: formatValue(proposal.structured),
-      changed: JSON.stringify(current.structured) !== JSON.stringify(proposal.structured),
+      proposed: formatValue(effectiveStructured),
+      changed: JSON.stringify(current.structured) !== JSON.stringify(effectiveStructured),
     },
   ];
 

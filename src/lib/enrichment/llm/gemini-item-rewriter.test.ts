@@ -35,6 +35,15 @@ describe("buildGeminiItemRewritePrompt", () => {
     expect(prompt).toContain("You may change category, title, description, image_url, and structured metadata.");
     expect(prompt).toContain("This is a review flow, so return your best proposal even when it overwrites existing fields.");
   });
+
+  it("lists the supported structured fields for the current category", () => {
+    const prompt = buildGeminiItemRewritePrompt({ ...baseRewriteInput, currentCategory: "books" });
+
+    expect(prompt).toContain("Structured fields for books:");
+    expect(prompt).toContain("isbn");
+    expect(prompt).toContain("authors");
+    expect(prompt).toContain("Always preserve existing structured values when they are still accurate");
+  });
 });
 
 describe("buildGeminiItemRewriteResponseJsonSchema", () => {
@@ -44,6 +53,17 @@ describe("buildGeminiItemRewriteResponseJsonSchema", () => {
     expect(schema.required).toContain("category");
     expect(schema.required).toContain("category_confidence");
     expect(schema.properties).toHaveProperty("structured");
+  });
+
+  it("describes the structured fields for the given category", () => {
+    const schema = buildGeminiItemRewriteResponseJsonSchema("books");
+    const structured = schema.properties.structured as {
+      properties?: Record<string, unknown>;
+    };
+
+    expect(structured.properties).toHaveProperty("isbn");
+    expect(structured.properties).toHaveProperty("authors");
+    expect(structured.properties).not.toHaveProperty("cuisine");
   });
 });
 

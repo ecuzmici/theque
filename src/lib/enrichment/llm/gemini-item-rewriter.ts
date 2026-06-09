@@ -4,6 +4,8 @@ import type { ItemCategory } from "@/lib/database.types";
 import type { RawMetadata } from "@/lib/enrichment/extract";
 import {
   type LlmItemRewriteProposal,
+  buildStructuredJsonSchema,
+  structuredFieldNamesForCategory,
   validateLlmItemRewriteProposal,
 } from "@/lib/enrichment/llm/category-schemas";
 
@@ -40,7 +42,7 @@ const itemCategoryValues: ItemCategory[] = [
   "apps",
 ];
 
-export function buildGeminiItemRewriteResponseJsonSchema() {
+export function buildGeminiItemRewriteResponseJsonSchema(currentCategory?: ItemCategory | null) {
   return {
     type: "object",
     properties: {
@@ -50,7 +52,7 @@ export function buildGeminiItemRewriteResponseJsonSchema() {
       subtitle: { type: "string" },
       description: { type: "string" },
       image_url: { type: "string" },
-      structured: { type: "object" },
+      structured: buildStructuredJsonSchema(currentCategory ?? undefined),
       confidence: { type: "number", minimum: 0, maximum: 1 },
       sources: { type: "array", items: { type: "string" }, minItems: 1 },
       notes: { type: "string" },
@@ -61,6 +63,9 @@ export function buildGeminiItemRewriteResponseJsonSchema() {
 }
 
 export function buildGeminiItemRewritePrompt(input: GeminiItemRewriteInput): string {
+  const supportedFields = input.currentCategory
+    ? structuredFieldNamesForCategory(input.currentCategory)
+    : [];
   return [
     "You are proposing a full metadata rewrite for a single item in Theque.",
     `Current category: ${input.currentCategory ?? "uncategorized"}.`,
@@ -68,6 +73,10 @@ export function buildGeminiItemRewritePrompt(input: GeminiItemRewriteInput): str
     "This is a review flow, so return your best proposal even when it overwrites existing fields.",
     "Use only the provided URL and metadata evidence.",
     "Return the final proposed category and structured fields that match that category.",
+    supportedFields.length > 0
+      ? `Structured fields for ${input.currentCategory}: ${supportedFields.join(", ")}. If the category changes, use the fields for the new category instead.`
+      : "Populate the structured fields that match the chosen category.",
+    "Always preserve existing structured values when they are still accurate, and fill in any supported fields you have evidence for. Do not return an empty structured object when supported fields can be populated from the evidence.",
     "When evidence is strong from the URL or title, use it to correct obvious misclassifications.",
     "Do not invent facts like authors, prices, ratings, or dates without evidence.",
     "",
@@ -118,7 +127,7 @@ export async function rewriteItemWithGemini(input: GeminiItemRewriteInput): Prom
         abortSignal: controller.signal,
         temperature: 0.1,
         responseMimeType: "application/json",
-        responseJsonSchema: buildGeminiItemRewriteResponseJsonSchema(),
+        responseJsonSchema: buildGeminiItemRewriteResponseJsonSchema(input.currentCategory),
       },
     });
 
