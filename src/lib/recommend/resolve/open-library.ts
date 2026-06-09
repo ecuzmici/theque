@@ -17,6 +17,10 @@ export type ResolvedBook = {
   canonical_url: string;
   cover_url: string | null;
   confirmed_year: number | null;
+  /** Author(s) from the matched Open Library doc — used to display a verified
+   * author instead of the LLM's (which can be hallucinated). Null when the
+   * matched doc has no author_name. */
+  verified_author: string | null;
 };
 
 type OpenLibraryDoc = {
@@ -97,6 +101,7 @@ function toResolvedBook(doc: OpenLibraryDoc): ResolvedBook {
       ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
       : null,
     confirmed_year: doc.first_publish_year ?? null,
+    verified_author: doc.author_name?.length ? doc.author_name.join(", ") : null,
   };
 }
 

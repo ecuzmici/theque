@@ -45,18 +45,38 @@ export const RECOMMEND_RATE_LIMIT_PER_DAY = Number.parseInt(
 
 /**
  * Ordered AI Gateway model fallback for recommendations.
- * Primary GPT-5 mini (best taste), then Gemini Flash, then Flash-Lite —
- * mixing providers so one provider's overload can't take the feature down.
+ *
+ * Chosen from an A/B benchmark on this exact task (15-book shelf, identity-only
+ * output). The latency problem was never the provider — it was *reasoning*: the
+ * old primary (gpt-5-mini, default reasoning) spent ~28s and ~1.7k reasoning
+ * tokens per call, and every "reasoning" model on the Gateway was slow
+ * (DeepSeek 23s, GLM 54s, Qwen 72s, Kimi 178s). The fast tier is the
+ * non-reasoning mini/nano/lite models at ~4s.
+ *
+ * Primary gpt-5-nano (capped to minimal reasoning via RECOMMEND_PROVIDER_OPTIONS)
+ * was the cheapest *and* tied-fastest, with the most interesting deep-cut picks.
+ * Gemini Flash-Lite and Claude Haiku follow as cross-provider fallbacks so one
+ * provider's overload can't take the feature down.
  */
 export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
-  "openai/gpt-5-mini",
-  "google/gemini-2.5-flash",
+  "openai/gpt-5-nano",
   "google/gemini-2.5-flash-lite",
+  "anthropic/claude-haiku-4.5",
 ]);
 
-/** Temperature for recommendations (creative but bounded). */
+/**
+ * Provider-specific options forwarded to every recommendation model attempt.
+ * `reasoningEffort: minimal` disables the multi-second reasoning pass on OpenAI
+ * models; the key is ignored for the non-OpenAI fallbacks (which don't reason
+ * by default), so the same object is safe across the whole fallback list.
+ */
+export const RECOMMEND_PROVIDER_OPTIONS = {
+  openai: { reasoningEffort: "minimal" },
+};
+
+/** Temperature for recommendations (some variety, but steadier than before). */
 export const RECOMMEND_TEMPERATURE = Number.parseFloat(
-  process.env.RECOMMEND_TEMPERATURE ?? "0.7",
+  process.env.RECOMMEND_TEMPERATURE ?? "0.5",
 );
 
 /** Timeout for a single recommendation model attempt, in milliseconds. */

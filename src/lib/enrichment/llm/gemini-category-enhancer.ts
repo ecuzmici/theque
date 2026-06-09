@@ -11,14 +11,27 @@ import {
 
 /**
  * Ordered AI Gateway model fallback for category enrichment.
- * Extraction/normalization is a low-temperature task, so a cheap model is
- * plenty: GPT-5 nano primary (holds up well under the rule-heavy prompt),
- * Gemini Flash-Lite as the cross-provider fallback.
+ *
+ * A 4-book A/B benchmark showed gpt-5-nano returning near-empty output for this
+ * task (only the required confidence/sources keys, omitting title/description/
+ * structured) — and because that still passes validation, it silently neutered
+ * the enrichment step. Gemini Flash-Lite produces complete, structured output,
+ * so it is the primary; gemini-2.5-flash is the fuller-capacity fallback.
  */
 const ENRICHMENT_MODELS = parseModelList(process.env.ENRICHMENT_MODELS, [
-  "openai/gpt-5-nano",
   "google/gemini-2.5-flash-lite",
+  "google/gemini-2.5-flash",
 ]);
+
+/**
+ * Provider-specific options forwarded to every enrichment model attempt.
+ * Disables Gemini "thinking" so the gemini-2.5-flash fallback stays within the
+ * 10s enrichment timeout (with thinking on it spends ~20-40s reasoning).
+ * Flash-Lite does not reason, so a zero budget is a no-op for the primary.
+ */
+const ENRICHMENT_PROVIDER_OPTIONS = {
+  google: { thinkingConfig: { thinkingBudget: 0 } },
+};
 
 export type GeminiCategoryInput = {
   finalUrl: string;
@@ -148,6 +161,7 @@ export async function enhanceCategoryWithGemini(input: GeminiCategoryInput): Pro
       prompt,
       temperature: 0.1,
       timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 10000,
+      providerOptions: ENRICHMENT_PROVIDER_OPTIONS,
       label: "enrich",
     });
   } catch (error) {

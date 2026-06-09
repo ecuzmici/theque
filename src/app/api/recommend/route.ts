@@ -12,6 +12,7 @@ import {
   RECOMMEND_MIN_ITEMS,
   RECOMMEND_MODELS,
   RECOMMEND_OVER_REQUEST,
+  RECOMMEND_PROVIDER_OPTIONS,
   RECOMMEND_RATE_LIMIT_PER_DAY,
   RECOMMEND_TEMPERATURE,
   RECOMMEND_TIMEOUT_MS,
@@ -136,6 +137,7 @@ export async function POST(req: Request) {
       prompt,
       temperature: RECOMMEND_TEMPERATURE,
       timeoutMs: RECOMMEND_TIMEOUT_MS,
+      providerOptions: RECOMMEND_PROVIDER_OPTIONS,
       label: "recommend",
     });
 
@@ -170,8 +172,10 @@ export async function POST(req: Request) {
 
       if (!resolved) return null;
 
+      // Prefer the resolver's verified author over the LLM's creator, which can
+      // be hallucinated (e.g. "The Gone World" misattributed to Tom DeLonge).
       const subtitle = [
-        candidate.creator,
+        resolved.verified_author ?? candidate.creator,
         resolved.confirmed_year ?? candidate.year,
       ]
         .filter(Boolean)

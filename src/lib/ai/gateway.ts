@@ -20,6 +20,9 @@ import "server-only";
 
 import { generateText } from "ai";
 
+/** Provider-options shape accepted by the installed AI SDK (kept in sync automatically). */
+type ProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
+
 const JSON_SYSTEM =
   "You are a precise data API. Respond with only a single valid, minified JSON value " +
   "matching the requested shape. No prose, no explanation, no markdown, no code fences.";
@@ -42,6 +45,13 @@ export type GatewayJsonOptions = {
   system?: string;
   temperature?: number;
   timeoutMs?: number;
+  /**
+   * Provider-specific options forwarded to every model attempt. Keyed by
+   * provider id, so options for a non-matching provider are simply ignored —
+   * e.g. `{ openai: { reasoningEffort: "minimal" } }` disables reasoning on
+   * OpenAI models and is a no-op for the Gemini/Anthropic fallbacks.
+   */
+  providerOptions?: ProviderOptions;
   /** Short label for logs (e.g. "recommend", "enrich"). */
   label: string;
 };
@@ -62,7 +72,7 @@ export type GatewayJsonResult<T> = {
 export async function generateJsonWithFallback<T = unknown>(
   opts: GatewayJsonOptions,
 ): Promise<GatewayJsonResult<T>> {
-  const { models, prompt, system, temperature, timeoutMs = 20000, label } = opts;
+  const { models, prompt, system, temperature, timeoutMs = 20000, providerOptions, label } = opts;
   if (models.length === 0) throw new Error("no_models_configured");
 
   let lastError: unknown;
@@ -73,6 +83,7 @@ export async function generateJsonWithFallback<T = unknown>(
         system: system ?? JSON_SYSTEM,
         prompt,
         temperature,
+        ...(providerOptions ? { providerOptions } : {}),
         abortSignal: AbortSignal.timeout(timeoutMs),
       });
       if (!text) throw new Error("empty_response");

@@ -109,4 +109,20 @@ describe("extractFromHtml", () => {
     expect(r.structured.isbn).toBe("9780375826689");
     expect(r.structured.page_count).toBe(544);
   });
+
+  it("prefers the full Goodreads body description over the truncated og:description", () => {
+    const html = `<!doctype html><html><head>
+      <meta property="og:description" content="The six hundred passengers and crew members aboard a ju…" />
+    </head><body>
+      <div data-testid="description"><span class="Formatted">The six hundred passengers and crew members aboard a jumbo jetliner are left without a destination.<br /><br />Captain Jonah Scott became responsible for the entire human race.</span></div>
+    </body></html>`;
+    const r = extractFromHtml(html, {
+      finalUrl: "https://www.goodreads.com/book/show/2034476.Down_to_a_Sunless_Sea",
+      statusCode: 200,
+    });
+    expect(r.description).toBe(
+      "The six hundred passengers and crew members aboard a jumbo jetliner are left without a destination. Captain Jonah Scott became responsible for the entire human race.",
+    );
+    expect(r.description).not.toContain("…");
+  });
 });

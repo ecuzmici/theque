@@ -84,6 +84,7 @@ function mockResolverSuccess() {
     canonical_url: "https://openlibrary.org/works/OL12345W",
     cover_url: "https://covers.openlibrary.org/b/id/123456-L.jpg",
     confirmed_year: 2020,
+    verified_author: null,
   });
 }
 
@@ -205,6 +206,26 @@ describe("POST /api/recommend", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(Array.isArray(body.cards)).toBe(true);
+    });
+
+    it("prefers the resolver's verified author over the LLM creator in the subtitle", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabaseQuery([]);
+      // LLM hallucinates the author ("Tom DeLonge" for The Gone World).
+      mockGatewaySuccess([
+        { title: "The Gone World", creator: "Tom DeLonge", year: 2018, description: "Desc", reason: "Reason" },
+      ]);
+      vi.mocked(resolveBookWithOpenLibrary).mockResolvedValue({
+        canonical_url: "https://openlibrary.org/works/OLgoneW",
+        cover_url: null,
+        confirmed_year: 2018,
+        verified_author: "Tom Sweterlitsch",
+      });
+
+      const res = await POST(makeRequest({ shelfId: "books", items: SAMPLE_BOOKS }));
+      const body = await res.json();
+      expect(body.cards[0].subtitle).toContain("Tom Sweterlitsch");
+      expect(body.cards[0].subtitle).not.toContain("Tom DeLonge");
     });
 
     it("deduplicates against existing library titles", async () => {

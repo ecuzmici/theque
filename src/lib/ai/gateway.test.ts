@@ -85,6 +85,28 @@ describe("generateJsonWithFallback", () => {
     expect(result.model).toBe("c/d");
   });
 
+  it("forwards providerOptions to generateText", async () => {
+    mockGenerateText.mockResolvedValue({ text: '{"ok":true}' });
+    await generateJsonWithFallback({
+      models: ["openai/gpt-5-nano"],
+      prompt: "p",
+      label: "test",
+      providerOptions: { openai: { reasoningEffort: "minimal" } },
+    });
+    expect(mockGenerateText).toHaveBeenCalledWith(
+      expect.objectContaining({
+        providerOptions: { openai: { reasoningEffort: "minimal" } },
+      }),
+    );
+  });
+
+  it("omits providerOptions when not supplied", async () => {
+    mockGenerateText.mockResolvedValue({ text: '{"ok":true}' });
+    await generateJsonWithFallback({ models: ["a/b"], prompt: "p", label: "test" });
+    const callArg = mockGenerateText.mock.calls[0][0] as Record<string, unknown>;
+    expect("providerOptions" in callArg).toBe(false);
+  });
+
   it("strips a ```json code fence", async () => {
     mockGenerateText.mockResolvedValue({ text: '```json\n{"ok":true}\n```' });
     const result = await generateJsonWithFallback<{ ok: boolean }>({

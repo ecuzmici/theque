@@ -85,6 +85,9 @@ export function extractFromHtml(
 
   let title: string | null = null;
   let image_url: string | null = null;
+  // A site parser may supply a fuller description than the (often truncated)
+  // og:description; when present it takes precedence over the generic one.
+  let parserDescription: string | null = null;
 
   if (hostname === "imdb.com" || hostname.endsWith(".imdb.com")) {
     const imdb = parseImdb(doc, json_ld, open_graph);
@@ -93,6 +96,7 @@ export function extractFromHtml(
   } else if (hostname === "goodreads.com" || hostname.endsWith(".goodreads.com")) {
     const gr = parseGoodreads(doc, json_ld);
     structured = { ...structured, ...gr.structured };
+    if (gr.description) parserDescription = gr.description;
     parser = "goodreads";
   } else if (hostname === "amazon.com" || hostname.endsWith(".amazon.com")) {
     const amazon = parseAmazon(doc, open_graph);
@@ -106,7 +110,7 @@ export function extractFromHtml(
 
   if (!title) title = generic.title ?? null;
   if (!image_url) image_url = generic.image_url ?? null;
-  const description = generic.description ?? null;
+  const description = parserDescription ?? generic.description ?? null;
 
   const titleHint =
     typeof structured.title_hint === "string" ? structured.title_hint : undefined;

@@ -18,13 +18,32 @@ function readAggregateRating(node: Record<string, unknown>): {
   };
 }
 
+/**
+ * Read the full book blurb from the page body.
+ *
+ * Goodreads' og:description / twitter:description are truncated mid-sentence
+ * (e.g. "…aboard a ju…"), and the JSON-LD Book node carries no description at
+ * all — the complete blurb lives in the `[data-testid="description"]` element.
+ * `<br>` tags are converted to spaces so sentences don't run together.
+ */
+function readGoodreadsDescription(doc: Document): string | undefined {
+  const el = doc.querySelector('[data-testid="description"]');
+  if (!el) return undefined;
+  el.querySelectorAll("br").forEach((br) => br.replaceWith(doc.createTextNode(" ")));
+  const text = el.textContent?.replace(/\s+/g, " ").trim();
+  if (!text) return undefined;
+  return text.length > 1500 ? `${text.slice(0, 1500).trimEnd()}…` : text;
+}
+
 export function parseGoodreads(
-  _doc: Document,
+  doc: Document,
   jsonLdRoots: unknown[],
-): { structured: Record<string, unknown> } {
+): { structured: Record<string, unknown>; description?: string } {
   const structured: Record<string, unknown> = {
     site_name: "Goodreads",
   };
+
+  const description = readGoodreadsDescription(doc);
 
   const nodes = jsonLdRoots.flatMap(flattenJsonLd);
 
@@ -74,5 +93,5 @@ export function parseGoodreads(
     break;
   }
 
-  return { structured };
+  return description ? { structured, description } : { structured };
 }

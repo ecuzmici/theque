@@ -90,6 +90,7 @@ describe("resolveBookWithOpenLibrary", () => {
     expect(result!.canonical_url).toBe("https://openlibrary.org/works/OL12345W");
     expect(result!.cover_url).toBe("https://covers.openlibrary.org/b/id/123456-L.jpg");
     expect(result!.confirmed_year).toBe(2020);
+    expect(result!.verified_author).toBe("Susanna Clarke");
   });
 
   it("handles co-author strings via token split (prototype finding case)", async () => {
@@ -111,6 +112,8 @@ describe("resolveBookWithOpenLibrary", () => {
 
     expect(result).not.toBeNull();
     expect(result!.canonical_url).toContain("/works/OL67890W");
+    // Verified author comes from Open Library, joining co-authors.
+    expect(result!.verified_author).toBe("Arkady Strugatsky, Boris Strugatsky");
   });
 
   it("falls back to title-only match when author can't be confirmed", async () => {
