@@ -114,6 +114,10 @@ export async function resolveBookWithOpenLibrary(
 ): Promise<ResolvedBook | null> {
   const params = new URLSearchParams({
     title: candidate.title,
+    // Hardcoded to English-language works only (MARC language code "eng").
+    // Theque is English-only, and this keeps the resolver from matching a
+    // foreign-language edition of the same work.
+    language: "eng",
     limit: "5",
     fields: "key,title,author_name,first_publish_year,cover_i",
   });

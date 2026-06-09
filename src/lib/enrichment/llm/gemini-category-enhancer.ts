@@ -1,11 +1,23 @@
 import "server-only";
 
+import { generateJsonWithFallback, isGatewayConfigured, parseModelList } from "@/lib/ai/gateway";
 import type { ItemCategory } from "@/lib/database.types";
 import type { RawMetadata } from "@/lib/enrichment/extract";
 import {
   type LlmCategoryEnhancement,
   validateLlmCategoryEnhancement,
 } from "@/lib/enrichment/llm/category-schemas";
+
+/**
+ * Ordered AI Gateway model fallback for category enrichment.
+ * Extraction/normalization is a low-temperature task, so a cheap model is
+ * plenty: GPT-5 nano primary (holds up well under the rule-heavy prompt),
+ * Gemini Flash-Lite as the cross-provider fallback.
+ */
+const ENRICHMENT_MODELS = parseModelList(process.env.ENRICHMENT_MODELS, [
+  "openai/gpt-5-nano",
+  "google/gemini-2.5-flash-lite",
+]);
 
 export type GeminiCategoryInput = {
   finalUrl: string;
@@ -96,6 +108,12 @@ export function buildGeminiCategoryPrompt(input: GeminiCategoryInput): string {
     `Twitter: ${JSON.stringify(input.rawMetadata.twitter)}`,
     `JSON-LD: ${JSON.stringify(input.rawMetadata.json_ld)}`,
     `Parser: ${input.rawMetadata.parser}`,
+    "",
+    "Respond with ONLY a JSON object. Required keys: confidence (number 0-1), sources (array of strings).",
+    "Optional keys (omit when evidence is insufficient): title, subtitle, description, image_url, structured (object), notes."
+      + (input.categorySuggestionAllowed
+        ? " category_suggestion (one of the allowed categories), category_confidence (number 0-1)."
+        : ""),
   ].join("\n");
 }
 
@@ -106,55 +124,46 @@ export function normalizeGeminiPayload(category: ItemCategory, payload: unknown)
     status: "enhanced",
     enhancement: validation.value,
     providerMetadata: {
-      provider: "gemini",
+      provider: "gateway",
       status: "enhanced",
     },
   };
 }
 
+/**
+ * Normalize/augment item metadata via the Vercel AI Gateway (with model
+ * fallback). Named `…Gemini` for historical reasons; it is now provider-neutral.
+ */
 export async function enhanceCategoryWithGemini(input: GeminiCategoryInput): Promise<GeminiCategoryResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { status: "skipped", reason: "missing_api_key" };
+  if (!isGatewayConfigured()) return { status: "skipped", reason: "gateway_not_configured" };
 
-  const timeoutMs = Number.parseInt(process.env.GEMINI_TIMEOUT_MS ?? "10000", 10);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 10000);
+  const timeoutMs = Number.parseInt(process.env.ENRICHMENT_TIMEOUT_MS ?? "10000", 10);
+  const prompt = buildGeminiCategoryPrompt(input);
 
+  let result;
   try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const prompt = buildGeminiCategoryPrompt(input);
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        abortSignal: controller.signal,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-        responseJsonSchema: buildGeminiResponseJsonSchema(input.categorySuggestionAllowed === true),
-      },
+    result = await generateJsonWithFallback({
+      models: ENRICHMENT_MODELS,
+      prompt,
+      temperature: 0.1,
+      timeoutMs: Number.isFinite(timeoutMs) ? timeoutMs : 10000,
+      label: "enrich",
     });
-
-    const text = response.text;
-    const parsed = typeof text === "string" ? JSON.parse(text) : null;
-    const normalized = normalizeGeminiPayload(input.category, parsed);
-    if (normalized.status !== "enhanced") return normalized;
-
-    return {
-      ...normalized,
-      providerMetadata: {
-        ...normalized.providerMetadata,
-        model,
-      },
-    };
   } catch (error) {
     return {
       status: "failed",
-      reason: error instanceof Error ? error.message : "gemini_failed",
+      reason: error instanceof Error ? error.message : "llm_failed",
     };
-  } finally {
-    clearTimeout(timeout);
   }
+
+  const normalized = normalizeGeminiPayload(input.category, result.data);
+  if (normalized.status !== "enhanced") return normalized;
+
+  return {
+    ...normalized,
+    providerMetadata: {
+      ...normalized.providerMetadata,
+      model: result.model,
+    },
+  };
 }

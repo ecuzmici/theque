@@ -4,20 +4,21 @@ import { randomUUID } from "node:crypto";
 
 import type { ItemCategory } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
 import { rateLimit } from "@/lib/rate-limit";
 import {
-  GEMINI_RECOMMEND_MODEL,
-  GEMINI_RECOMMEND_TEMPERATURE,
-  GEMINI_RECOMMEND_TIMEOUT_MS,
   RECOMMEND_COUNT,
   RECOMMEND_MAX_INPUT_ITEMS,
   RECOMMEND_MIN_ITEMS,
+  RECOMMEND_MODELS,
   RECOMMEND_OVER_REQUEST,
   RECOMMEND_RATE_LIMIT_PER_DAY,
+  RECOMMEND_TEMPERATURE,
+  RECOMMEND_TIMEOUT_MS,
   isShelfRecommendEnabled,
 } from "@/lib/recommend/recommend-config";
 import { dedupRecommendations } from "@/lib/recommend/dedup";
-import { buildRecommendPrompt, RECOMMEND_RESPONSE_SCHEMA } from "@/lib/recommend/recommend-prompt";
+import { buildRecommendPrompt } from "@/lib/recommend/recommend-prompt";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
 import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
 import type {
@@ -126,42 +127,21 @@ export async function POST(req: Request) {
     .in("category", categories);
   const existingTitles = (existingRows ?? []).map((r) => r.title);
 
-  // Call Gemini for identity-only candidates
+  // Ask the LLM (via AI Gateway, with model fallback) for identity-only candidates
   let candidates: LlmCandidate[];
   try {
-    const apiKey = process.env.GEMINI_API_KEY!;
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-
     const prompt = buildRecommendPrompt(shelfId, items);
-    const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(),
-      GEMINI_RECOMMEND_TIMEOUT_MS,
-    );
+    const { data } = await generateJsonWithFallback<{ candidates?: unknown[] }>({
+      models: RECOMMEND_MODELS,
+      prompt,
+      temperature: RECOMMEND_TEMPERATURE,
+      timeoutMs: RECOMMEND_TIMEOUT_MS,
+      label: "recommend",
+    });
 
-    let responseText: string | null | undefined;
-    try {
-      const response = await ai.models.generateContent({
-        model: GEMINI_RECOMMEND_MODEL,
-        contents: prompt,
-        config: {
-          abortSignal: controller.signal,
-          temperature: GEMINI_RECOMMEND_TEMPERATURE,
-          responseMimeType: "application/json",
-          responseJsonSchema: RECOMMEND_RESPONSE_SCHEMA,
-        },
-      });
-      responseText = response.text;
-    } finally {
-      clearTimeout(timeout);
-    }
+    if (!Array.isArray(data.candidates)) throw new Error("invalid_response_shape");
 
-    if (!responseText) throw new Error("empty_response");
-    const parsed = JSON.parse(responseText) as { candidates?: unknown[] };
-    if (!Array.isArray(parsed.candidates)) throw new Error("invalid_response_shape");
-
-    candidates = parsed.candidates.filter(
+    candidates = data.candidates.filter(
       (c): c is LlmCandidate =>
         c !== null &&
         typeof c === "object" &&
@@ -171,7 +151,7 @@ export async function POST(req: Request) {
         typeof (c as Record<string, unknown>).reason === "string",
     );
   } catch (err) {
-    console.error("[api/recommend] gemini_failed:", err instanceof Error ? err.message : err);
+    console.error("[api/recommend] llm_failed:", err instanceof Error ? err.message : err);
     return jsonResponse(
       { error: "Could not generate recommendations" },
       { status: 502 },

@@ -1,11 +1,13 @@
 import "server-only";
 
+import { isGatewayConfigured } from "@/lib/ai/gateway";
 import { captureCategoryHintFromStructured } from "@/lib/capture/category-hint";
 import type { CategorySource, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
 import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
 import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
@@ -108,15 +110,23 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
   await admin.from("items").update({ processing_status: "processing" }).eq("id", itemId);
 
   try {
-    const fetchResult = await fetchPage(row.canonical_url);
-    const extracted = await applyEnrichmentFallbacks(
-      fetchResult,
-      extractFromHtml(fetchResult.html, {
-        finalUrl: fetchResult.finalUrl,
-        statusCode: fetchResult.statusCode,
-      }),
-      { requestUrl: row.canonical_url },
-    );
+    // Open Library work pages are scraped via the JSON API (clean English title,
+    // author, cover) instead of the generic HTML pipeline, which would otherwise
+    // pick up a non-English default edition. Falls back to HTML if the API fails.
+    const openLibrary = await enrichOpenLibraryWork(row.canonical_url);
+    const fetchResult = openLibrary
+      ? openLibrary.fetchResult
+      : await fetchPage(row.canonical_url);
+    const extracted = openLibrary
+      ? openLibrary.extracted
+      : await applyEnrichmentFallbacks(
+          fetchResult,
+          extractFromHtml(fetchResult.html, {
+            finalUrl: fetchResult.finalUrl,
+            statusCode: fetchResult.statusCode,
+          }),
+          { requestUrl: row.canonical_url },
+        );
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
@@ -166,7 +176,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     const llmEligibility = mergedCategory
       ? decideLlmEligibility({
           enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
-          hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+          hasApiKey: isGatewayConfigured(),
           fetchBlocked,
           fetchSparse,
           category: mergedCategory,

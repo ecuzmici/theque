@@ -1,11 +1,13 @@
 /**
  * Configuration and gating for the AI recommendations feature (Workstream F).
  *
- * Gates on GEMINI_API_KEY (shared with enrichment).
- * F2 Watch additionally requires TMDB_API_KEY.
+ * LLM calls go through the Vercel AI Gateway, so the feature gates on the
+ * gateway being authenticated (local AI_GATEWAY_API_KEY or Vercel OIDC).
+ * F2 Watch additionally requires TMDB_API_KEY (used by the resolver).
  * All other values have safe defaults.
  */
 
+import { isGatewayConfigured, parseModelList } from "@/lib/ai/gateway";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 
 /** Minimum number of library items required before recommendations are offered. */
@@ -41,35 +43,42 @@ export const RECOMMEND_RATE_LIMIT_PER_DAY = Number.parseInt(
   10,
 );
 
-/** Gemini model to use for recommendations. */
-export const GEMINI_RECOMMEND_MODEL =
-  process.env.GEMINI_RECOMMEND_MODEL ?? "gemini-2.5-flash";
+/**
+ * Ordered AI Gateway model fallback for recommendations.
+ * Primary GPT-5 mini (best taste), then Gemini Flash, then Flash-Lite —
+ * mixing providers so one provider's overload can't take the feature down.
+ */
+export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
+  "openai/gpt-5-mini",
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
+]);
 
-/** Gemini temperature for recommendations (creative but bounded). */
-export const GEMINI_RECOMMEND_TEMPERATURE = Number.parseFloat(
-  process.env.GEMINI_RECOMMEND_TEMPERATURE ?? "0.7",
+/** Temperature for recommendations (creative but bounded). */
+export const RECOMMEND_TEMPERATURE = Number.parseFloat(
+  process.env.RECOMMEND_TEMPERATURE ?? "0.7",
 );
 
-/** Timeout for the Gemini recommendation call in milliseconds. */
-export const GEMINI_RECOMMEND_TIMEOUT_MS = Number.parseInt(
-  process.env.GEMINI_RECOMMEND_TIMEOUT_MS ?? "20000",
+/** Timeout for a single recommendation model attempt, in milliseconds. */
+export const RECOMMEND_TIMEOUT_MS = Number.parseInt(
+  process.env.RECOMMEND_TIMEOUT_MS ?? "20000",
   10,
 );
 
 /**
  * Returns true when the Books Recommend feature is available:
- * GEMINI_API_KEY must be set.
+ * the AI Gateway must be authenticated.
  */
 export function isRecommendEnabled(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY);
+  return isGatewayConfigured();
 }
 
 /**
  * Returns true when the Watch Recommend feature is available (F2):
- * both GEMINI_API_KEY and TMDB_API_KEY must be set.
+ * the AI Gateway must be authenticated and TMDB_API_KEY must be set.
  */
 export function isWatchRecommendEnabled(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY) && Boolean(process.env.TMDB_API_KEY);
+  return isGatewayConfigured() && Boolean(process.env.TMDB_API_KEY);
 }
 
 /**
