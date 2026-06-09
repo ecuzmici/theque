@@ -20,20 +20,6 @@ import "server-only";
 
 import { generateText } from "ai";
 
-/** Returns true when the gateway can authenticate (local key or Vercel OIDC). */
-export function isGatewayConfigured(): boolean {
-  return Boolean(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN);
-}
-
-/** Parse a comma-separated env var into a trimmed, non-empty model list. */
-export function parseModelList(value: string | undefined, fallback: string[]): string[] {
-  const parsed = (value ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return parsed.length > 0 ? parsed : fallback;
-}
-
 const JSON_SYSTEM =
   "You are a precise data API. Respond with only a single valid, minified JSON value " +
   "matching the requested shape. No prose, no explanation, no markdown, no code fences.";

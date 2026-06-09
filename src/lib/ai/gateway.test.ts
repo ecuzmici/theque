@@ -7,11 +7,8 @@ vi.mock("ai", () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
 }));
 
-import {
-  generateJsonWithFallback,
-  isGatewayConfigured,
-  parseModelList,
-} from "@/lib/ai/gateway";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
+import { isGatewayConfigured, parseModelList } from "@/lib/ai/gateway-config";
 
 beforeEach(() => {
   vi.clearAllMocks();
