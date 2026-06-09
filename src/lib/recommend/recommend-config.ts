@@ -7,7 +7,7 @@
  * All other values have safe defaults.
  */
 
-import { isGatewayConfigured, parseModelList } from "@/lib/ai/gateway";
+import { isGatewayConfigured, parseModelList } from "@/lib/ai/gateway-config";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 
 /** Minimum number of library items required before recommendations are offered. */

@@ -1,6 +1,7 @@
 import "server-only";
 
-import { generateJsonWithFallback, isGatewayConfigured, parseModelList } from "@/lib/ai/gateway";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
+import { isGatewayConfigured, parseModelList } from "@/lib/ai/gateway-config";
 import type { ItemCategory } from "@/lib/database.types";
 import type { RawMetadata } from "@/lib/enrichment/extract";
 import {

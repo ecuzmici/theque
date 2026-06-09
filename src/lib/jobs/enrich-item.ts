@@ -1,6 +1,6 @@
 import "server-only";
 
-import { isGatewayConfigured } from "@/lib/ai/gateway";
+import { isGatewayConfigured } from "@/lib/ai/gateway-config";
 import { captureCategoryHintFromStructured } from "@/lib/capture/category-hint";
 import type { CategorySource, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { classify } from "@/lib/classify/index";

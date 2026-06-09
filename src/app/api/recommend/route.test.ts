@@ -39,13 +39,11 @@ vi.mock("@/lib/recommend/resolve/tmdb", () => ({
   resolveMovieWithTmdb: vi.fn(),
 }));
 
-// --- Mock AI Gateway helper ---
-// isGatewayConfigured drives the feature gate; parseModelList is used at module
-// load time for RECOMMEND_MODELS; generateJsonWithFallback is the LLM call.
+// --- Mock AI Gateway LLM call (server-only module; mock to avoid importing it) ---
+// isGatewayConfigured / parseModelList live in the pure ./gateway-config module
+// (no server-only) and are used as-is — isGatewayConfigured reads AI_GATEWAY_API_KEY.
 vi.mock("@/lib/ai/gateway", () => ({
   generateJsonWithFallback: vi.fn(),
-  isGatewayConfigured: () => Boolean(process.env.AI_GATEWAY_API_KEY),
-  parseModelList: (_value: string | undefined, fallback: string[]) => fallback,
 }));
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
