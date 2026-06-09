@@ -1,59 +1,66 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// recommend-config transitively imports the gateway helper (server-only).
+vi.mock("server-only", () => ({}));
 
 describe("recommend-config", () => {
   describe("isRecommendEnabled", () => {
-    it("returns false when GEMINI_API_KEY is absent", async () => {
-      const original = process.env.GEMINI_API_KEY;
-      delete process.env.GEMINI_API_KEY;
-      // Dynamic import to get fresh module state
+    it("returns false when the AI Gateway is not configured", async () => {
+      const originalKey = process.env.AI_GATEWAY_API_KEY;
+      const originalOidc = process.env.VERCEL_OIDC_TOKEN;
+      delete process.env.AI_GATEWAY_API_KEY;
+      delete process.env.VERCEL_OIDC_TOKEN;
       const { isRecommendEnabled } = await import("@/lib/recommend/recommend-config");
       expect(isRecommendEnabled()).toBe(false);
-      if (original !== undefined) process.env.GEMINI_API_KEY = original;
+      if (originalKey !== undefined) process.env.AI_GATEWAY_API_KEY = originalKey;
+      if (originalOidc !== undefined) process.env.VERCEL_OIDC_TOKEN = originalOidc;
     });
 
-    it("returns true when GEMINI_API_KEY is set", async () => {
-      process.env.GEMINI_API_KEY = "test-key";
+    it("returns true when AI_GATEWAY_API_KEY is set", async () => {
+      process.env.AI_GATEWAY_API_KEY = "test-key";
       const { isRecommendEnabled } = await import("@/lib/recommend/recommend-config");
       expect(isRecommendEnabled()).toBe(true);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
     });
   });
 
   describe("isWatchRecommendEnabled", () => {
-    it("returns false when only GEMINI_API_KEY is set (no TMDB key)", async () => {
-      process.env.GEMINI_API_KEY = "test-gemini-key";
+    it("returns false when only the gateway is configured (no TMDB key)", async () => {
+      process.env.AI_GATEWAY_API_KEY = "test-key";
       delete process.env.TMDB_API_KEY;
       const { isWatchRecommendEnabled } = await import("@/lib/recommend/recommend-config");
       expect(isWatchRecommendEnabled()).toBe(false);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
     });
 
-    it("returns true when both GEMINI_API_KEY and TMDB_API_KEY are set", async () => {
-      process.env.GEMINI_API_KEY = "test-gemini-key";
+    it("returns true when both the gateway and TMDB_API_KEY are set", async () => {
+      process.env.AI_GATEWAY_API_KEY = "test-key";
       process.env.TMDB_API_KEY = "test-tmdb-key";
       const { isWatchRecommendEnabled } = await import("@/lib/recommend/recommend-config");
       expect(isWatchRecommendEnabled()).toBe(true);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
       delete process.env.TMDB_API_KEY;
     });
   });
 
   describe("isShelfRecommendEnabled", () => {
-    it("books shelf enabled iff GEMINI_API_KEY set", async () => {
+    it("books shelf enabled iff the gateway is configured", async () => {
       const { isShelfRecommendEnabled } = await import("@/lib/recommend/recommend-config");
-      process.env.GEMINI_API_KEY = "test-key";
+      process.env.AI_GATEWAY_API_KEY = "test-key";
       expect(isShelfRecommendEnabled("books")).toBe(true);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
+      delete process.env.VERCEL_OIDC_TOKEN;
       expect(isShelfRecommendEnabled("books")).toBe(false);
     });
 
-    it("watch shelf enabled iff both keys set", async () => {
+    it("watch shelf enabled iff gateway + TMDB key set", async () => {
       const { isShelfRecommendEnabled } = await import("@/lib/recommend/recommend-config");
-      process.env.GEMINI_API_KEY = "test-key";
+      process.env.AI_GATEWAY_API_KEY = "test-key";
+      delete process.env.TMDB_API_KEY;
       expect(isShelfRecommendEnabled("watch")).toBe(false);
       process.env.TMDB_API_KEY = "test-tmdb";
       expect(isShelfRecommendEnabled("watch")).toBe(true);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
       delete process.env.TMDB_API_KEY;
     });
   });

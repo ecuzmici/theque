@@ -58,6 +58,10 @@ export function buildRecommendPrompt(
     ``,
     `User's ${label}:`,
     formattedItems,
+    ``,
+    `Respond with ONLY a JSON object of exactly this shape (no other text):`,
+    `{"candidates":[{"title":string,"creator":string,"year":number,"description":string,"reason":string}]}`,
+    `Return ${RECOMMEND_OVER_REQUEST} candidates in the array.`,
   ].join("\n");
 }
 

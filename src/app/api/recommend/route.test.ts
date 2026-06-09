@@ -1,7 +1,7 @@
 /**
  * Tests for POST /api/recommend
  *
- * Mocks: getSessionUserOrNull, rateLimit, Supabase client, GoogleGenAI, resolver
+ * Mocks: getSessionUserOrNull, rateLimit, Supabase client, AI Gateway helper, resolver
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -39,17 +39,19 @@ vi.mock("@/lib/recommend/resolve/tmdb", () => ({
   resolveMovieWithTmdb: vi.fn(),
 }));
 
-// --- Mock GoogleGenAI ---
-const mockGenerateContent = vi.fn();
-vi.mock("@google/genai", () => ({
-  GoogleGenAI: vi.fn().mockImplementation(() => ({
-    models: { generateContent: mockGenerateContent },
-  })),
+// --- Mock AI Gateway helper ---
+// isGatewayConfigured drives the feature gate; parseModelList is used at module
+// load time for RECOMMEND_MODELS; generateJsonWithFallback is the LLM call.
+vi.mock("@/lib/ai/gateway", () => ({
+  generateJsonWithFallback: vi.fn(),
+  isGatewayConfigured: () => Boolean(process.env.AI_GATEWAY_API_KEY),
+  parseModelList: (_value: string | undefined, fallback: string[]) => fallback,
 }));
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { rateLimit } from "@/lib/rate-limit";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
 import { POST } from "@/app/api/recommend/route";
 
 const SAMPLE_USER = { id: "user-123", email: "test@example.com" };
@@ -72,9 +74,10 @@ function mockSupabaseQuery(titles: string[]) {
   });
 }
 
-function mockGeminiSuccess(candidates: unknown[]) {
-  mockGenerateContent.mockResolvedValue({
-    text: JSON.stringify({ candidates }),
+function mockGatewaySuccess(candidates: unknown[]) {
+  vi.mocked(generateJsonWithFallback).mockResolvedValue({
+    data: { candidates },
+    model: "openai/gpt-5-mini",
   });
 }
 
@@ -96,7 +99,7 @@ function makeRequest(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.GEMINI_API_KEY = "test-gemini-key";
+  process.env.AI_GATEWAY_API_KEY = "test-gateway-key";
   // Re-establish default mocks that vi.clearAllMocks() wiped
   vi.mocked(rateLimit).mockResolvedValue({ ok: true });
   vi.mocked(getSessionUserOrNull).mockResolvedValue(null);
@@ -148,9 +151,9 @@ describe("POST /api/recommend", () => {
   });
 
   describe("gate check", () => {
-    it("returns 503 when GEMINI_API_KEY is absent", async () => {
+    it("returns 503 when the AI Gateway is not configured", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
-      delete process.env.GEMINI_API_KEY;
+      delete process.env.AI_GATEWAY_API_KEY;
       const res = await POST(makeRequest({ shelfId: "books", items: SAMPLE_BOOKS }));
       expect(res.status).toBe(503);
     });
@@ -167,10 +170,10 @@ describe("POST /api/recommend", () => {
   });
 
   describe("LLM failure", () => {
-    it("returns 502 when Gemini call throws", async () => {
+    it("returns 502 when every gateway model fails", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       mockSupabaseQuery([]);
-      mockGenerateContent.mockRejectedValue(new Error("Gemini exploded"));
+      vi.mocked(generateJsonWithFallback).mockRejectedValue(new Error("all_models_failed"));
       const res = await POST(makeRequest({ shelfId: "books", items: SAMPLE_BOOKS }));
       expect(res.status).toBe(502);
       const body = await res.json();
@@ -178,10 +181,13 @@ describe("POST /api/recommend", () => {
       expect(body.error).toBe("Could not generate recommendations");
     });
 
-    it("returns 502 when Gemini returns invalid shape", async () => {
+    it("returns 502 when the gateway returns an invalid shape", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       mockSupabaseQuery([]);
-      mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ wrong: "shape" }) });
+      vi.mocked(generateJsonWithFallback).mockResolvedValue({
+        data: { wrong: "shape" },
+        model: "openai/gpt-5-mini",
+      } as never);
       const res = await POST(makeRequest({ shelfId: "books", items: SAMPLE_BOOKS }));
       expect(res.status).toBe(502);
     });
@@ -191,7 +197,7 @@ describe("POST /api/recommend", () => {
     it("returns 200 with resolved cards", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       mockSupabaseQuery([]);
-      mockGeminiSuccess([
+      mockGatewaySuccess([
         { title: "Piranesi", creator: "Susanna Clarke", year: 2020, description: "A book", reason: "Great" },
         { title: "Klara and the Sun", creator: "Kazuo Ishiguro", year: 2021, description: "A book 2", reason: "Also great" },
       ]);
@@ -206,7 +212,7 @@ describe("POST /api/recommend", () => {
     it("deduplicates against existing library titles", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       mockSupabaseQuery(["Piranesi"]);
-      mockGeminiSuccess([
+      mockGatewaySuccess([
         { title: "Piranesi", creator: "Susanna Clarke", year: 2020, description: "A book", reason: "Great" },
         { title: "Klara and the Sun", creator: "Kazuo Ishiguro", year: 2021, description: "A book 2", reason: "Also great" },
       ]);
@@ -222,7 +228,7 @@ describe("POST /api/recommend", () => {
     it("drops unresolved candidates gracefully (returns what survived)", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       mockSupabaseQuery([]);
-      mockGeminiSuccess([
+      mockGatewaySuccess([
         { title: "A Real Book", creator: "Real Author", year: 2020, description: "Desc", reason: "Reason" },
       ]);
       // Resolver returns null for all

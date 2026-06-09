@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// recommend-prompt → recommend-config → ai/gateway imports server-only.
+vi.mock("server-only", () => ({}));
 
 import {
   buildRecommendPrompt,

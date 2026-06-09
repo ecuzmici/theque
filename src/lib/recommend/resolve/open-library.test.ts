@@ -196,6 +196,23 @@ describe("resolveBookWithOpenLibrary", () => {
     expect(result).toBeNull();
   });
 
+  it("restricts the search to English-language works (language=eng)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ docs: [BASE_DOC] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await resolveBookWithOpenLibrary({
+      title: "Piranesi",
+      creator: "Susanna Clarke",
+      year: 2020,
+    });
+
+    const requestedUrl = String(fetchMock.mock.calls[0][0]);
+    expect(requestedUrl).toContain("language=eng");
+  });
+
   it("returns null when API returns non-ok status", async () => {
     vi.stubGlobal(
       "fetch",
