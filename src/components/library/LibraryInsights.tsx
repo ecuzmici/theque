@@ -79,7 +79,7 @@ export function LibraryInsights() {
           <span
             className={
               "text-lg font-semibold tabular-nums leading-none " +
-              (stat.highlight ? "text-amber-600 dark:text-amber-400" : "text-foreground")
+              (stat.highlight ? "text-primary" : "text-foreground")
             }
           >
             {stat.value}

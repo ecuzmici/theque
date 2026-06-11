@@ -35,7 +35,7 @@ export function ShelfFlatMark({ className, title, style }: MarkProps) {
         width="6.5"
         height="13.25"
         rx="1"
-        className="fill-[#fffefb] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
+        className="fill-[#ffffff] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
       />
       <rect
         x="13"
@@ -43,7 +43,7 @@ export function ShelfFlatMark({ className, title, style }: MarkProps) {
         width="6.5"
         height="11.25"
         rx="1"
-        className="fill-[#fffefb] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
+        className="fill-[#ffffff] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
       />
       <rect
         x="6.25"
@@ -51,7 +51,7 @@ export function ShelfFlatMark({ className, title, style }: MarkProps) {
         width="3"
         height="2.25"
         rx="0.35"
-        className="fill-[#b45309] dark:fill-[#fbbf24]"
+        className="fill-[#2433ff] dark:fill-[#6e7bff]"
       />
     </svg>
   );
@@ -81,7 +81,7 @@ export function ShelfRoundedMark({ className, title, style }: MarkProps) {
         width="6.75"
         height="13"
         rx="2.25"
-        className="fill-[#fffefb] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
+        className="fill-[#ffffff] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
       />
       <rect
         x="12.75"
@@ -89,7 +89,7 @@ export function ShelfRoundedMark({ className, title, style }: MarkProps) {
         width="7"
         height="11.25"
         rx="2.25"
-        className="fill-[#fffefb] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
+        className="fill-[#ffffff] stroke-[#d6d3d1] stroke-[0.75] dark:fill-stone-900 dark:stroke-stone-600"
       />
       <rect
         x="6.25"
@@ -97,7 +97,7 @@ export function ShelfRoundedMark({ className, title, style }: MarkProps) {
         width="3"
         height="2.25"
         rx="0.35"
-        className="fill-[#b45309] dark:fill-[#fbbf24]"
+        className="fill-[#2433ff] dark:fill-[#6e7bff]"
       />
     </svg>
   );
@@ -123,9 +123,9 @@ export function IndexCardMark({ className, title, style }: MarkProps) {
         </clipPath>
       </defs>
       <g clipPath="url(#theque-index-card-clip)">
-        <path d="M0 0h8.25L0 8.25V0Z" fill="#57534e" />
-        <path d="M8.25 0h15.75v10.5L10.5 24H0V8.25L8.25 0Z" fill="#faf8f5" />
-        <path d="M24 24V10.5L10.5 24H24z" fill="#b45309" />
+        <path d="M0 0h8.25L0 8.25V0Z" fill="#6b6b66" />
+        <path d="M8.25 0h15.75v10.5L10.5 24H0V8.25L8.25 0Z" fill="#fcfcfb" />
+        <path d="M24 24V10.5L10.5 24H24z" fill="#2433ff" />
       </g>
     </svg>
   );
