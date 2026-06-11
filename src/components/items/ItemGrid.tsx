@@ -17,13 +17,18 @@ type ItemGridProps = {
   ) => void;
 };
 
+/**
+ * Imagery-first masonry via CSS multi-columns: items keep their natural aspect
+ * ratio and flow top-to-bottom per column (recency order is per-column, a
+ * deliberate PoC trade-off vs. a JS-measured balanced grid).
+ */
 export function ItemGrid({ items, shelfId, itemActionsEnabled, onItemPatch }: ItemGridProps) {
   const inboxShelf = shelfId === "inbox";
 
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+    <ul className="columns-2 gap-3 sm:columns-3 lg:columns-4 lg:gap-4">
       {items.map((item) => (
-        <li key={item.id}>
+        <li key={item.id} className="mb-4 break-inside-avoid lg:mb-5">
           <ItemCard
             item={item}
             shelfId={shelfId}

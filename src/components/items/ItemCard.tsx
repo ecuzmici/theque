@@ -6,11 +6,7 @@ import { useCallback } from "react";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import {
-  categoryPlaceholderClass,
-  categoryPlaceholderLabel,
-} from "@/lib/category-placeholder";
+import { categoryPlaceholderLabel } from "@/lib/category-placeholder";
 import { cardAspectRatio, getDisplayImageUrl } from "@/lib/item-display";
 import { formatStatus } from "@/lib/item-labels";
 import type { ShelfId } from "@/lib/shelves";
@@ -58,26 +54,26 @@ export function ItemCard({
   );
 
   return (
-    <Card className="group relative gap-0 overflow-hidden py-0 transition hover:ring-foreground/20">
+    <article className="group relative">
       {inboxActionsEnabled ? (
         <div className="absolute right-2 top-2 z-10">
           <InboxActions itemId={item.id} category={item.category} onOptimistic={handleOptimistic} />
         </div>
       ) : itemActionsEnabled ? (
-        <div className="absolute right-2 top-2 z-10">
+        /* Mouse UIs reveal actions on hover/focus; touch keeps them always visible */
+        <div className="absolute right-2 top-2 z-10 lg-fine:opacity-0 lg-fine:transition-opacity lg-fine:group-focus-within:opacity-100 lg-fine:group-hover:opacity-100">
           <ItemCardActions item={item} shelfId={shelfId} onItemPatch={onItemPatch} />
         </div>
       ) : null}
 
       <Link
         href={`/item/${item.id}`}
-        className="block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div
           className={cn(
-            "relative w-full bg-muted",
+            "relative w-full overflow-hidden rounded-lg border border-border bg-muted transition-colors group-hover:border-foreground/30",
             processing && !imgSrc && "ks-shimmer",
-            !imgSrc && `bg-gradient-to-br ${categoryPlaceholderClass(item.category)}`,
           )}
           style={ratioStyle}
         >
@@ -96,33 +92,36 @@ export function ItemCard({
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center">
               {processing ? (
-                <span className="text-xs text-white/80">Gathering details…</span>
+                <span className="text-xs text-muted-foreground">Gathering details…</span>
               ) : (
                 <>
-                  <span className="font-serif text-sm font-medium text-white/90">
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                     {categoryPlaceholderLabel(item.category)}
                   </span>
-                  <span className="mt-1 break-all text-[11px] text-white/70">{item.domain}</span>
+                  <span className="mt-1.5 break-all text-[11px] text-muted-foreground/80">{item.domain}</span>
                 </>
               )}
             </div>
           )}
         </div>
 
-        <div className="p-3">
-          <p className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
+        <div className="px-0.5 pt-2">
+          <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-foreground">
             {item.title ?? item.domain}
           </p>
-          {item.subtitle ? (
-            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>
-          ) : null}
+          <p className="mt-0.5 line-clamp-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+            {item.subtitle ?? item.domain}
+          </p>
           {item.status === "inbox" ? (
-            <Badge variant="secondary" className="mt-2 text-[10px]">
+            <Badge
+              variant="outline"
+              className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+            >
               {formatStatus(item.status)}
             </Badge>
           ) : null}
         </div>
       </Link>
-    </Card>
+    </article>
   );
 }

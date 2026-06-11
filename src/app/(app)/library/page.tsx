@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 
-import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { ItemGridSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryPageClient } from "@/components/library/LibraryPageClient";
 import { isRecommendEnabled, isWatchRecommendEnabled } from "@/lib/recommend/recommend-config";
 import { createClient } from "@/lib/supabase/server";
@@ -9,21 +9,15 @@ import { createClient } from "@/lib/supabase/server";
 function LibrarySuspenseFallback() {
   return (
     <div>
-      <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-none">
+      <div className="mb-6 flex gap-6 border-b border-border pb-3">
         {Array.from({ length: 6 }, (_, i) => (
           <div
             key={i}
-            className="ks-shimmer h-9 w-20 shrink-0 rounded-full bg-[color:var(--ks-bg-muted)]"
+            className="ks-shimmer h-4 w-14 shrink-0 rounded bg-[color:var(--ks-bg-muted)]"
           />
         ))}
       </div>
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {Array.from({ length: 8 }, (_, i) => (
-          <li key={i}>
-            <ItemCardSkeleton />
-          </li>
-        ))}
-      </ul>
+      <ItemGridSkeleton />
     </div>
   );
 }

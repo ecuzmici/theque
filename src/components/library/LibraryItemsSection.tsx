@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
-import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { ItemGridSkeleton } from "@/components/items/ItemCardSkeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
@@ -147,19 +146,17 @@ export function LibraryItemsSection({
   if (items.length === 0) {
     const empty = SHELF_EMPTY[shelfId];
     return (
-      <Card className="border-dashed">
-        <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
-          <div className="w-full max-w-md">
-            <h2 className="font-serif text-lg font-medium text-card-foreground">{empty.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-              {empty.description}
-            </p>
-            <Button nativeButton={false} render={<Link href="/add" />} className="mt-6 min-h-11">
-              Add a link
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border border-dashed border-border px-6 py-14 text-center sm:px-10">
+        <div className="mx-auto w-full max-w-md">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">{empty.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+            {empty.description}
+          </p>
+          <Button nativeButton={false} render={<Link href="/add" />} className="mt-6 min-h-11">
+            Add a link
+          </Button>
+        </div>
+      </div>
     );
   }
 
@@ -169,13 +166,9 @@ export function LibraryItemsSection({
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="h-1" aria-hidden />
       {loadingMore ? (
-        <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-          {Array.from({ length: 4 }, (_, i) => (
-            <li key={i}>
-              <ItemCardSkeleton />
-            </li>
-          ))}
-        </ul>
+        <div className="mt-3">
+          <ItemGridSkeleton count={4} />
+        </div>
       ) : null}
     </div>
   );
