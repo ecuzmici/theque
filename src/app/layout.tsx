@@ -38,8 +38,8 @@ const thequeSerif = Source_Serif_4({
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf8f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#0c0a09" },
+    { media: "(prefers-color-scheme: light)", color: "#fcfcfb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0c" },
   ],
 };
 
