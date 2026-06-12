@@ -57,6 +57,8 @@ export type ItemSummaryPayload = {
   tags: string[];
   collection_ids: string[];
   display: Json | null;
+  dominant_color: string | null;
+  dominant_hue: number | null;
 };
 
 export type ItemsListResponseBody = {

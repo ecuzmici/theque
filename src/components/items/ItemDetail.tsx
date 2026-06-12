@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ViewTransition } from "react";
 
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
+import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
+import { RelatedItemsStrip } from "@/components/items/RelatedItemsStrip";
 import { StructuredFields } from "@/components/items/StructuredFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { getDisplayImageUrl } from "@/lib/item-display";
-import { formatCategory, formatStatus } from "@/lib/item-labels";
+import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
+import type { LibraryItemRow } from "@/lib/types/library-item";
 import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentProposalResponseBody,
@@ -68,15 +72,18 @@ async function applyAiProposal(
 export function ItemDetail({
   initial,
   collections,
+  related = [],
 }: {
   initial: ItemDetailModel;
   collections: { id: string; name: string }[];
+  related?: LibraryItemRow[];
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const [markDoneOpen, setMarkDoneOpen] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -213,6 +220,11 @@ export function ItemDetail({
     ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(item.created_at))
     : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
+  const verb = doneVerb(item.category);
+  const isDone = item.status === "done";
+  const doneDate = item.done_at
+    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(item.done_at))
+    : null;
 
   return (
     <article className="pb-12">
@@ -226,7 +238,11 @@ export function ItemDetail({
       <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
         {/* Cover pane — sticky alongside the metadata on desktop */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <div className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10">
+          <ViewTransition name={`item-cover-${item.id}`}>
+          <div
+            className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
+            style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
+          >
             {imgSrc ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
@@ -244,6 +260,7 @@ export function ItemDetail({
               </div>
             )}
           </div>
+          </ViewTransition>
           <p className="mt-3 text-xs text-muted-foreground">
             Saved from{" "}
             <a
@@ -312,6 +329,36 @@ export function ItemDetail({
             </div>
           ) : null}
 
+          {isDone && (item.rating_personal != null || item.verdict || doneDate) ? (
+            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
+                Your verdict
+              </p>
+              {item.rating_personal != null ? (
+                <div className="mt-1.5 flex items-center gap-0.5" aria-label={`${item.rating_personal} of 5 stars`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={
+                        n <= (item.rating_personal ?? 0)
+                          ? "size-4 fill-amber-500 text-amber-500"
+                          : "size-4 text-muted-foreground/40"
+                      }
+                      aria-hidden
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {item.verdict ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground">{item.verdict}</p>
+              ) : null}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Marked {verb}
+                {doneDate ? <> · {doneDate}</> : null}
+              </p>
+            </div>
+          ) : null}
+
           {collectionNames.length > 0 ? (
             <p className="mt-4 text-sm text-muted-foreground">
               In{" "}
@@ -326,7 +373,17 @@ export function ItemDetail({
 
           <div className="mt-6 flex flex-wrap gap-2">
           <Button
+            type="button"
+            variant={isDone ? "outline" : "default"}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            onClick={() => setMarkDoneOpen(true)}
+          >
+            <CheckCircle2 className="size-4" />
+            {isDone ? "Edit verdict" : `Mark as ${verb}`}
+          </Button>
+          <Button
             nativeButton={false}
+            variant={isDone ? "default" : "outline"}
             render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
             className="min-h-11 gap-1.5 lg-fine:min-h-8"
           >
@@ -391,6 +448,26 @@ export function ItemDetail({
           />
         </header>
       </div>
+
+      <RelatedItemsStrip items={related} />
+
+      <ItemMarkDoneDialog
+        key={`${item.id}:${markDoneOpen}`}
+        open={markDoneOpen}
+        onOpenChange={setMarkDoneOpen}
+        verb={verb}
+        title={item.title ?? item.domain}
+        initialRating={item.rating_personal}
+        initialVerdict={item.verdict}
+        onSave={async (rating, verdict) => {
+          const next = await syncPatch({
+            status: "done",
+            rating_personal: rating,
+            verdict,
+          });
+          return next != null;
+        }}
+      />
 
       <ItemAiReviewDialog
         open={aiReviewOpen}

@@ -53,17 +53,21 @@ async function run() {
       continue;
     }
 
-    const storagePath = await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
-    if (storagePath) {
+    const cachedImage = await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
+    if (cachedImage.storagePath) {
       const { error: updateErr } = await admin
         .from("items")
-        .update({ image_storage_path: storagePath })
+        .update({
+          image_storage_path: cachedImage.storagePath,
+          dominant_color: cachedImage.dominantColor,
+          dominant_hue: cachedImage.dominantHue,
+        })
         .eq("id", row.id);
       if (updateErr) {
         console.warn(`  Failed to update ${row.id}:`, updateErr.message);
         skipped++;
       } else {
-        console.log(`  Cached ${row.id} → ${storagePath}`);
+        console.log(`  Cached ${row.id} → ${cachedImage.storagePath}`);
         cached++;
       }
     } else {

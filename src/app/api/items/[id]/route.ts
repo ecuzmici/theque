@@ -127,6 +127,37 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
   }
 
+  if (body.rating_personal !== undefined) {
+    if (body.rating_personal === null) {
+      patch.rating_personal = null;
+    } else if (
+      typeof body.rating_personal === "number" &&
+      Number.isInteger(body.rating_personal) &&
+      body.rating_personal >= 1 &&
+      body.rating_personal <= 5
+    ) {
+      patch.rating_personal = body.rating_personal;
+    } else {
+      return Response.json({ code: "invalid_rating" }, { status: 400 });
+    }
+  }
+
+  if (typeof body.verdict === "string" || body.verdict === null) {
+    if (typeof body.verdict === "string" && !hasMaxLength(body.verdict, MAX_NOTE_LENGTH)) {
+      return Response.json({ code: "invalid_verdict" }, { status: 400 });
+    }
+    patch.verdict = body.verdict === null ? null : body.verdict;
+  }
+
+  // done_at tracks the lifecycle: stamped on entering done, cleared on leaving.
+  if (patch.status && patch.status !== row.status) {
+    if (patch.status === "done") {
+      patch.done_at = new Date().toISOString();
+    } else if (row.status === "done") {
+      patch.done_at = null;
+    }
+  }
+
   if (body.display !== undefined) {
     patch.display = mergeJsonRecord(row.display, body.display);
   }
