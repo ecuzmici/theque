@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { CheckCircle2, CircleAlert, CopyCheck, Loader2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
+import { formatDateMedium } from "@/lib/format-timestamp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -102,7 +103,7 @@ function AddForm() {
     const body = (await res.json()) as {
       code?: string;
       item?: { id: string };
-      deduplicated?: boolean;
+      created?: boolean;
     };
     return { ok: res.ok, body };
   }
@@ -142,14 +143,10 @@ function AddForm() {
         let state: BatchResult["state"] = "failed";
         let itemId: string | undefined;
         try {
-          // Pre-check so re-pasted lists read honestly as duplicates.
-          const checkRes = await fetch(`/api/items/check-url?url=${encodeURIComponent(target)}`);
-          const check = checkRes.ok
-            ? ((await checkRes.json()) as { existing: ExistingItem | null })
-            : { existing: null };
+          // Capture reports duplicates itself (created: false), no pre-check needed.
           const { ok, body } = await captureOne(target);
           if (ok) {
-            state = check.existing ? "duplicate" : "saved";
+            state = body.created === false ? "duplicate" : "saved";
             itemId = body.item?.id;
           }
         } catch {
@@ -166,9 +163,7 @@ function AddForm() {
     }
   }
 
-  const savedAgo = existing
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(existing.created_at))
-    : null;
+  const savedAgo = existing ? formatDateMedium(existing.created_at) : null;
   const batchUrlCount = parseUrlLines(batchInput).length;
   const batchDone = batchResults != null && batchResults.every((r) => r.state !== "pending");
 

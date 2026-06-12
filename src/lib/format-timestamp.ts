@@ -15,3 +15,11 @@ export function formatDbTimestampUtc(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? iso : utcFormatter.format(d)
 }
+
+const mediumDateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" })
+
+/** "Jun 12, 2026" — deterministic across server and client renders. */
+export function formatDateMedium(iso: string): string {
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? iso : mediumDateFormatter.format(d)
+}

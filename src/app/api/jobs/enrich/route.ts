@@ -1,17 +1,8 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { parseBearerToken } from "@/lib/auth/capture-token";
+import { hasValidCronSecret } from "@/lib/auth/cron-secret";
 import { enrichItem } from "@/lib/jobs/enrich-item";
 import type { EnrichJobResponseBody } from "@/lib/types/api";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function hasValidCronSecret(bearer: string | null, secret: string | undefined): boolean {
-  if (!bearer || !secret) return false;
-
-  const bearerBuffer = Buffer.from(bearer);
-  const secretBuffer = Buffer.from(secret);
-  return bearerBuffer.length === secretBuffer.length && timingSafeEqual(bearerBuffer, secretBuffer);
-}
 
 async function handleEnrichJob(req: Request) {
   const secret = process.env.CRON_SECRET;

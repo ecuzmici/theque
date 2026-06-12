@@ -1,5 +1,5 @@
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
-import { SHELVES, type ShelfId } from "@/lib/shelves";
+import { SHELVES, olderThanCutoff, type ShelfId } from "@/lib/shelves";
 
 export function itemMatchesShelf(
   item: { status: ItemStatus; category: ItemCategory | null; created_at?: string },
@@ -18,8 +18,7 @@ export function itemMatchesShelf(
 
   if (shelf.filter.olderThanDays !== undefined) {
     if (!item.created_at) return false;
-    const cutoff = Date.now() - shelf.filter.olderThanDays * 86_400_000;
-    if (new Date(item.created_at).getTime() > cutoff) return false;
+    if (new Date(item.created_at) > olderThanCutoff(shelf.filter.olderThanDays)) return false;
   }
 
   if (shelf.filter.status !== undefined) {

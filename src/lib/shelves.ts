@@ -30,6 +30,11 @@ export type ShelfDefinition = {
 /** Items still wanted after this long count as forgotten. */
 export const FORGOTTEN_AFTER_DAYS = 180;
 
+/** The moment before which an item counts as "older than `days`". */
+export function olderThanCutoff(days: number): Date {
+  return new Date(Date.now() - days * 86_400_000);
+}
+
 export const SHELVES: ShelfDefinition[] = [
   { id: "all", label: "All", filter: { excludeDismissed: true } },
   { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true } },

@@ -1,6 +1,6 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
-import { SHELVES, parseShelfParam } from "@/lib/shelves";
+import { SHELVES, olderThanCutoff, parseShelfParam } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/server";
 
 const CANDIDATE_CAP = 500;
@@ -32,8 +32,7 @@ export async function GET(req: Request) {
   }
 
   if (shelf.filter.olderThanDays !== undefined) {
-    const cutoff = new Date(Date.now() - shelf.filter.olderThanDays * 86_400_000).toISOString();
-    query = query.lt("created_at", cutoff);
+    query = query.lt("created_at", olderThanCutoff(shelf.filter.olderThanDays).toISOString());
   }
 
   const { data, error } = await query;

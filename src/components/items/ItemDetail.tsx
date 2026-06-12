@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
+import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
 import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -216,15 +217,11 @@ export function ItemDetail({
     .filter((c) => item.collection_ids.includes(c.id))
     .map((c) => c.name);
 
-  const savedDate = item.created_at
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(item.created_at))
-    : null;
+  const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
   const verb = doneVerb(item.category);
   const isDone = item.status === "done";
-  const doneDate = item.done_at
-    ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(item.done_at))
-    : null;
+  const doneDate = item.done_at ? formatDateMedium(item.done_at) : null;
 
   return (
     <article className="pb-12">

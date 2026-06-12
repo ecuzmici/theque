@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
-import { SHELVES, type ShelfId } from "@/lib/shelves";
+import { SHELVES, olderThanCutoff, type ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 export const LIBRARY_ITEM_COLUMNS =
@@ -52,8 +52,7 @@ export async function fetchLibraryItemsForShelf(
   }
 
   if (shelf.filter.olderThanDays !== undefined) {
-    const cutoff = new Date(Date.now() - shelf.filter.olderThanDays * 86_400_000).toISOString();
-    query = query.lt("created_at", cutoff);
+    query = query.lt("created_at", olderThanCutoff(shelf.filter.olderThanDays).toISOString());
   }
 
   const { data, error } = await query;

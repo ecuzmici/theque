@@ -1,18 +1,11 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { parseBearerToken } from "@/lib/auth/capture-token";
+import { hasValidCronSecret } from "@/lib/auth/cron-secret";
+import { formatDateMedium } from "@/lib/format-timestamp";
 import { formatCategory } from "@/lib/item-labels";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DIGEST_SIZE = 5;
 const STALE_AFTER_DAYS = 30;
-
-function hasValidCronSecret(bearer: string | null, secret: string | undefined): boolean {
-  if (!bearer || !secret) return false;
-  const bearerBuffer = Buffer.from(bearer);
-  const secretBuffer = Buffer.from(secret);
-  return bearerBuffer.length === secretBuffer.length && timingSafeEqual(bearerBuffer, secretBuffer);
-}
 
 function escapeHtml(value: string): string {
   return value
@@ -35,7 +28,7 @@ function renderDigestHtml(items: DigestItem[], appUrl: string): string {
     .map((item) => {
       const title = escapeHtml(item.title ?? item.domain);
       const meta = escapeHtml(
-        `${formatCategory(item.category as Parameters<typeof formatCategory>[0])} · saved ${new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(item.created_at))}`,
+        `${formatCategory(item.category as Parameters<typeof formatCategory>[0])} · saved ${formatDateMedium(item.created_at)}`,
       );
       return `<tr><td style="padding:12px 0;border-bottom:1px solid #e7e0d6;">
         <a href="${appUrl}/item/${item.id}" style="color:#1c1917;font-size:16px;font-weight:600;text-decoration:none;">${title}</a>
@@ -48,7 +41,7 @@ function renderDigestHtml(items: DigestItem[], appUrl: string): string {
     <h1 style="font-size:22px;color:#1c1917;margin:0;">thèque — five things you saved and forgot</h1>
     <p style="color:#78716c;font-size:14px;">Still on your shelves, still waiting.</p>
     <table style="width:100%;border-collapse:collapse;">${rows}</table>
-    <p style="margin-top:24px;"><a href="${appUrl}/library?shelf=forgotten" style="color:#b45309;font-size:14px;">Open the Forgotten shelf →</a></p>
+    <p style="margin-top:24px;"><a href="${appUrl}/library" style="color:#b45309;font-size:14px;">Open your library →</a></p>
   </div></body></html>`;
 }
 
