@@ -15,17 +15,34 @@ export function QuickLookDialog({
   item,
   open,
   onOpenChange,
+  onNext,
+  onPrev,
 }: {
   item: LibraryItemRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onNext?: () => void;
+  onPrev?: () => void;
 }) {
   if (!item) return null;
   const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
+      <DialogContent
+        className="max-w-lg gap-0 overflow-hidden p-0"
+        /* The dialog's focus trap keeps window-level key handlers from firing,
+           so shelf flipping is handled here while the quick look is open. */
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight" || e.key === "j") {
+            e.preventDefault();
+            onNext?.();
+          } else if (e.key === "ArrowLeft" || e.key === "k") {
+            e.preventDefault();
+            onPrev?.();
+          }
+        }}
+      >
         <div
           className="max-h-[55vh] w-full overflow-hidden bg-muted"
           style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}

@@ -248,6 +248,8 @@ export function LibraryItemsSection({
         item={selectedItem}
         open={quickLookOpen && selectedItem != null}
         onOpenChange={setQuickLookOpen}
+        onNext={() => setSelectedIdx((i) => Math.min(items.length - 1, (i ?? -1) + 1))}
+        onPrev={() => setSelectedIdx((i) => Math.max(0, (i ?? 1) - 1))}
       />
     </div>
   );
