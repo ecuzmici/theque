@@ -1,8 +1,12 @@
 /**
- * Backfill image_storage_path for existing items that have image_url but no cached cover.
+ * Backfill cached covers (image_storage_path) and dominant colors for items
+ * that have an image_url but are missing either.
  *
  * Usage:
- *   npx tsx scripts/backfill-image-cache.ts [--dry-run] [--limit N]
+ *   npm run backfill:images -- [--dry-run] [--limit N]
+ *
+ * (The npm script passes --conditions=react-server so the "server-only"
+ * guard in the imported modules resolves to its no-op build under tsx.)
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in env (or .env.local).
  */
@@ -31,7 +35,7 @@ async function run() {
     .from("items")
     .select("id, user_id, image_url")
     .not("image_url", "is", null)
-    .is("image_storage_path", null)
+    .or("image_storage_path.is.null,dominant_color.is.null")
     .eq("processing_status", "ready")
     .order("created_at", { ascending: false })
     .limit(limit);
