@@ -73,20 +73,20 @@ export function LibraryInsights() {
   if (stats.every((s) => s.value === 0)) return null;
 
   return (
-    <p className="mb-5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-      {stats.map((stat, i) => (
-        <span key={stat.label}>
-          {i > 0 ? <span aria-hidden> · </span> : null}
+    <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 rounded-xl border border-border bg-muted/30 px-4 py-3">
+      {stats.map((stat) => (
+        <div key={stat.label} className="flex items-baseline gap-1.5">
           <span
             className={
-              "font-semibold tabular-nums " + (stat.highlight ? "text-primary" : "text-foreground")
+              "text-lg font-semibold tabular-nums leading-none " +
+              (stat.highlight ? "text-amber-600 dark:text-amber-400" : "text-foreground")
             }
           >
             {stat.value}
-          </span>{" "}
-          {stat.label}
-        </span>
+          </span>
+          <span className="text-xs text-muted-foreground">{stat.label}</span>
+        </div>
       ))}
-    </p>
+    </div>
   );
 }

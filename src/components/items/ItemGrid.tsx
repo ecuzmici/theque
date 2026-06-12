@@ -17,18 +17,15 @@ type ItemGridProps = {
   ) => void;
 };
 
-/**
- * Imagery-first masonry via CSS multi-columns: items keep their natural aspect
- * ratio and flow top-to-bottom per column (recency order is per-column, a
- * deliberate PoC trade-off vs. a JS-measured balanced grid).
- */
 export function ItemGrid({ items, shelfId, itemActionsEnabled, onItemPatch }: ItemGridProps) {
   const inboxShelf = shelfId === "inbox";
 
   return (
+    /* Masonry via CSS multi-columns: cards keep their natural aspect ratio and
+       flow top-to-bottom per column (vs. strict row order in a uniform grid). */
     <ul className="columns-2 gap-3 sm:columns-3 lg:columns-4 lg:gap-4">
       {items.map((item) => (
-        <li key={item.id} className="mb-4 break-inside-avoid lg:mb-5">
+        <li key={item.id} className="mb-3 break-inside-avoid lg:mb-4">
           <ItemCard
             item={item}
             shelfId={shelfId}

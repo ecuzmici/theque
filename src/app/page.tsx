@@ -1,11 +1,26 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Bookmark, Sparkles } from "lucide-react";
+import { Bookmark, FolderHeart, Sparkles, WandSparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
+
+/* Decorative mini-shelf: category gradient swatches at book/poster/card ratios */
+const SHELF_CARDS = [
+  { class: "from-amber-950/50 via-amber-900/30 to-stone-900/40", h: "h-24", rotate: "-rotate-2" },
+  { class: "from-violet-950/50 via-indigo-900/30 to-stone-900/40", h: "h-28", rotate: "rotate-1" },
+  { class: "from-rose-950/50 via-orange-900/25 to-stone-900/40", h: "h-20", rotate: "-rotate-1" },
+  { class: "from-teal-950/50 via-cyan-900/25 to-stone-900/40", h: "h-28", rotate: "rotate-2" },
+  { class: "from-stone-800/50 via-stone-700/30 to-stone-900/40", h: "h-24", rotate: "-rotate-1" },
+] as const;
+
+const FEATURES = [
+  { icon: Bookmark, label: "One-tap save", detail: "from Chrome or your phone" },
+  { icon: WandSparkles, label: "Auto-enriched cards", detail: "covers, authors, ratings" },
+  { icon: FolderHeart, label: "Only yours", detail: "private, no feeds, no likes" },
+] as const;
 
 export default async function Home() {
   const supabase = await createClient();
@@ -31,29 +46,48 @@ export default async function Home() {
           thèque
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Capture links from Chrome or your phone. They become rich cards on shelves — books,
-          films, music, restaurants — plus collections for trips and projects.
+          Save the books, films, places, and things you want to come back to. Links become rich
+          cards on shelves — plus collections for trips and projects.
         </p>
-        <ul
-          className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm text-muted-foreground sm:text-base"
-          aria-label="Product highlights"
-        >
-          <li className="inline-flex items-center gap-2">
-            <Bookmark className="size-4 shrink-0" aria-hidden />
-            One-tap save
-          </li>
-          <li>Auto-enriched cards</li>
-          <li>Your library, only yours</li>
-        </ul>
       </section>
-      <Button
-        nativeButton={false}
-        render={<Link href="/login" />}
-        size="lg"
-        className="h-11 min-h-11 w-full max-w-xs px-6 text-base sm:w-auto"
+
+      {/* A small shelf, as a promise of the library inside */}
+      <div aria-hidden className="flex w-full max-w-sm items-end justify-center gap-3 border-b border-border/80 pb-px">
+        {SHELF_CARDS.map((card, i) => (
+          <div
+            key={i}
+            className={`w-14 sm:w-16 ${card.h} ${card.rotate} rounded-md bg-stone-800 bg-gradient-to-br ${card.class} shadow-sm ring-1 ring-foreground/10`}
+          />
+        ))}
+      </div>
+
+      <ul
+        className="grid w-full max-w-lg gap-3 text-left sm:grid-cols-3"
+        aria-label="Product highlights"
       >
-        Sign in with email
-      </Button>
+        {FEATURES.map(({ icon: Icon, label, detail }) => (
+          <li
+            key={label}
+            className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
+          >
+            <Icon className="size-4 text-accent-foreground" aria-hidden />
+            <p className="mt-2 text-sm font-medium text-foreground">{label}</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{detail}</p>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex w-full max-w-xs flex-col items-center gap-3">
+        <Button
+          nativeButton={false}
+          render={<Link href="/login" />}
+          size="lg"
+          className="h-11 min-h-11 w-full px-6 text-base"
+        >
+          Sign in with email
+        </Button>
+        <p className="text-xs text-muted-foreground">No passwords — a sign-in code by email.</p>
+      </div>
     </main>
   );
 }

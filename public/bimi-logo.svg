@@ -7,8 +7,8 @@
     </clipPath>
   </defs>
   <g clip-path="url(#bimi-theque-clip)">
-    <path d="M0 0h33L0 33V0Z" fill="#6b6b66" />
-    <path d="M33 0h63v42L42 96H0V33L33 0Z" fill="#fcfcfb" />
-    <path d="M96 96V42L42 96H96z" fill="#2433ff" />
+    <path d="M0 0h33L0 33V0Z" fill="#57534e" />
+    <path d="M33 0h63v42L42 96H0V33L33 0Z" fill="#faf8f5" />
+    <path d="M96 96V42L42 96H96z" fill="#b45309" />
   </g>
 </svg>

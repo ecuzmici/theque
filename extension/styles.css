@@ -14,8 +14,8 @@ body {
     Roboto,
     sans-serif;
   font-size: 13px;
-  color: #111110;
-  background: #fcfcfb;
+  color: #1c1917;
+  background: #faf8f5;
   width: 340px;
 }
 
@@ -44,8 +44,8 @@ body {
 .ks-link-btn {
   border: 1px solid rgba(28, 25, 23, 0.09);
   border-radius: 999px;
-  background: #ffffff;
-  color: #1a26d9;
+  background: #fffefb;
+  color: #92400e;
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -54,7 +54,7 @@ body {
 }
 
 .ks-link-btn:hover {
-  background: #f4f4f2;
+  background: #f5f0e8;
 }
 
 .ks-status {
@@ -65,7 +65,7 @@ body {
 }
 
 .ks-status--muted {
-  color: #6b6b66;
+  color: #78716c;
 }
 
 .ks-status--ok {
@@ -84,14 +84,14 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #3d3d3a;
+  color: #44403c;
 }
 
 .ks-optional {
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  color: #6b6b66;
+  color: #78716c;
 }
 
 .ks-input {
@@ -100,7 +100,7 @@ body {
   border: 1px solid rgba(28, 25, 23, 0.15);
   border-radius: 8px;
   font: inherit;
-  background: #ffffff;
+  background: #fffefb;
 }
 
 .ks-input:focus {
@@ -135,19 +135,19 @@ body {
 }
 
 .ks-btn-primary {
-  background: #2433ff;
-  color: #ffffff;
+  background: #b45309;
+  color: #fffefb;
 }
 
 .ks-btn-primary:hover:not(:disabled) {
-  background: #1a26d9;
+  background: #92400e;
 }
 
 .ks-btn-secondary {
-  background: #ececea;
-  color: #111110;
+  background: #e7e5e4;
+  color: #1c1917;
 }
 
 .ks-btn-secondary:hover:not(:disabled) {
-  background: #dcdcd9;
+  background: #d6d3d1;
 }

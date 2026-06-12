@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { ItemGridSkeleton } from "@/components/items/ItemCardSkeleton";
+import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
-import { ShelfTabs } from "@/components/library/ShelfTabs";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
 import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+import { cn } from "@/lib/utils";
 
 type ShelfCache = {
   items: LibraryItemRow[];
@@ -26,6 +28,18 @@ type LibraryPageClientProps = {
   recommendBooksEnabled?: boolean;
   recommendWatchEnabled?: boolean;
 };
+
+function LibraryGridSkeleton() {
+  return (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      {Array.from({ length: 8 }, (_, i) => (
+        <li key={i}>
+          <ItemCardSkeleton />
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function LibraryPageClient({
   userId,
@@ -127,9 +141,9 @@ export function LibraryPageClient({
       <LibraryInsights />
 
       {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
           <p className="text-sm text-foreground">
-            <span className="font-semibold tabular-nums">{inboxCount}</span>{" "}
+            <span className="font-semibold">{inboxCount}</span>{" "}
             {inboxCount === 1 ? "item needs" : "items need"} triage in Inbox
           </p>
           <Button
@@ -143,7 +157,77 @@ export function LibraryPageClient({
         </div>
       ) : null}
 
-      <ShelfTabs activeShelf={activeShelf} inboxCount={inboxCount} onSelect={selectShelf} />
+      <ScrollArea className="w-full pb-4">
+        {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
+        {/* WAI-ARIA tabs pattern: roving tabIndex + arrow key navigation */}
+        <div
+          className="flex w-max gap-2 px-0.5 py-1.5 pb-2"
+          role="tablist"
+          aria-label="Shelves"
+          onKeyDown={(e) => {
+            const tabs = SHELVES.map((s) => s.id);
+            const currentIndex = tabs.indexOf(activeShelf);
+            let nextIndex = currentIndex;
+            if (e.key === "ArrowRight") {
+              e.preventDefault();
+              nextIndex = (currentIndex + 1) % tabs.length;
+            } else if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              nextIndex = 0;
+            } else if (e.key === "End") {
+              e.preventDefault();
+              nextIndex = tabs.length - 1;
+            } else {
+              return;
+            }
+            const nextShelf = tabs[nextIndex];
+            if (nextShelf) {
+              selectShelf(nextShelf);
+              // Move focus to the newly selected tab
+              const tabEl = document.querySelector<HTMLButtonElement>(
+                `[role="tab"][data-shelf-id="${nextShelf}"]`,
+              );
+              tabEl?.focus();
+            }
+          }}
+        >
+          {SHELVES.map((s) => {
+            const selected = s.id === activeShelf;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                tabIndex={selected ? 0 : -1}
+                data-shelf-id={s.id}
+                onClick={() => selectShelf(s.id)}
+                className={cn(
+                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+                  selected
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-muted text-muted-foreground hover:bg-card hover:text-foreground",
+                )}
+              >
+                {s.label}
+                {s.id === "inbox" && inboxCount != null && inboxCount > 0 ? (
+                  <Badge
+                    variant="secondary"
+                    className="h-5 min-w-5 justify-center px-1.5 text-[10px]"
+                  >
+                    {inboxCount}
+                  </Badge>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        <ScrollBar orientation="horizontal" className="hidden" />
+      </ScrollArea>
 
       <p className="sr-only" aria-live="polite">
         Showing {activeLabel} shelf
@@ -166,7 +250,7 @@ export function LibraryPageClient({
           {loadError}
         </div>
       ) : isLoadingShelf ? (
-        <ItemGridSkeleton />
+        <LibraryGridSkeleton />
       ) : (
         <LibraryItemsSection
           key={activeShelf}
