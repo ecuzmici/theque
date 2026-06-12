@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Images } from "lucide-react";
+import { Images, Layers } from "lucide-react";
 
+import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
@@ -72,6 +73,12 @@ export function LibraryPageClient({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sort, setSort] = useState<LibrarySort>("recent");
   const [wall, setWall] = useState(false);
+  const [triageMode, setTriageMode] = useState(false);
+
+  // Leaving the inbox shelf always exits triage.
+  useEffect(() => {
+    if (activeShelf !== "inbox") setTriageMode(false);
+  }, [activeShelf]);
   const prefsLoaded = useRef(false);
 
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
@@ -273,7 +280,17 @@ export function LibraryPageClient({
         {activeShelf !== "inbox" ? (
           <ShuffleButton key={activeShelf} shelfId={activeShelf} />
         ) : (
-          <span />
+          <Button
+            type="button"
+            variant={triageMode ? "secondary" : "outline"}
+            size="sm"
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            aria-pressed={triageMode}
+            onClick={() => setTriageMode((t) => !t)}
+          >
+            <Layers className="size-4" aria-hidden />
+            {triageMode ? "Grid view" : "Swipe to triage"}
+          </Button>
         )}
         <div className="flex items-center gap-2">
           {((activeShelf === "books" && recommendBooksEnabled) ||
@@ -318,6 +335,33 @@ export function LibraryPageClient({
         </div>
       ) : isLoadingShelf ? (
         <LibraryGridSkeleton />
+      ) : activeShelf === "inbox" && triageMode ? (
+        <InboxTriageStack
+          items={cachedItems ?? []}
+          onResolve={(itemId, patch, opts) => {
+            const existing = itemsCacheRef.current.inbox;
+            if (!existing) return;
+            let items: LibraryItemRow[];
+            if (opts?.remove) {
+              items = existing.items.filter((i) => i.id !== itemId);
+            } else if (opts?.restoreItem) {
+              const restored = { ...opts.restoreItem, ...patch };
+              items = existing.items.some((i) => i.id === itemId)
+                ? existing.items.map((i) => (i.id === itemId ? restored : i))
+                : [restored, ...existing.items];
+            } else {
+              items = existing.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
+            }
+            setItemsCache((prev) => ({ ...prev, inbox: { ...existing, items } }));
+            setInboxCount((c) => {
+              if (c == null) return c;
+              if (opts?.remove) return Math.max(0, c - 1);
+              if (opts?.restoreItem) return c + 1;
+              return c;
+            });
+          }}
+          onExit={() => setTriageMode(false)}
+        />
       ) : (
         <LibraryItemsSection
           key={`${activeShelf}:${sort}`}

@@ -20,11 +20,41 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { CollectionListEntry } from "@/lib/types/api";
+import { cn } from "@/lib/utils";
+
+export type CollectionMosaicTile = {
+  src: string | null;
+  color: string | null;
+};
+
+function CollectionMosaic({ tiles }: { tiles: CollectionMosaicTile[] }) {
+  const slots = Array.from({ length: 4 }, (_, i) => tiles[i] ?? null);
+  return (
+    <div className="grid size-16 shrink-0 grid-cols-2 grid-rows-2 gap-0.5 overflow-hidden rounded-lg ring-1 ring-foreground/10" aria-hidden>
+      {slots.map((tile, i) => (
+        <div
+          key={i}
+          className={cn("bg-muted", !tile && "bg-muted/60")}
+          style={tile?.color && !tile.src ? { backgroundColor: tile.color } : undefined}
+        >
+          {tile?.src ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
+              <img src={tile.src} alt="" className="h-full w-full object-cover" />
+            </>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function CollectionsPageClient({
   initialCollections,
+  mosaics = {},
 }: {
   initialCollections: CollectionListEntry[];
+  mosaics?: Record<string, CollectionMosaicTile[]>;
 }) {
   const router = useRouter();
   const [collections, setCollections] = useState(initialCollections);
@@ -129,12 +159,15 @@ export function CollectionsPageClient({
             <li key={c.id}>
               <Link href={`/collections/${c.id}`} className="block h-full">
                 <Card className="h-full transition hover:ring-foreground/20">
-                  <CardHeader>
-                    <CardTitle className="font-serif">{c.name}</CardTitle>
-                    <CardDescription>
-                      {c.item_count} {c.item_count === 1 ? "item" : "items"}
-                      {c.description ? ` · ${c.description}` : ""}
-                    </CardDescription>
+                  <CardHeader className="flex flex-row items-center gap-4">
+                    <CollectionMosaic tiles={mosaics[c.id] ?? []} />
+                    <div className="min-w-0">
+                      <CardTitle className="font-serif">{c.name}</CardTitle>
+                      <CardDescription className="mt-1">
+                        {c.item_count} {c.item_count === 1 ? "item" : "items"}
+                        {c.description ? ` · ${c.description}` : ""}
+                      </CardDescription>
+                    </div>
                   </CardHeader>
                 </Card>
               </Link>

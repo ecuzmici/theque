@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { Hourglass } from "lucide-react";
 import { useCallback } from "react";
-import { ViewTransition } from "react";
 
+import { ViewTransition } from "@/lib/view-transition";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import { Badge } from "@/components/ui/badge";

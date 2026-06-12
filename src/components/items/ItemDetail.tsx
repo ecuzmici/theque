@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ViewTransition } from "react";
 
+import { ViewTransition } from "@/lib/view-transition";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
