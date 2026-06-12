@@ -16,13 +16,18 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { cn } from "@/lib/utils";
 
-const nav = [
-  { href: "/library", label: "Library", icon: LayoutGrid, match: (p: string) => p === "/library" || p.startsWith("/library") },
-  { href: "/collections", label: "Collections", icon: FolderOpen, match: (p: string) => p.startsWith("/collections") },
-  { href: "/search", label: "Search", icon: Search, match: (p: string) => p === "/search" },
-  { href: "/tags", label: "Tags", icon: Tag, match: (p: string) => p === "/tags" },
-  { href: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" },
-] as const;
+const LIBRARY = { href: "/library", label: "Library", icon: LayoutGrid, match: (p: string) => p === "/library" || p.startsWith("/library") } as const;
+const COLLECTIONS = { href: "/collections", label: "Collections", icon: FolderOpen, match: (p: string) => p.startsWith("/collections") } as const;
+const SEARCH = { href: "/search", label: "Search", icon: Search, match: (p: string) => p === "/search" } as const;
+const TAGS = { href: "/tags", label: "Tags", icon: Tag, match: (p: string) => p === "/tags" } as const;
+const SETTINGS = { href: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" } as const;
+
+/* Daily destinations vs. upkeep. Tags is upkeep (rename/merge/delete), so it
+   lives in the sidebar's Manage group and behind Settings on mobile — keeping
+   the bottom bar at 2 + FAB + 2 so the add button stays centered. */
+const BROWSE_NAV = [LIBRARY, COLLECTIONS, SEARCH] as const;
+const MANAGE_NAV = [TAGS, SETTINGS] as const;
+const MOBILE_NAV = [LIBRARY, COLLECTIONS, SEARCH, SETTINGS] as const;
 
 function NavLink({
   href,
@@ -102,7 +107,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="mt-10 flex flex-col gap-1" aria-label="Primary">
-          {nav.map((item) => (
+          {BROWSE_NAV.map((item) => (
+            <NavLink
+              key={item.href}
+              href={item.href}
+              label={item.label}
+              icon={item.icon}
+              active={item.match(activePath)}
+              onNavigate={markPending}
+            />
+          ))}
+          <p className="mt-6 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Manage
+          </p>
+          {MANAGE_NAV.map((item) => (
             <NavLink
               key={item.href}
               href={item.href}
@@ -146,7 +164,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           aria-label="Primary"
         >
-          {nav.slice(0, 2).map((item) => (
+          {MOBILE_NAV.slice(0, 2).map((item) => (
             <div key={item.href} className="flex min-w-0 flex-1 justify-center">
               <NavLink
                 href={item.href}
@@ -172,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Plus className="size-8" />
             </Link>
           </div>
-          {nav.slice(2).map((item) => (
+          {MOBILE_NAV.slice(2).map((item) => (
             <div key={item.href} className="flex min-w-0 flex-1 justify-center">
               <NavLink
                 href={item.href}

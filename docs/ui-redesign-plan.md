@@ -1,6 +1,15 @@
 # Theque UI redesign plan — "Gallery minimal"
 
-Status: **proposed** (awaiting review) · Branch: `claude/website-ui-ux-planning-kf25y4`
+Status: **superseded** (2026-06-12) · Branch: `claude/website-ui-ux-planning-kf25y4`
+
+> **Direction revised after review.** The gallery-minimal palette, typography,
+> brand marks, cards, and shelf tabs were reverted — the warm cream/amber
+> identity stays. What survives from this plan: the **masonry library wall**
+> (Phase 2), the **item-detail restructure** (Phase 3: two-pane layout, visible
+> description, catalog-style details list), and the **landing/login polish**
+> (Phase 4), all re-executed in the original warm style. Navigation was also
+> simplified afterwards: mobile bottom bar is Library, Collections, + (centered),
+> Search, Settings; Tags moved to the sidebar "Manage" group / Settings page.
 
 ## Decisions already made (2026-06-11, with Emanuel)
 
