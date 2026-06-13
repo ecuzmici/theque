@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildGeminiCategoryPromptV2,
+  buildGeminiCategoryPromptV3,
   VALID_SOURCE_LABELS,
 } from "@/lib/enrichment/llm/prompt-builder";
 
@@ -13,6 +14,7 @@ const baseInput = {
   description: null,
   image_url: null,
   structured: {},
+  pageText: null,
   rawMetadata: {
     fetched_at: "2026-05-16T00:00:00.000Z",
     final_url: "https://example.com/book",
@@ -215,5 +217,57 @@ describe("buildGeminiCategoryPromptV2", () => {
       expect(prompt).toContain("Omit ALL structured fields rather than guessing");
       expect(prompt).toContain("empty structured object is valid");
     });
+  });
+});
+
+describe("buildGeminiCategoryPromptV3", () => {
+  const baseInput = {
+    finalUrl: "https://www.imdb.com/title/tt0468569/",
+    category: "movies_and_tv" as const,
+    categorySuggestionAllowed: false,
+    title: "The Dark Knight (2008) - IMDb",
+    subtitle: null,
+    description: null,
+    image_url: null,
+    structured: {},
+    rawMetadata: {
+      fetched_at: "2026-06-13T00:00:00.000Z",
+      final_url: "https://www.imdb.com/title/tt0468569/",
+      status_code: 200,
+      open_graph: {},
+      twitter: {},
+      json_ld: [],
+      parser: "imdb",
+    },
+    pageText: "When the menace known as the Joker wreaks havoc...",
+  };
+
+  it("includes page text when provided", () => {
+    const prompt = buildGeminiCategoryPromptV3(baseInput);
+    expect(prompt).toContain("## Page text");
+    expect(prompt).toContain("Joker wreaks havoc");
+  });
+
+  it("omits the page-text section when null", () => {
+    const prompt = buildGeminiCategoryPromptV3({ ...baseInput, pageText: null });
+    expect(prompt).not.toContain("## Page text");
+  });
+
+  it("contains tiered world-knowledge rules and provenance instructions", () => {
+    const prompt = buildGeminiCategoryPromptV3(baseInput);
+    expect(prompt).toContain("model_knowledge");
+    expect(prompt).toContain("field_sources");
+    expect(prompt).toMatch(/never .*(prices|volatile)/i);
+  });
+
+  it("requires a category suggestion when category is null", () => {
+    const prompt = buildGeminiCategoryPromptV3({
+      ...baseInput,
+      category: null,
+      categorySuggestionAllowed: true,
+      categorySuggestionReason: "uncategorized",
+    });
+    expect(prompt).toContain("No reliable category was determined");
+    expect(prompt).toContain("category_suggestion");
   });
 });

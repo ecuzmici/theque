@@ -94,7 +94,9 @@ const allCategories: ItemCategory[] = [
 
 // ── Prompt builder ──────────────────────────────────────────────
 
-export function buildGeminiCategoryPromptV2(input: GeminiCategoryInput): string {
+export function buildGeminiCategoryPromptV2(
+  input: GeminiCategoryInput & { category: ItemCategory },
+): string {
   const sections: string[] = [];
 
   // ── Role & task
@@ -197,6 +199,117 @@ export function buildGeminiCategoryPromptV2(input: GeminiCategoryInput): string 
   );
 
   // ── Supplied metadata
+  sections.push(
+    "",
+    "## Supplied metadata",
+    `URL: ${input.finalUrl}`,
+    `Title: ${input.title ?? "(none)"}`,
+    `Subtitle: ${input.subtitle ?? "(none)"}`,
+    `Description: ${input.description ?? "(none)"}`,
+    `Image URL: ${input.image_url ?? "(none)"}`,
+    `Existing structured: ${JSON.stringify(input.structured)}`,
+    `Open Graph: ${JSON.stringify(input.rawMetadata.open_graph)}`,
+    `Twitter card: ${JSON.stringify(input.rawMetadata.twitter)}`,
+    `JSON-LD: ${JSON.stringify(input.rawMetadata.json_ld)}`,
+    `Parser used: ${input.rawMetadata.parser}`,
+  );
+
+  return sections.join("\n");
+}
+
+// ── V3: page text + tiered world knowledge + provenance ─────────
+
+export const VALID_SOURCE_LABELS_V3 = [
+  ...VALID_SOURCE_LABELS,
+  "page_text",
+  "model_knowledge",
+] as const;
+
+export function buildGeminiCategoryPromptV3(input: GeminiCategoryInput): string {
+  const sections: string[] = [];
+
+  sections.push(
+    "You are enriching metadata for a single saved item in Theque, a private visual bookmark library.",
+    "Your job: improve the item's title, description, and structured fields using the evidence below, plus carefully-bounded world knowledge.",
+  );
+
+  sections.push(
+    "",
+    "## Error-page guard",
+    'If the title, description, or OG metadata contains error indicators (e.g. "404", "Not Found", "Access Denied", "Page Not Available", "Forbidden", "Bot or Not"), treat those fields as ABSENT — do not copy them into your output.',
+  );
+
+  sections.push(
+    "",
+    "## Evidence tiers",
+    '- Tier 1 — page evidence: values explicitly present in the URL, page text, Open Graph tags, Twitter card, JSON-LD, or the deterministic structured fields below. Always preferred. Label these fields "page" in field_sources.',
+    "- Tier 2 — world knowledge: ONLY when the item is unambiguously identified (a canonical ID in the URL such as an IMDb title ID or Goodreads book ID, or an exact title plus creator in the evidence), you MAY fill widely-known, stable facts about that specific work, venue, or product: authors, directors, publication/release year, genres, page counts, cuisine type, media type. Label every such field \"model_knowledge\" in field_sources and include \"model_knowledge\" in sources.",
+    "- NEVER use world knowledge for volatile or unverifiable facts: prices, current ratings, ratings counts, availability, addresses, phone numbers, opening hours. These require page evidence. Omit them otherwise.",
+    "- If you are not certain the identified entity matches this exact URL, do not use world knowledge. Omit instead.",
+    '- URL path segments are valid page evidence for item names, venue names, and destinations (e.g. "/selva-restaurant/" → place_name: "Selva").',
+    "- Prefer structured metadata (JSON-LD > Open Graph > Twitter > page text > title tag) when sources conflict.",
+  );
+
+  sections.push("", "## Category");
+  if (input.category === null) {
+    sections.push(
+      "No reliable category was determined for this item.",
+      "You MUST return category_suggestion (your best category from the list below) and category_confidence.",
+      "All structured fields MUST match the suggested category's schema.",
+    );
+  } else {
+    sections.push(`Deterministic category: **${input.category}**`);
+    if (input.categorySuggestionAllowed) {
+      sections.push(
+        `Category suggestion is allowed (reason: ${input.categorySuggestionReason ?? "weak_evidence"}).`,
+        'You MAY return category_suggestion + category_confidence ONLY if the evidence clearly identifies the item as a different category. The bar is high: a recipe page on a food blog is "recipes", not "articles"; an Amazon book listing is "books", not "products". Classify the SPECIFIC ITEM the user saved, not the website\'s general genre.',
+        "When you return a category_suggestion, all structured fields MUST match the SUGGESTED category's schema below.",
+        "If evidence is ambiguous, keep the deterministic category and do NOT return category_suggestion.",
+      );
+    } else {
+      sections.push(
+        "Do NOT change the category. Do NOT return category_suggestion or category_confidence.",
+        `Return only structured fields allowed for: ${input.category}.`,
+      );
+    }
+  }
+
+  sections.push("", "## Category meanings");
+  for (const cat of allCategories) {
+    sections.push(`- ${cat}: ${categoryMeanings[cat]}`);
+  }
+
+  sections.push(
+    "",
+    "## Allowed structured fields",
+    "Return ONLY fields from the schema for the active category. Any unlisted field will be rejected by the validator.",
+  );
+  if (input.category === null || input.categorySuggestionAllowed) {
+    for (const cat of allCategories) {
+      sections.push(formatCategorySchema(cat));
+    }
+  } else {
+    sections.push(formatCategorySchema(input.category));
+  }
+
+  sections.push(
+    "",
+    "## Field rules",
+    '- title: The item\'s specific name. Discard site names, error text, and domain-only titles. For restaurants, use the venue name. For products, use the product name (strip "Amazon.com:" prefixes).',
+    "- subtitle: Author/director + year for books/movies. Cuisine + location for restaurants. Brand for products. Omit if not evident.",
+    "- description: 1–2 sentence summary of the SPECIFIC item, not the website. World knowledge MAY be used here when the entity is Tier-2 identified.",
+    "- image_url: Keep the existing image URL if valid (starts with http). Do not invent image URLs.",
+    "- structured: Only fields from the schema above, each backed by page evidence or Tier-2 world knowledge.",
+    '- field_sources: For EVERY key you return in structured, record where it came from: "page" or "model_knowledge". Example: {"authors": "model_knowledge", "published_year": "page"}.',
+    "- confidence: 0.0–1.0. Cap at 0.7 when your output relies mainly on world knowledge. 0.3 = sparse/mostly URL-derived. 0.8+ = rich page evidence.",
+    `- sources: Array of evidence source LABELS you actually used. Valid values: ${VALID_SOURCE_LABELS_V3.map((s) => `"${s}"`).join(", ")}. Do NOT use raw URLs.`,
+    '- notes: A single string with per-field provenance notes, e.g. "title from og:title; year from model knowledge (IMDb ID identified); price omitted (volatile, no page evidence)".',
+  );
+
+  if (input.pageText) {
+    sections.push("", "## Page text", input.pageText);
+  }
+
   sections.push(
     "",
     "## Supplied metadata",
