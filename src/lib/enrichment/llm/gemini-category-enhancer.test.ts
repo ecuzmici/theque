@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const generateContentMock = vi.fn();
+const { generateContentMock, groundedLookupMock } = vi.hoisted(() => ({
+  generateContentMock: vi.fn(),
+  groundedLookupMock: vi.fn(),
+}));
 
 vi.mock("@google/genai", () => ({
   GoogleGenAI: class {
     models = { generateContent: generateContentMock };
   },
 }));
+
+vi.mock("@/lib/enrichment/llm/grounded-search", () => ({ groundedLookup: groundedLookupMock }));
 
 vi.mock("server-only", () => ({}));
 
@@ -100,6 +105,58 @@ describe("enhanceCategoryWithGemini (direct SDK)", () => {
     generateContentMock.mockRejectedValue(new Error("boom"));
     const result = await enhanceCategoryWithGemini(baseInput);
     expect(result).toEqual({ status: "failed", reason: "boom" });
+  });
+});
+
+describe("enhanceCategoryWithGemini grounding two-step", () => {
+  beforeEach(() => {
+    generateContentMock.mockReset();
+    groundedLookupMock.mockReset();
+    vi.stubEnv("GEMINI_API_KEY", "test-key");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  const groundingInput = {
+    ...baseInput,
+    category: "restaurants" as const,
+    categorySuggestionAllowed: true,
+    categorySuggestionReason: "blocked_or_sparse_fetch",
+    pageText: null,
+    groundingRecommended: true,
+  };
+
+  it("runs grounded lookup first and feeds its text into the structuring call", async () => {
+    groundedLookupMock.mockResolvedValue("Selva is a tasting-menu restaurant in Lisbon.");
+    generateContentMock.mockResolvedValue({
+      text: JSON.stringify({
+        confidence: 0.6,
+        sources: ["grounded_search"],
+        structured: { place_name: "Selva", cuisine: "Portuguese" },
+        field_sources: { place_name: "grounded_search", cuisine: "grounded_search" },
+        category_suggestion: "restaurants",
+        category_confidence: 0.7,
+      }),
+    });
+
+    const result = await enhanceCategoryWithGemini(groundingInput);
+
+    expect(groundedLookupMock).toHaveBeenCalledOnce();
+    expect(result.status).toBe("enhanced");
+    // grounded text reached the structuring prompt
+    expect(generateContentMock.mock.calls[0][0].contents).toContain("tasting-menu restaurant in Lisbon");
+  });
+
+  it("does not call grounded lookup when groundingRecommended is false", async () => {
+    generateContentMock.mockResolvedValue({ text: JSON.stringify({ confidence: 0.5, sources: ["url"] }) });
+    await enhanceCategoryWithGemini({ ...groundingInput, groundingRecommended: false });
+    expect(groundedLookupMock).not.toHaveBeenCalled();
+  });
+
+  it("proceeds normally when grounded lookup returns null", async () => {
+    groundedLookupMock.mockResolvedValue(null);
+    generateContentMock.mockResolvedValue({ text: JSON.stringify({ confidence: 0.4, sources: ["url"] }) });
+    const result = await enhanceCategoryWithGemini(groundingInput);
+    expect(result.status).toBe("enhanced");
   });
 });
 
