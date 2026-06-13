@@ -16,6 +16,9 @@ export type CaptureRequestBody = {
   tag_names?: string[];
   collection_ids?: string[];
   source: ItemSource;
+  /** Rendered-DOM evidence from the Chrome extension; validated server-side
+   * by parseCaptureSnapshot. Malformed/oversized values are dropped silently. */
+  capture_snapshot?: unknown;
 };
 
 export type CaptureItemPayload = {

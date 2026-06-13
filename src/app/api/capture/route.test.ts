@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => {
   const enrichItem = vi.fn();
   const afterResults: unknown[] = [];
   const insertSpy = vi.fn();
+  const updateSpy = vi.fn();
   const adminFrom = vi.fn();
 
   function makeItemsTable(createdRow: Record<string, unknown>, opts?: { existing?: Record<string, unknown> | null }) {
@@ -17,6 +18,9 @@ const mocks = vi.hoisted(() => {
         error: null,
       }),
       insert: insertSpy.mockReturnThis(),
+      update: updateSpy.mockImplementation(() => ({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      })),
       single: vi.fn().mockResolvedValue({ data: createdRow, error: null }),
     };
   }
@@ -27,6 +31,7 @@ const mocks = vi.hoisted(() => {
     enrichItem,
     afterResults,
     insertSpy,
+    updateSpy,
     adminFrom,
     makeItemsTable,
   };
@@ -69,6 +74,7 @@ describe("POST /api/capture category hints", () => {
     mocks.enrichItem.mockReset();
     mocks.afterResults.length = 0;
     mocks.insertSpy.mockReset();
+    mocks.updateSpy.mockClear();
     mocks.adminFrom.mockReset();
   });
 
@@ -333,5 +339,170 @@ describe("POST /api/capture category hints", () => {
         processing_status: "pending",
       }),
     );
+  });
+});
+
+describe("POST /api/capture capture_snapshot", () => {
+  const snapshot = {
+    captured_at: "2026-06-13T00:00:00.000Z",
+    page_title: "Product Page",
+    meta: [{ attr: "property", key: "og:title", content: "Great Product" }],
+    json_ld: [],
+    text: "A wonderful product with many features.",
+  };
+
+  function baseRow(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "item-1",
+      url: "https://example.com/p/1",
+      canonical_url: "https://example.com/p/1",
+      domain: "example.com",
+      title: null,
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: null,
+      category_confidence: null,
+      status: "inbox",
+      processing_status: "pending",
+      source: "chrome_extension",
+      note: null,
+      raw_metadata: {},
+      enrichment_error: null,
+      created_at: "2026-06-13T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.lookupCaptureTokenUser.mockReset();
+    mocks.enrichItem.mockReset();
+    mocks.afterResults.length = 0;
+    mocks.insertSpy.mockReset();
+    mocks.updateSpy.mockClear();
+    mocks.adminFrom.mockReset();
+  });
+
+  it("stores a valid snapshot in raw_metadata on insert", async () => {
+    const itemsTable = mocks.makeItemsTable(baseRow());
+    mocks.adminFrom.mockImplementation(() => itemsTable);
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/1",
+          source: "chrome_extension",
+          capture_snapshot: snapshot,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(mocks.insertSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        raw_metadata: expect.objectContaining({
+          capture_snapshot: expect.objectContaining({ page_title: "Product Page" }),
+        }),
+      }),
+    );
+  });
+
+  it("silently drops a malformed snapshot and still creates the item", async () => {
+    const itemsTable = mocks.makeItemsTable(baseRow());
+    mocks.adminFrom.mockImplementation(() => itemsTable);
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/2",
+          source: "chrome_extension",
+          capture_snapshot: "garbage",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const inserted = mocks.insertSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(inserted.raw_metadata).toBeUndefined();
+  });
+
+  it("on duplicate URL: stores the snapshot and re-queues a failed item", async () => {
+    const existing = baseRow({
+      id: "item-existing",
+      processing_status: "failed",
+      enrichment_error: "fetch_blocked_or_sparse",
+      title: null,
+    });
+    const itemsTable = mocks.makeItemsTable(existing, { existing });
+    mocks.adminFrom.mockImplementation(() => itemsTable);
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+    mocks.enrichItem.mockResolvedValue("ready");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/1",
+          source: "chrome_extension",
+          capture_snapshot: snapshot,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ created: false });
+    expect(mocks.updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        raw_metadata: expect.objectContaining({
+          capture_snapshot: expect.objectContaining({ page_title: "Product Page" }),
+        }),
+        processing_status: "pending",
+        enrichment_attempts: 0,
+        enrichment_error: null,
+      }),
+    );
+    expect(mocks.enrichItem).toHaveBeenCalledWith("item-existing");
+  });
+
+  it("on duplicate URL: stores the snapshot without re-queueing a healthy item", async () => {
+    const existing = baseRow({
+      id: "item-healthy",
+      processing_status: "ready",
+      title: "A good descriptive title",
+      enrichment_error: null,
+    });
+    const itemsTable = mocks.makeItemsTable(existing, { existing });
+    mocks.adminFrom.mockImplementation(() => itemsTable);
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/1",
+          source: "chrome_extension",
+          capture_snapshot: snapshot,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const updateArg = mocks.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(updateArg.raw_metadata).toBeDefined();
+    expect(updateArg.processing_status).toBeUndefined();
+    expect(mocks.enrichItem).not.toHaveBeenCalled();
   });
 });

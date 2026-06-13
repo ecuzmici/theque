@@ -1,6 +1,7 @@
 import { after } from "next/server";
 
 import { parseCaptureCategoryHint } from "@/lib/capture/category-hint";
+import { parseCaptureSnapshot } from "@/lib/capture/capture-snapshot";
 import type { Database, ItemSource, Json } from "@/lib/database.types";
 import {
   lookupCaptureTokenUser,
@@ -17,6 +18,7 @@ import {
   MAX_URL_LENGTH,
   normalizeLimitedTagNames,
 } from "@/lib/input-limits";
+import { isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { enrichItem } from "@/lib/jobs/enrich-item";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkQuota, MAX_ITEMS_PER_USER } from "@/lib/quotas";
@@ -94,6 +96,9 @@ export async function POST(req: Request) {
     collectionIds = [...new Set(body.collection_ids)];
   }
 
+  const captureSnapshot =
+    body.capture_snapshot !== undefined ? parseCaptureSnapshot(body.capture_snapshot) : null;
+
   let canonical: string;
   try {
     canonical = normalizeUrl(body.url);
@@ -141,6 +146,44 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (existing) {
+    // A fresh snapshot is better evidence than whatever the original capture
+    // had — store it, and re-run enrichment when the item never got good data.
+    if (captureSnapshot) {
+      const existingRaw =
+        existing.raw_metadata &&
+        typeof existing.raw_metadata === "object" &&
+        !Array.isArray(existing.raw_metadata)
+          ? (existing.raw_metadata as Record<string, Json>)
+          : {};
+      const needsRequeue =
+        existing.processing_status === "failed" ||
+        existing.enrichment_error !== null ||
+        isWeakTitle(existing.title);
+
+      await admin
+        .from("items")
+        .update({
+          raw_metadata: {
+            ...existingRaw,
+            capture_snapshot: captureSnapshot,
+          } as Json,
+          ...(needsRequeue
+            ? {
+                processing_status: "pending" as const,
+                enrichment_attempts: 0,
+                enrichment_error: null,
+              }
+            : {}),
+        })
+        .eq("id", existing.id);
+
+      if (needsRequeue) {
+        after(async () => {
+          await enrichItem(existing.id);
+        });
+      }
+    }
+
     const res: CaptureResponseBody = {
       created: false,
       item: mapCaptureItem(existing),
@@ -181,6 +224,9 @@ export async function POST(req: Request) {
     status: "inbox" as const,
     processing_status: "pending" as const,
     structured: (categoryHint ? { capture_category_hint: categoryHint } : {}) as Json,
+    ...(captureSnapshot
+      ? { raw_metadata: { capture_snapshot: captureSnapshot } as Json }
+      : {}),
   };
 
   const { data: createdRow, error: insertErr } = await db
