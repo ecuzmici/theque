@@ -6,6 +6,7 @@ import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { fetchViaJinaReader } from "@/lib/enrichment/jina-reader";
 import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
 import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
@@ -134,7 +135,17 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
           { requestUrl: row.canonical_url },
         );
 
-    const pageText = snapshot?.text ?? (openLibrary ? null : extractPageText(fetchResult.html));
+    let jinaResult: Awaited<ReturnType<typeof fetchViaJinaReader>> = null;
+    let pageText = snapshot?.text ?? (openLibrary ? null : extractPageText(fetchResult.html));
+    // Phase 2: when a server fetch was blocked/empty and there's no snapshot,
+    // try the Jina Reader readability proxy (opt-in, fail-open).
+    if (!snapshot && !openLibrary) {
+      const blockedOrEmpty = isBotBlockPage(fetchResult.html, fetchResult.statusCode) || !pageText;
+      if (blockedOrEmpty) {
+        jinaResult = await fetchViaJinaReader(row.canonical_url);
+        if (jinaResult) pageText = jinaResult.markdown;
+      }
+    }
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
@@ -167,9 +178,13 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       ...(extracted.raw_metadata as unknown as Record<string, unknown>),
       ...(snapshot
         ? { capture_snapshot: snapshot, evidence_source: "capture_snapshot" }
-        : { evidence_source: openLibrary ? "open_library" : "server_fetch" }),
+        : { evidence_source: jinaResult ? "jina_reader" : openLibrary ? "open_library" : "server_fetch" }),
+      ...(jinaResult ? { jina: { used: true } } : {}),
     };
     let mergedTitle = extracted.title?.trim() || null;
+    if (jinaResult?.title && isWeakTitle(mergedTitle)) {
+      mergedTitle = jinaResult.title;
+    }
     let mergedSubtitle = extracted.subtitle ?? null;
     let mergedDescription = extracted.description ?? row.description;
     let mergedImageUrl = extracted.image_url ?? row.image_url;
@@ -196,6 +211,8 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       description: mergedDescription,
       image_url: mergedImageUrl,
       structured: mergedStructured,
+      groundingEnabled: process.env.LLM_GROUNDING_ENABLED === "true",
+      canonicalUrl: fetchResult.finalUrl,
     });
 
     if (llmEligibility.eligible) {
@@ -211,6 +228,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         structured: mergedStructured,
         rawMetadata: extracted.raw_metadata,
         pageText,
+        groundingRecommended: llmEligibility.eligible ? llmEligibility.groundingRecommended : false,
       });
 
       const merged = mergeLlmEnrichment({
