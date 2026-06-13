@@ -1,4 +1,4 @@
-import { isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { isJunkDescription, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import type { GeminiCategoryResult } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
 
@@ -8,7 +8,7 @@ export type MergeLlmInput = {
     subtitle: string | null;
     description: string | null;
     image_url: string | null;
-    category: ItemCategory;
+    category: ItemCategory | null;
     category_confidence: number;
     category_source: CategorySource;
     structured: Record<string, unknown>;
@@ -98,24 +98,36 @@ export function mergeLlmEnrichment(input: MergeLlmInput): MergeLlmOutput {
         }
       : undefined;
 
+  const fieldSources = enhancement.field_sources;
+  const knowledgeOnly =
+    fieldSources !== undefined &&
+    Object.keys(fieldSources).length > 0 &&
+    Object.values(fieldSources).every((source) => source === "model_knowledge");
+  const recordedConfidence = knowledgeOnly
+    ? Math.min(enhancement.confidence, 0.7)
+    : enhancement.confidence;
+
   return {
     title: nextTitle,
     subtitle: current.subtitle ?? enhancement.subtitle ?? null,
     description:
-      (!current.description?.trim() || current.description.trim().length < 30) && enhancement.description?.trim()
+      isJunkDescription(current.description) && enhancement.description?.trim()
         ? enhancement.description.trim()
         : current.description,
     image_url: current.image_url ?? enhancement.image_url ?? null,
     category: shouldApplyCategorySuggestion ? categorySuggestion : current.category,
-    category_confidence: shouldApplyCategorySuggestion ? categorySuggestionConfidence : current.category_confidence,
+    category_confidence: shouldApplyCategorySuggestion
+      ? categorySuggestionConfidence
+      : current.category_confidence,
     category_source: shouldApplyCategorySuggestion ? "llm" : current.category_source,
     structured,
     rawMetadata: addLlmMetadata(current.rawMetadata, {
       ...input.llmResult.providerMetadata,
       provider: "gemini",
       status: "enhanced",
-      confidence: enhancement.confidence,
+      confidence: recordedConfidence,
       sources: enhancement.sources,
+      field_sources: fieldSources,
       returned_fields: returnedFields,
       category_suggestion: categorySuggestionMetadata,
       enriched_at: input.now,

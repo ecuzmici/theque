@@ -90,3 +90,35 @@ describe("decideLlmEligibility", () => {
     });
   });
 });
+
+describe("decideLlmEligibility uncategorized", () => {
+  it("is eligible with category suggestion when category is null", () => {
+    const result = decideLlmEligibility({
+      enabled: true,
+      hasApiKey: true,
+      fetchBlocked: false,
+      category: null,
+      title: "Some page",
+      description: null,
+      structured: {},
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.reason).toBe("uncategorized");
+    expect(result.categorySuggestionAllowed).toBe(true);
+    expect(result.categorySuggestionReason).toBe("uncategorized");
+  });
+
+  it("stays disabled for null category when the flag is off", () => {
+    const result = decideLlmEligibility({
+      enabled: false,
+      hasApiKey: true,
+      fetchBlocked: false,
+      category: null,
+      title: null,
+      description: null,
+      structured: {},
+    });
+    expect(result.eligible).toBe(false);
+    expect(result.reason).toBe("disabled");
+  });
+});

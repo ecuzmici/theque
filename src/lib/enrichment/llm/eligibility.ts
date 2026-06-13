@@ -6,7 +6,7 @@ export type LlmEligibilityInput = {
   hasApiKey: boolean;
   fetchBlocked: boolean;
   fetchSparse?: boolean;
-  category: ItemCategory;
+  category: ItemCategory | null;
   categorySource?: CategorySource;
   title: string | null;
   description: string | null;
@@ -17,7 +17,7 @@ export type LlmEligibilityInput = {
 type CategorySuggestionDecision =
   | {
       categorySuggestionAllowed: true;
-      categorySuggestionReason: "blocked_or_sparse_fetch" | "manual_no_useful_metadata";
+      categorySuggestionReason: "blocked_or_sparse_fetch" | "manual_no_useful_metadata" | "uncategorized";
     }
   | {
       categorySuggestionAllowed: false;
@@ -25,7 +25,7 @@ type CategorySuggestionDecision =
     };
 
 export type LlmEligibility =
-  | ({ eligible: true; reason: "sparse_category_fields" | "blocked_or_sparse_fetch" | "weak_title_or_description" } & CategorySuggestionDecision)
+  | ({ eligible: true; reason: "sparse_category_fields" | "blocked_or_sparse_fetch" | "weak_title_or_description" | "uncategorized" } & CategorySuggestionDecision)
   | ({ eligible: false; reason: "disabled" | "missing_api_key" | "deterministic_data_sufficient" } & CategorySuggestionDecision);
 
 const importantFieldsByCategory: Record<ItemCategory, string[]> = {
@@ -66,6 +66,10 @@ function decideCategorySuggestion(input: LlmEligibilityInput): CategorySuggestio
     return { categorySuggestionAllowed: false, categorySuggestionReason: "missing_api_key" };
   }
 
+  if (input.category === null) {
+    return { categorySuggestionAllowed: true, categorySuggestionReason: "uncategorized" };
+  }
+
   const blockedOrSparse = input.fetchBlocked || input.fetchSparse === true;
   if (input.categorySource === "manual") {
     if (blockedOrSparse && !hasUsefulMetadata(input)) {
@@ -86,6 +90,9 @@ export function decideLlmEligibility(input: LlmEligibilityInput): LlmEligibility
 
   if (!input.enabled) return { eligible: false, reason: "disabled", ...categorySuggestion };
   if (!input.hasApiKey) return { eligible: false, reason: "missing_api_key", ...categorySuggestion };
+  if (input.category === null) {
+    return { eligible: true, reason: "uncategorized", ...categorySuggestion };
+  }
   if (input.fetchBlocked || input.fetchSparse === true) return { eligible: true, reason: "blocked_or_sparse_fetch", ...categorySuggestion };
 
   const importantFields = importantFieldsByCategory[input.category];
