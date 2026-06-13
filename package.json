@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest",
     "seed": "tsx scripts/seed.ts",
+    "backfill:images": "tsx --conditions=react-server scripts/backfill-image-cache.ts",
     "screenshots:extension-store": "node scripts/generate-extension-store-screenshots.mjs",
     "supabase:sync-auth": "node scripts/update-supabase-auth.mjs",
     "qa:install-browsers": "playwright install chromium",
@@ -31,6 +32,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "server-only": "^0.0.1",
+    "sharp": "^0.35.1",
     "tailwind-merge": "^3.6.0",
     "tw-animate-css": "^1.4.0"
   },

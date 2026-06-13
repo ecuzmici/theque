@@ -1,8 +1,12 @@
 /**
- * Backfill image_storage_path for existing items that have image_url but no cached cover.
+ * Backfill cached covers (image_storage_path) and dominant colors for items
+ * that have an image_url but are missing either.
  *
  * Usage:
- *   npx tsx scripts/backfill-image-cache.ts [--dry-run] [--limit N]
+ *   npm run backfill:images -- [--dry-run] [--limit N]
+ *
+ * (The npm script passes --conditions=react-server so the "server-only"
+ * guard in the imported modules resolves to its no-op build under tsx.)
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in env (or .env.local).
  */
@@ -31,7 +35,7 @@ async function run() {
     .from("items")
     .select("id, user_id, image_url")
     .not("image_url", "is", null)
-    .is("image_storage_path", null)
+    .or("image_storage_path.is.null,dominant_color.is.null")
     .eq("processing_status", "ready")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -53,17 +57,21 @@ async function run() {
       continue;
     }
 
-    const storagePath = await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
-    if (storagePath) {
+    const cachedImage = await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
+    if (cachedImage.storagePath) {
       const { error: updateErr } = await admin
         .from("items")
-        .update({ image_storage_path: storagePath })
+        .update({
+          image_storage_path: cachedImage.storagePath,
+          dominant_color: cachedImage.dominantColor,
+          dominant_hue: cachedImage.dominantHue,
+        })
         .eq("id", row.id);
       if (updateErr) {
         console.warn(`  Failed to update ${row.id}:`, updateErr.message);
         skipped++;
       } else {
-        console.log(`  Cached ${row.id} → ${storagePath}`);
+        console.log(`  Cached ${row.id} → ${cachedImage.storagePath}`);
         cached++;
       }
     } else {

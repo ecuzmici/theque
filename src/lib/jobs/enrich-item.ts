@@ -231,10 +231,11 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       mergedCategorySource = merged.category_source;
     }
 
-    const imageStoragePath =
+    const cachedImage =
       mergedImageUrl && !row.image_storage_path
         ? await cacheItemImage(admin, row.user_id, itemId, mergedImageUrl)
-        : row.image_storage_path ?? null;
+        : null;
+    const imageStoragePath = cachedImage?.storagePath ?? row.image_storage_path ?? null;
 
     const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
 
@@ -269,6 +270,8 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         description: mergedDescription,
         image_url: mergedImageUrl,
         image_storage_path: imageStoragePath,
+        dominant_color: cachedImage?.dominantColor ?? row.dominant_color ?? null,
+        dominant_hue: cachedImage?.dominantHue ?? row.dominant_hue ?? null,
         category: mergedCategory,
         category_confidence: mergedCategoryConfidence,
         category_source: mergedCategorySource,

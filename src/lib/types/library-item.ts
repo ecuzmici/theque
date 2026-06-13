@@ -16,6 +16,8 @@ export type LibraryItemRow = Pick<
   | "created_at"
   | "display"
   | "canonical_url"
+  | "dominant_color"
+  | "dominant_hue"
 >;
 
 export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
@@ -32,5 +34,7 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     created_at: summary.created_at,
     display: summary.display,
     canonical_url: summary.canonical_url,
+    dominant_color: summary.dominant_color,
+    dominant_hue: summary.dominant_hue,
   };
 }

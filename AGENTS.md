@@ -46,9 +46,11 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
+| `src/app/api/jobs/digest` | Weekly "saved and forgot" digest (needs `CRON_SECRET`; sends via Resend when configured) |
+| `src/app/share/[token]` | Public read-only collection page (unguessable `share_token`) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
-| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, … Inbox) |
+| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, … Forgotten, Inbox) |
 | `src/components/items/` | `ItemCard`, `ItemDetail`, `StructuredFields` |
 | `extension/` | MV3 popup + background; storage keys `theque_capture_token`, `theque_api_base_url` |
 | `supabase/migrations/` | Schema + RLS + `claim_pending_enrichment` RPC |
@@ -102,7 +104,9 @@ After cloning, run once: `npm run qa:install-browsers`.
 - Run `npm test` before claiming parser/classify changes are done.
 - For auth/login changes, update `src/app/login/login-utils.test.ts` when redirect or OTP validation behavior changes.
 - Touch UX uses Tailwind custom variants in `src/app/globals.css`: `pointer-coarse`, `lg-fine`, `--tap-target-min`, and `.ks-pointer-coarse-min-hit`. Prefer `<Button />` for controls so coarse-pointer hit targets stay at roughly 44px without making desktop layouts bulky.
-- Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages.
+- Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages. The Forgotten shelf is age-based (`olderThanDays`).
+- Taste loop: marking an item done goes through the category-aware verb (`doneVerb`) and stores `rating_personal` / `verdict` / `done_at`; enrichment extracts `dominant_color` / `dominant_hue` (sharp) for palette sort and placeholder tinting.
+- Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
 - LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus `GEMINI_API_KEY`; deterministic extraction must still work without it.
 - Do not commit secrets, `.env.local`, or `.vercel/`.

@@ -94,3 +94,21 @@ export function formatItemMetadataValue(key: string, value: string): string {
       return value;
   }
 }
+
+/** Category-aware completion verb: "Mark as read", "Mark as watched", … */
+export const DONE_VERBS: Record<ItemCategory, string> = {
+  books: "read",
+  movies_and_tv: "watched",
+  restaurants: "visited",
+  products: "bought",
+  travel: "visited",
+  recipes: "cooked",
+  articles: "read",
+  music: "listened",
+  videos: "watched",
+  apps: "tried",
+};
+
+export function doneVerb(category: ItemCategory | null): string {
+  return category ? (DONE_VERBS[category] ?? "done") : "done";
+}

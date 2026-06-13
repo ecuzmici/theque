@@ -18,7 +18,7 @@ export default async function CollectionDetailPage({
 
   const { data: collection } = await supabase
     .from("collections")
-    .select("id, name, description")
+    .select("id, name, description, share_token")
     .eq("id", id)
     .eq("user_id", user.id)
     .maybeSingle();

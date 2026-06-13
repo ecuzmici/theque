@@ -6,7 +6,7 @@ Shelves are **fixed smart views** defined in code — not database tables. Users
 
 **Primary:** Library (default) · Collections · Search · Add link · Settings
 
-**Library header:** Horizontal shelf tabs (scroll on mobile)
+**Library header:** Horizontal shelf tabs (scroll on mobile), then a toolbar: "Tonight's pick" shuffle (random still-wanted item from the shelf), sort (Recent / By color / A–Z), and a covers-only **wall mode** toggle. On the Inbox shelf the shuffle slot becomes **Swipe to triage** (card stack: right = keep, left = dismiss, folder = categorize, undo).
 
 ## Shelf definitions
 
@@ -22,6 +22,7 @@ Each shelf maps to a query over `items`:
 | `travel` | Travel | `category = travel` AND `status != dismissed` |
 | `read` | Read | `category = articles` AND `status != dismissed` AND `status != inbox` |
 | `cook` | Cook | `category = recipes` AND `status != dismissed` |
+| `forgotten` | Forgotten | `status = want` AND `created_at < now() - 180 days` |
 | `inbox` | Inbox | `status = inbox` |
 
 **Badge:** Inbox tab shows count of `status = inbox`.

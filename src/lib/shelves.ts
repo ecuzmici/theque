@@ -11,6 +11,7 @@ export type ShelfId =
   | "read"
   | "cook"
   | "tools"
+  | "forgotten"
   | "inbox";
 
 export type ShelfDefinition = {
@@ -21,8 +22,18 @@ export type ShelfDefinition = {
     category?: ItemCategory | ItemCategory[];
     excludeDismissed?: boolean;
     excludeInbox?: boolean;
+    /** Only items saved at least this many days ago (the Forgotten shelf). */
+    olderThanDays?: number;
   };
 };
+
+/** Items still wanted after this long count as forgotten. */
+export const FORGOTTEN_AFTER_DAYS = 180;
+
+/** The moment before which an item counts as "older than `days`". */
+export function olderThanCutoff(days: number): Date {
+  return new Date(Date.now() - days * 86_400_000);
+}
 
 export const SHELVES: ShelfDefinition[] = [
   { id: "all", label: "All", filter: { excludeDismissed: true } },
@@ -43,6 +54,11 @@ export const SHELVES: ShelfDefinition[] = [
   },
   { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true } },
   { id: "tools", label: "Tools", filter: { category: "apps", excludeDismissed: true } },
+  {
+    id: "forgotten",
+    label: "Forgotten",
+    filter: { status: "want", olderThanDays: FORGOTTEN_AFTER_DAYS },
+  },
   { id: "inbox", label: "Inbox", filter: { status: "inbox" } },
 ];
 

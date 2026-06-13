@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ViewTransition } from "@/lib/view-transition";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
+import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
+import { RelatedItemsStrip } from "@/components/items/RelatedItemsStrip";
 import { StructuredFields } from "@/components/items/StructuredFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +22,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
+import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
-import { formatCategory, formatStatus } from "@/lib/item-labels";
+import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
+import type { LibraryItemRow } from "@/lib/types/library-item";
 import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentProposalResponseBody,
@@ -68,14 +73,18 @@ async function applyAiProposal(
 export function ItemDetail({
   initial,
   collections,
+  related = [],
 }: {
   initial: ItemDetailModel;
   collections: { id: string; name: string }[];
+  related?: LibraryItemRow[];
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [markDoneOpen, setMarkDoneOpen] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -208,6 +217,12 @@ export function ItemDetail({
     .filter((c) => item.collection_ids.includes(c.id))
     .map((c) => c.name);
 
+  const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
+  const descIsLong = (item.description?.length ?? 0) > 350;
+  const verb = doneVerb(item.category);
+  const isDone = item.status === "done";
+  const doneDate = item.done_at ? formatDateMedium(item.done_at) : null;
+
   return (
     <article className="pb-12">
       <Link
@@ -217,66 +232,155 @@ export function ItemDetail({
         ← Library
       </Link>
 
-      <div className="relative mt-4 h-[min(40vh,28rem)] w-full overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10">
-        {imgSrc ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
-            <img
-              src={imgSrc}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </>
-        ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-            {item.processing_status === "pending" || item.processing_status === "processing"
-              ? "Fetching preview image…"
-              : item.domain}
+      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
+        {/* Cover pane — sticky alongside the metadata on desktop */}
+        <div className="lg:sticky lg:top-6 lg:self-start">
+          <ViewTransition name={`item-cover-${item.id}`}>
+          <div
+            className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
+            style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
+          >
+            {imgSrc ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
+                <img
+                  src={imgSrc}
+                  alt=""
+                  className="h-auto max-h-[26rem] w-full object-contain lg:max-h-[32rem]"
+                />
+              </>
+            ) : (
+              <div className="flex h-56 items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                {item.processing_status === "pending" || item.processing_status === "processing"
+                  ? "Fetching preview image…"
+                  : item.domain}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-
-      <header className="mt-6">
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary">{formatStatus(item.status)}</Badge>
-          {item.category ? (
-            <Badge variant="outline">{formatCategory(item.category)}</Badge>
-          ) : null}
-          {item.tags.map((tag) => (
-            <Badge key={tag} variant="outline">
-              {tag}
-            </Badge>
-          ))}
+          </ViewTransition>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Saved from{" "}
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              {item.domain}
+            </a>
+            {savedDate ? <> · {savedDate}</> : null}
+          </p>
         </div>
 
-        <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground">
-          {item.title ?? item.domain}
-        </h1>
-        {item.subtitle ? (
-          <p className="mt-2 text-base text-muted-foreground">{item.subtitle}</p>
-        ) : null}
-
-        {collectionNames.length > 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">
-            In{" "}
-            {collectionNames.map((name, i) => (
-              <span key={name}>
-                {i > 0 ? ", " : null}
-                <span className="font-medium text-foreground">{name}</span>
-              </span>
+        {/* Metadata pane */}
+        <header className="min-w-0">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">{formatStatus(item.status)}</Badge>
+            {item.category ? (
+              <Badge variant="outline">{formatCategory(item.category)}</Badge>
+            ) : null}
+            {item.tags.map((tag) => (
+              <Badge key={tag} variant="outline">
+                {tag}
+              </Badge>
             ))}
-          </p>
-        ) : null}
+          </div>
 
-        {item.note ? (
-          <p className="mt-4 rounded-xl border border-border bg-card px-4 py-3 text-sm leading-relaxed text-foreground">
-            {item.note}
-          </p>
-        ) : null}
+          <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground">
+            {item.title ?? item.domain}
+          </h1>
+          {item.subtitle ? (
+            <p className="mt-2 text-base text-muted-foreground">{item.subtitle}</p>
+          ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-2">
+          {item.description ? (
+            <section className="mt-5" aria-label="About">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                About
+              </h2>
+              <p
+                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
+                  descIsLong && !descExpanded ? "line-clamp-6" : ""
+                }`}
+              >
+                {item.description}
+              </p>
+              {descIsLong ? (
+                <button
+                  type="button"
+                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </section>
+          ) : null}
+
+          {item.note ? (
+            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
+                Your note
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground">{item.note}</p>
+            </div>
+          ) : null}
+
+          {isDone && (item.rating_personal != null || item.verdict || doneDate) ? (
+            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
+                Your verdict
+              </p>
+              {item.rating_personal != null ? (
+                <div className="mt-1.5 flex items-center gap-0.5" aria-label={`${item.rating_personal} of 5 stars`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={
+                        n <= (item.rating_personal ?? 0)
+                          ? "size-4 fill-amber-500 text-amber-500"
+                          : "size-4 text-muted-foreground/40"
+                      }
+                      aria-hidden
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {item.verdict ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground">{item.verdict}</p>
+              ) : null}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Marked {verb}
+                {doneDate ? <> · {doneDate}</> : null}
+              </p>
+            </div>
+          ) : null}
+
+          {collectionNames.length > 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              In{" "}
+              {collectionNames.map((name, i) => (
+                <span key={name}>
+                  {i > 0 ? ", " : null}
+                  <span className="font-medium text-foreground">{name}</span>
+                </span>
+              ))}
+            </p>
+          ) : null}
+
+          <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={isDone ? "outline" : "default"}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            onClick={() => setMarkDoneOpen(true)}
+          >
+            <CheckCircle2 className="size-4" />
+            {isDone ? "Edit verdict" : `Mark as ${verb}`}
+          </Button>
           <Button
             nativeButton={false}
+            variant={isDone ? "default" : "outline"}
             render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
             className="min-h-11 gap-1.5 lg-fine:min-h-8"
           >
@@ -329,14 +433,38 @@ export function ItemDetail({
           </Button>
         </div>
 
-        {item.enrichment_error ? (
-          <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {item.enrichment_error}
-          </p>
-        ) : null}
-      </header>
+          {item.enrichment_error ? (
+            <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {item.enrichment_error}
+            </p>
+          ) : null}
 
-      <StructuredFields structured={item.structured} />
+          <StructuredFields
+            structured={item.structured}
+            omitKeys={item.description ? ["description"] : undefined}
+          />
+        </header>
+      </div>
+
+      <RelatedItemsStrip items={related} />
+
+      <ItemMarkDoneDialog
+        key={`${item.id}:${markDoneOpen}`}
+        open={markDoneOpen}
+        onOpenChange={setMarkDoneOpen}
+        verb={verb}
+        title={item.title ?? item.domain}
+        initialRating={item.rating_personal}
+        initialVerdict={item.verdict}
+        onSave={async (rating, verdict) => {
+          const next = await syncPatch({
+            status: "done",
+            rating_personal: rating,
+            verdict,
+          });
+          return next != null;
+        }}
+      />
 
       <ItemAiReviewDialog
         open={aiReviewOpen}

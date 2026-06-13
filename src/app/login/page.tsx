@@ -114,7 +114,14 @@ function LoginForm() {
             <ThequeLogo size="xl" href="/" className="text-card-foreground" />
           </h1>
           <CardDescription id="login-description">
-            Sign in with email — your private taste library.
+            {step === "code" ? (
+              <>
+                Enter the code sent to{" "}
+                <span className="font-medium text-foreground">{email.trim()}</span>
+              </>
+            ) : (
+              "Sign in with email — your private taste library."
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

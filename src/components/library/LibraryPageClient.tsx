@@ -3,15 +3,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Images, Layers } from "lucide-react";
+
+import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
+import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
 import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -60,6 +71,37 @@ export function LibraryPageClient({
 
   const [inboxCount, setInboxCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [sort, setSort] = useState<LibrarySort>("recent");
+  const [wall, setWall] = useState(false);
+  const [triageMode, setTriageMode] = useState(false);
+
+  // Leaving the inbox shelf always exits triage.
+  useEffect(() => {
+    if (activeShelf !== "inbox") setTriageMode(false);
+  }, [activeShelf]);
+  const prefsLoaded = useRef(false);
+
+  // Presentation prefs survive reloads; read post-mount to keep hydration clean.
+  useEffect(() => {
+    const storedSort = window.localStorage.getItem("theque_library_sort");
+    if (storedSort === "color" || storedSort === "title") setSort(storedSort);
+    setWall(window.localStorage.getItem("theque_wall_mode") === "1");
+    prefsLoaded.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!prefsLoaded.current) return;
+    window.localStorage.setItem("theque_library_sort", sort);
+    window.localStorage.setItem("theque_wall_mode", wall ? "1" : "0");
+  }, [sort, wall]);
+
+  // Sorting happens in the query; drop cached pages so every shelf refetches.
+  const lastSortRef = useRef(sort);
+  useEffect(() => {
+    if (lastSortRef.current === sort) return;
+    lastSortRef.current = sort;
+    setItemsCache({});
+  }, [sort]);
 
   useEffect(() => {
     if (pendingShelf == null || pendingShelf !== urlShelf) return;
@@ -86,7 +128,7 @@ export function LibraryPageClient({
     void (async () => {
       setLoadError(null);
       try {
-        const result = await fetchLibraryItemsForShelf(supabase, targetShelf);
+        const result = await fetchLibraryItemsForShelf(supabase, targetShelf, 0, sort);
         if (cancelled) return;
         setItemsCache((prev) => ({ ...prev, [targetShelf]: result }));
       } catch (e) {
@@ -98,7 +140,7 @@ export function LibraryPageClient({
     return () => {
       cancelled = true;
     };
-  }, [activeShelf]);
+  }, [activeShelf, sort]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,17 +275,59 @@ export function LibraryPageClient({
         Showing {activeLabel} shelf
       </p>
 
-      {/* AI Recommendations button — shown on books/watch shelves when feature is enabled */}
-      {((activeShelf === "books" && recommendBooksEnabled) ||
-        (activeShelf === "watch" && recommendWatchEnabled)) &&
-      cachedItems !== undefined ? (
-        <div className="mb-4 flex justify-end">
-          <RecommendButton
-            shelfId={activeShelf as "books" | "watch"}
-            shelfItems={cachedItems}
-          />
+      {/* Shelf toolbar: shuffle pick, AI recommendations, sort, wall mode */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        {activeShelf !== "inbox" ? (
+          <ShuffleButton key={activeShelf} shelfId={activeShelf} />
+        ) : (
+          <Button
+            type="button"
+            variant={triageMode ? "secondary" : "outline"}
+            size="sm"
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            aria-pressed={triageMode}
+            onClick={() => setTriageMode((t) => !t)}
+          >
+            <Layers className="size-4" aria-hidden />
+            {triageMode ? "Grid view" : "Swipe to triage"}
+          </Button>
+        )}
+        <div className="flex items-center gap-2">
+          {((activeShelf === "books" && recommendBooksEnabled) ||
+            (activeShelf === "watch" && recommendWatchEnabled)) &&
+          cachedItems !== undefined ? (
+            <RecommendButton
+              shelfId={activeShelf as "books" | "watch"}
+              shelfItems={cachedItems}
+            />
+          ) : null}
+          <Select value={sort} onValueChange={(v) => setSort(v as LibrarySort)}>
+            <SelectTrigger
+              aria-label="Sort shelf"
+              className="h-9 w-32 min-h-11 lg-fine:min-h-9"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="recent">Recent</SelectItem>
+              <SelectItem value="color">By color</SelectItem>
+              <SelectItem value="title">A–Z</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant={wall ? "secondary" : "outline"}
+            size="icon"
+            aria-pressed={wall}
+            aria-label="Toggle wall mode (covers only)"
+            title="Wall mode — covers only"
+            className="min-h-11 min-w-11 lg-fine:min-h-9 lg-fine:min-w-9"
+            onClick={() => setWall((w) => !w)}
+          >
+            <Images className="size-4" aria-hidden />
+          </Button>
         </div>
-      ) : null}
+      </div>
 
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
@@ -251,13 +335,42 @@ export function LibraryPageClient({
         </div>
       ) : isLoadingShelf ? (
         <LibraryGridSkeleton />
+      ) : activeShelf === "inbox" && triageMode ? (
+        <InboxTriageStack
+          items={cachedItems ?? []}
+          onResolve={(itemId, patch, opts) => {
+            const existing = itemsCacheRef.current.inbox;
+            if (!existing) return;
+            let items: LibraryItemRow[];
+            if (opts?.remove) {
+              items = existing.items.filter((i) => i.id !== itemId);
+            } else if (opts?.restoreItem) {
+              const restored = { ...opts.restoreItem, ...patch };
+              items = existing.items.some((i) => i.id === itemId)
+                ? existing.items.map((i) => (i.id === itemId ? restored : i))
+                : [restored, ...existing.items];
+            } else {
+              items = existing.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
+            }
+            setItemsCache((prev) => ({ ...prev, inbox: { ...existing, items } }));
+            setInboxCount((c) => {
+              if (c == null) return c;
+              if (opts?.remove) return Math.max(0, c - 1);
+              if (opts?.restoreItem) return c + 1;
+              return c;
+            });
+          }}
+          onExit={() => setTriageMode(false)}
+        />
       ) : (
         <LibraryItemsSection
-          key={activeShelf}
+          key={`${activeShelf}:${sort}`}
           userId={userId}
           shelfId={activeShelf}
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
+          sort={sort}
+          wall={wall}
           onItemsChange={updateActiveShelfItems}
         />
       )}

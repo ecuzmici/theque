@@ -21,13 +21,21 @@ function formatValue(key: string, value: unknown): string {
   }
 }
 
-export function StructuredFields({ structured }: { structured: Json | null }) {
+export function StructuredFields({
+  structured,
+  omitKeys,
+}: {
+  structured: Json | null;
+  /** Keys already rendered elsewhere on the page (e.g. description). */
+  omitKeys?: string[];
+}) {
   if (!structured || typeof structured !== "object" || Array.isArray(structured)) {
     return null;
   }
 
   const entries = Object.entries(structured as Record<string, unknown>).filter(
-    ([key]) => key && typeof key === "string" && !key.startsWith("_"),
+    ([key]) =>
+      key && typeof key === "string" && !key.startsWith("_") && !omitKeys?.includes(key),
   );
 
   if (!entries.length) return null;
@@ -35,16 +43,19 @@ export function StructuredFields({ structured }: { structured: Json | null }) {
   return (
     <section className="mt-8">
       <h2 className="font-serif text-lg text-foreground">Details</h2>
-      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+      {/* Catalog-card rows: one bordered list, label column + value column */}
+      <dl className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {entries.map(([key, value]) => (
           <div
             key={key}
-            className="rounded-xl border border-border bg-card px-4 py-3 ring-1 ring-foreground/10"
+            className="grid gap-1 px-4 py-3 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-baseline sm:gap-4"
           >
             <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {formatKey(key)}
             </dt>
-            <dd className="mt-1 text-sm text-foreground">{formatValue(key, value)}</dd>
+            <dd className="text-sm leading-relaxed break-words text-foreground">
+              {formatValue(key, value)}
+            </dd>
           </div>
         ))}
       </dl>

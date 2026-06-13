@@ -89,6 +89,8 @@ function mapSummary(row: ItemRow, tags: string[], collection_ids: string[]): Ite
     tags,
     collection_ids,
     display: row.display,
+    dominant_color: row.dominant_color,
+    dominant_hue: row.dominant_hue,
   };
 }
 

@@ -44,6 +44,10 @@ export const SHELF_EMPTY: Record<
     title: "No apps or tools saved",
     description: "Save GitHub repos, Product Hunt listings, and software pages.",
   },
+  forgotten: {
+    title: "Nothing forgotten",
+    description: "Items still wanted after six months resurface here. The shelf is clear.",
+  },
   inbox: {
     title: "Inbox is clear",
     description: "New captures with low confidence land here for a quick triage.",
