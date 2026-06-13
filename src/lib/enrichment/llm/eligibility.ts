@@ -107,3 +107,15 @@ export function decideLlmEligibility(input: LlmEligibilityInput): LlmEligibility
 
   return { eligible: false, reason: "deterministic_data_sufficient", ...categorySuggestion };
 }
+
+/** Whether an item would still benefit from LLM enrichment (e.g. after a fresh snapshot). */
+export function wouldBenefitFromLlmReenrichment(
+  input: Pick<LlmEligibilityInput, "category" | "title" | "description" | "structured">,
+): boolean {
+  return decideLlmEligibility({
+    enabled: true,
+    hasApiKey: true,
+    fetchBlocked: false,
+    ...input,
+  }).eligible;
+}

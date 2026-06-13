@@ -1,6 +1,19 @@
 import { isJunkDescription, isWeakTitle } from "@/lib/enrichment/meta-utils";
+import type { FieldSource } from "@/lib/enrichment/llm/category-schemas";
 import type { GeminiCategoryResult } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
+
+/** Volatile facts that must never be persisted from model_knowledge alone. */
+const VOLATILE_STRUCTURED_FIELDS = new Set([
+  "price",
+  "availability",
+  "address",
+  "price_level",
+  "average_rating",
+  "ratings_count",
+  "rating",
+  "rating_scale",
+]);
 
 export type MergeLlmInput = {
   current: {
@@ -27,6 +40,13 @@ function addLlmMetadata(rawMetadata: Record<string, unknown>, llm: Record<string
     ...rawMetadata,
     llm,
   };
+}
+
+function shouldRejectStructuredField(
+  key: string,
+  fieldSources: Record<string, FieldSource> | undefined,
+): boolean {
+  return VOLATILE_STRUCTURED_FIELDS.has(key) && fieldSources?.[key] === "model_knowledge";
 }
 
 function isMissingOrSparse(value: unknown): boolean {
@@ -66,6 +86,7 @@ export function mergeLlmEnrichment(input: MergeLlmInput): MergeLlmOutput {
   if (!categorySuggestion || shouldApplyCategorySuggestion) {
     for (const [key, value] of Object.entries(enhancement.structured ?? {})) {
       if (value === undefined || value === null) continue;
+      if (shouldRejectStructuredField(key, enhancement.field_sources)) continue;
       if (isMissingOrSparse(structured[key])) {
         structured[key] = value;
         returnedFields.push(key);

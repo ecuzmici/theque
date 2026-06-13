@@ -346,4 +346,33 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
       published_year: "model_knowledge",
     });
   });
+
+  it("rejects volatile structured fields sourced from model_knowledge", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Widget Pro",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "products",
+        category_confidence: 0.95,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.8,
+          sources: ["model_knowledge"],
+          structured: { brand: "Acme", price: "$49.99" },
+          field_sources: { brand: "model_knowledge", price: "model_knowledge" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.structured).toEqual({ brand: "Acme" });
+    expect(merged.structured).not.toHaveProperty("price");
+  });
 });

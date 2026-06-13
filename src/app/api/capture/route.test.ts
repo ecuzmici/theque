@@ -480,6 +480,10 @@ describe("POST /api/capture capture_snapshot", () => {
       id: "item-healthy",
       processing_status: "ready",
       title: "A good descriptive title",
+      description: "This is a sufficiently long description for an article saved in the library.",
+      category: "articles",
+      category_confidence: 0.9,
+      structured: { author: "Jane Doe", publisher: "Example Publisher" },
       enrichment_error: null,
     });
     const itemsTable = mocks.makeItemsTable(existing, { existing });
@@ -504,5 +508,41 @@ describe("POST /api/capture capture_snapshot", () => {
     expect(updateArg.raw_metadata).toBeDefined();
     expect(updateArg.processing_status).toBeUndefined();
     expect(mocks.enrichItem).not.toHaveBeenCalled();
+  });
+
+  it("on duplicate URL: re-queues a ready but sparse item", async () => {
+    const existing = baseRow({
+      id: "item-sparse",
+      processing_status: "ready",
+      title: "A good descriptive title",
+      description: null,
+      category: "products",
+      category_confidence: 0.9,
+      structured: {},
+      enrichment_error: null,
+    });
+    const itemsTable = mocks.makeItemsTable(existing, { existing });
+    mocks.adminFrom.mockImplementation(() => itemsTable);
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+    mocks.enrichItem.mockResolvedValue("ready");
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/1",
+          source: "chrome_extension",
+          capture_snapshot: snapshot,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(mocks.updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ processing_status: "pending" }),
+    );
+    expect(mocks.enrichItem).toHaveBeenCalledWith("item-sparse");
   });
 });

@@ -18,7 +18,7 @@ import {
   MAX_URL_LENGTH,
   normalizeLimitedTagNames,
 } from "@/lib/input-limits";
-import { isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { wouldBenefitFromLlmReenrichment } from "@/lib/enrichment/llm/eligibility";
 import { enrichItem } from "@/lib/jobs/enrich-item";
 import { rateLimit } from "@/lib/rate-limit";
 import { checkQuota, MAX_ITEMS_PER_USER } from "@/lib/quotas";
@@ -155,10 +155,21 @@ export async function POST(req: Request) {
         !Array.isArray(existing.raw_metadata)
           ? (existing.raw_metadata as Record<string, Json>)
           : {};
+      const existingStructured =
+        existing.structured &&
+        typeof existing.structured === "object" &&
+        !Array.isArray(existing.structured)
+          ? (existing.structured as Record<string, unknown>)
+          : {};
       const needsRequeue =
         existing.processing_status === "failed" ||
         existing.enrichment_error !== null ||
-        isWeakTitle(existing.title);
+        wouldBenefitFromLlmReenrichment({
+          category: existing.category,
+          title: existing.title,
+          description: existing.description,
+          structured: existingStructured,
+        });
 
       await admin
         .from("items")
