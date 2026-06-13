@@ -57,3 +57,11 @@ Record failures as GitHub issues with: URL used, capture client, response status
 | Google Maps place | Chrome extension | Place name extracted from snapshot meta/URL; category `restaurants` or `travel` |
 | Same Amazon URL, re-saved via extension | Chrome extension | Response `created: false`; snapshot stored; sparse/failed item re-enriches |
 | Obscure homepage | Manual add (no snapshot) | LLM runs with reason `uncategorized`; `raw_metadata.llm.field_sources` labels model-knowledge fields |
+
+## Blocked-page fallbacks (phase 2)
+
+| URL | Client | Flags | Expected |
+|-----|--------|-------|----------|
+| Bot-walled product/article (no snapshot) | Manual add | `JINA_READER_ENABLED=true` | Page text recovered via Jina; `raw_metadata.evidence_source = "jina_reader"`; card gets a real title/description |
+| Restaurant via Google Maps / Yelp | Manual add | `LLM_GROUNDING_ENABLED=true` | `place_name`/`cuisine` filled; `raw_metadata.llm.field_sources` shows `grounded_search`; `raw_metadata.llm.grounded = true` |
+| IMDb title link (identifiable) | Manual add | `LLM_GROUNDING_ENABLED=true` | Grounding is SKIPPED (URL has canonical id); world knowledge fills fields instead |
