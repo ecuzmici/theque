@@ -6,7 +6,7 @@ export const SHELF_EMPTY: Record<
 > = {
   all: {
     title: "Your library is empty",
-    description: "Save something from Chrome or your phone — cards appear here as you capture links.",
+    description: "Save something from Chrome or your phone. Cards show up here as you capture links.",
   },
   books: {
     title: "No books yet",
@@ -34,11 +34,11 @@ export const SHELF_EMPTY: Record<
   },
   read: {
     title: "Nothing to read",
-    description: "Save articles and essays — they appear here once classified.",
+    description: "Save articles and essays. They show up here once we've sorted them.",
   },
   cook: {
     title: "No recipes yet",
-    description: "Capture recipe blogs and cooking pages with schema.org Recipe data.",
+    description: "Save recipe blogs and cooking pages. We'll pull in the ingredients and steps.",
   },
   tools: {
     title: "No apps or tools saved",
@@ -50,6 +50,6 @@ export const SHELF_EMPTY: Record<
   },
   inbox: {
     title: "Inbox is clear",
-    description: "New captures with low confidence land here for a quick triage.",
+    description: "Saves we couldn't sort confidently land here for a quick triage.",
   },
 };

@@ -92,7 +92,7 @@ export function CaptureTokens({
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      setError("Could not copy — select and copy manually.");
+      setError("Couldn't copy automatically. Select the text and copy it.");
     }
   };
 

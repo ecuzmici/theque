@@ -46,8 +46,8 @@ export default async function Home() {
           thèque
         </h1>
         <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-          Save the books, films, places, and things you want to come back to. Links become rich
-          cards on shelves — plus collections for trips and projects.
+          Save books, films, places, and anything else worth a second look. Each link becomes a
+          card on a shelf. Group them into collections for trips and projects.
         </p>
       </section>
 
@@ -86,7 +86,7 @@ export default async function Home() {
         >
           Sign in with email
         </Button>
-        <p className="text-xs text-muted-foreground">No passwords — a sign-in code by email.</p>
+        <p className="text-xs text-muted-foreground">No passwords. We email you a sign-in code.</p>
       </div>
     </main>
   );

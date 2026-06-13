@@ -45,7 +45,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "thèque | Private taste library",
-  description: "Your private taste library — save what you'll love later.",
+  description: "Your private taste library. Save what you'll love later.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

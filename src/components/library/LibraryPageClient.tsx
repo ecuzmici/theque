@@ -320,7 +320,7 @@ export function LibraryPageClient({
             size="icon"
             aria-pressed={wall}
             aria-label="Toggle wall mode (covers only)"
-            title="Wall mode — covers only"
+            title="Wall mode (covers only)"
             className="min-h-11 min-w-11 lg-fine:min-h-9 lg-fine:min-w-9"
             onClick={() => setWall((w) => !w)}
           >

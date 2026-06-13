@@ -125,8 +125,8 @@ export function RecommendDrawer({
         {(state.status === "done" || state.status === "loading") && (
           <div className="border-t border-border px-4 py-3">
             <p className="text-[11px] text-muted-foreground">
-              AI-generated; verified against{" "}
-              {shelfId === "books" ? "Open Library" : "TMDB"} but may still be off.
+              AI picks, checked against{" "}
+              {shelfId === "books" ? "Open Library" : "TMDB"}. A few may still be wrong.
             </p>
           </div>
         )}

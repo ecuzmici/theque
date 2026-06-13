@@ -80,7 +80,7 @@ export function ShuffleButton({ shelfId }: { shelfId: ShelfId }) {
                   <p className="mt-1 text-sm text-muted-foreground">{pick.subtitle}</p>
                 ) : null}
                 <p className="mt-3 text-sm text-muted-foreground">
-                  Saved for a reason — get it {doneVerb(pick.category)} tonight?
+                  You saved this for a reason. Get it {doneVerb(pick.category)} tonight?
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button

@@ -128,7 +128,7 @@ export function InboxTriageStack({
         <h2 className="font-serif text-lg font-medium text-card-foreground">Inbox zero</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {history.length > 0
-            ? `Nice — ${history.length} ${history.length === 1 ? "item" : "items"} triaged.`
+            ? `Nice, ${history.length} ${history.length === 1 ? "item" : "items"} triaged.`
             : "Nothing waiting for triage."}
         </p>
         <div className="mt-6 flex justify-center gap-2">

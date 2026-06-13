@@ -120,7 +120,7 @@ function LoginForm() {
                 <span className="font-medium text-foreground">{email.trim()}</span>
               </>
             ) : (
-              "Sign in with email — your private taste library."
+              "Sign in with email to open your private taste library."
             )}
           </CardDescription>
         </CardHeader>
@@ -154,7 +154,7 @@ function LoginForm() {
                 />
               </div>
               <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={pendingAction !== null}>
-                {pendingAction === "send" ? "Sending..." : "Send sign-in code"}
+                {pendingAction === "send" ? "Sending…" : "Send sign-in code"}
               </Button>
             </form>
           ) : null}
@@ -180,7 +180,7 @@ function LoginForm() {
                 />
               </div>
               <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={pendingAction !== null}>
-                {pendingAction === "verify" ? "Checking..." : "Continue to library"}
+                {pendingAction === "verify" ? "Checking…" : "Continue to library"}
               </Button>
               <Button
                 type="button"
@@ -191,7 +191,7 @@ function LoginForm() {
                   void sendOtp();
                 }}
               >
-                {pendingAction === "send" ? "Resending..." : "Resend code"}
+                {pendingAction === "send" ? "Resending…" : "Resend code"}
               </Button>
               <Button
                 type="button"

@@ -19,7 +19,7 @@ export default async function ExtensionConnectPage({
     <div>
       <PageHeader
         title="Connect Chrome"
-        description="Use your signed-in Theque session to configure the extension."
+        description="Use your signed-in thèque session to set up the extension."
       />
       <ExtensionConnectClient extensionId={extensionId} email={email} />
     </div>

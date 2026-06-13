@@ -177,7 +177,7 @@ export function CollectionDetailClient({ collection }: CollectionDetailClientPro
           <DialogHeader>
             <DialogTitle>Share read-only</DialogTitle>
             <DialogDescription>
-              Anyone with the link can view this collection — nothing else in your library.
+              Anyone with the link can view this collection, and nothing else in your library.
               Revoke it at any time.
             </DialogDescription>
           </DialogHeader>

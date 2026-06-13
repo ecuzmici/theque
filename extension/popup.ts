@@ -168,7 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       const created = body?.created !== false;
       setStatus(created ? "Saved to thèque." : "Already in your library.", "ok");
     } catch {
-      setStatus("Network error — check API URL and connection.", "err");
+      setStatus("Network error. Check the API URL and your connection.", "err");
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = SAVE_BUTTON_LABEL_DEFAULT;

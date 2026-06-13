@@ -38,7 +38,7 @@ function renderDigestHtml(items: DigestItem[], appUrl: string): string {
     .join("");
   return `<!doctype html><html><body style="margin:0;background:#faf6ef;font-family:Georgia,serif;">
   <div style="max-width:480px;margin:0 auto;padding:32px 20px;">
-    <h1 style="font-size:22px;color:#1c1917;margin:0;">thèque — five things you saved and forgot</h1>
+    <h1 style="font-size:22px;color:#1c1917;margin:0;">thèque: five things you saved and forgot</h1>
     <p style="color:#78716c;font-size:14px;">Still on your shelves, still waiting.</p>
     <table style="width:100%;border-collapse:collapse;">${rows}</table>
     <p style="margin-top:24px;"><a href="${appUrl}/library" style="color:#b45309;font-size:14px;">Open your library →</a></p>

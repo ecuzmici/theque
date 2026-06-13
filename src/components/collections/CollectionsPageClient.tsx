@@ -108,7 +108,7 @@ export function CollectionsPageClient({
             <DialogHeader>
               <DialogTitle>New collection</DialogTitle>
               <DialogDescription>
-                Name a context for your saves — e.g. Japan 2026 or Birthday gifts.
+                Give it a name, like Japan 2026 or Birthday gifts.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -148,7 +148,7 @@ export function CollectionsPageClient({
               <FolderOpen className="mx-auto size-10 text-muted-foreground" aria-hidden />
               <h2 className="mt-4 font-serif text-lg font-medium">No collections yet</h2>
               <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-                Collections are your &quot;why&quot; — shelves are the &quot;what kind.&quot;
+                Collections group saves by reason. Shelves group them by type.
               </p>
             </div>
           </CardContent>

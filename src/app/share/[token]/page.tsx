@@ -118,7 +118,7 @@ export default async function SharedCollectionPage({
       )}
 
       <footer className="mt-14 text-center text-xs text-muted-foreground">
-        Collected with thèque — a private taste library.
+        Collected with thèque, a private taste library.
       </footer>
     </main>
   );

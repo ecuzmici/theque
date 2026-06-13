@@ -171,7 +171,7 @@ function AddForm() {
     <div>
       <PageHeader
         title="Add a link"
-        description="Paste any URL — thèque captures it and fills in the card when enrichment finishes."
+        description="Paste any URL. We'll grab the details and fill in the card automatically."
       />
 
       <Card>
@@ -195,7 +195,7 @@ function AddForm() {
                 <div className="flex items-start gap-2.5 rounded-lg border border-border bg-accent/40 px-3 py-2.5 text-sm">
                   <CopyCheck className="mt-0.5 size-4 shrink-0 text-accent-foreground" aria-hidden />
                   <p className="text-foreground">
-                    Already in your library —{" "}
+                    Already in your library:{" "}
                     <Link
                       href={`/item/${existing.id}`}
                       className="font-medium underline underline-offset-2"
@@ -242,7 +242,7 @@ function AddForm() {
           ) : (
             <form onSubmit={(e) => void onBatchSubmit(e)} className="space-y-5">
               <div className="grid gap-2">
-                <Label htmlFor="add-batch">Links — one per line</Label>
+                <Label htmlFor="add-batch">Links, one per line</Label>
                 <Textarea
                   id="add-batch"
                   value={batchInput}

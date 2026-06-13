@@ -100,7 +100,7 @@ export function ItemMarkDoneDialog({
             {verb === "done" ? "Done" : `You ${verb} it`}
           </DialogTitle>
           <DialogDescription>
-            &ldquo;{title}&rdquo; — worth a verdict? Both fields are optional.
+            How was &ldquo;{title}&rdquo;? Both fields are optional.
           </DialogDescription>
         </DialogHeader>
 

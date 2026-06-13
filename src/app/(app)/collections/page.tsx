@@ -75,7 +75,7 @@ export default async function CollectionsPage() {
     <div>
       <PageHeader
         title="Collections"
-        description="Group saves by trip, project, or mood — separate from category shelves."
+        description="Group saves by trip or project, kept separate from your shelves."
       />
       <CollectionsPageClient initialCollections={initial} mosaics={mosaics} />
     </div>
