@@ -96,7 +96,7 @@ export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
             ? `Get AI recommendations for ${shelfId}`
             : `Add at least ${RECOMMEND_MIN_ITEMS} items to get recommendations`
         }
-        className="gap-1.5"
+        className="min-h-11 gap-1.5 lg-fine:min-h-9"
       >
         <SparklesIcon className="h-3.5 w-3.5" />
         Recommend

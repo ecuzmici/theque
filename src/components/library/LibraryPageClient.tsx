@@ -15,14 +15,7 @@ import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
+import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
 import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -71,7 +64,6 @@ export function LibraryPageClient({
 
   const [inboxCount, setInboxCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [sort, setSort] = useState<LibrarySort>("recent");
   const [wall, setWall] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
 
@@ -83,25 +75,14 @@ export function LibraryPageClient({
 
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
   useEffect(() => {
-    const storedSort = window.localStorage.getItem("theque_library_sort");
-    if (storedSort === "color" || storedSort === "title") setSort(storedSort);
     setWall(window.localStorage.getItem("theque_wall_mode") === "1");
     prefsLoaded.current = true;
   }, []);
 
   useEffect(() => {
     if (!prefsLoaded.current) return;
-    window.localStorage.setItem("theque_library_sort", sort);
     window.localStorage.setItem("theque_wall_mode", wall ? "1" : "0");
-  }, [sort, wall]);
-
-  // Sorting happens in the query; drop cached pages so every shelf refetches.
-  const lastSortRef = useRef(sort);
-  useEffect(() => {
-    if (lastSortRef.current === sort) return;
-    lastSortRef.current = sort;
-    setItemsCache({});
-  }, [sort]);
+  }, [wall]);
 
   useEffect(() => {
     if (pendingShelf == null || pendingShelf !== urlShelf) return;
@@ -128,7 +109,7 @@ export function LibraryPageClient({
     void (async () => {
       setLoadError(null);
       try {
-        const result = await fetchLibraryItemsForShelf(supabase, targetShelf, 0, sort);
+        const result = await fetchLibraryItemsForShelf(supabase, targetShelf, 0);
         if (cancelled) return;
         setItemsCache((prev) => ({ ...prev, [targetShelf]: result }));
       } catch (e) {
@@ -140,7 +121,7 @@ export function LibraryPageClient({
     return () => {
       cancelled = true;
     };
-  }, [activeShelf, sort]);
+  }, [activeShelf]);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,7 +256,7 @@ export function LibraryPageClient({
         Showing {activeLabel} shelf
       </p>
 
-      {/* Shelf toolbar: shuffle pick, AI recommendations, sort, wall mode */}
+      {/* Shelf toolbar: shuffle pick, AI recommendations, wall mode */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         {activeShelf !== "inbox" ? (
           <ShuffleButton key={activeShelf} shelfId={activeShelf} />
@@ -284,7 +265,7 @@ export function LibraryPageClient({
             type="button"
             variant={triageMode ? "secondary" : "outline"}
             size="sm"
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            className="min-h-11 gap-1.5 lg-fine:min-h-9"
             aria-pressed={triageMode}
             onClick={() => setTriageMode((t) => !t)}
           >
@@ -301,19 +282,6 @@ export function LibraryPageClient({
               shelfItems={cachedItems}
             />
           ) : null}
-          <Select value={sort} onValueChange={(v) => setSort(v as LibrarySort)}>
-            <SelectTrigger
-              aria-label="Sort shelf"
-              className="h-9 w-32 min-h-11 lg-fine:min-h-9"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="recent">Recent</SelectItem>
-              <SelectItem value="color">By color</SelectItem>
-              <SelectItem value="title">A–Z</SelectItem>
-            </SelectContent>
-          </Select>
           <Button
             type="button"
             variant={wall ? "secondary" : "outline"}
@@ -364,12 +332,11 @@ export function LibraryPageClient({
         />
       ) : (
         <LibraryItemsSection
-          key={`${activeShelf}:${sort}`}
+          key={activeShelf}
           userId={userId}
           shelfId={activeShelf}
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
-          sort={sort}
           wall={wall}
           onItemsChange={updateActiveShelfItems}
         />

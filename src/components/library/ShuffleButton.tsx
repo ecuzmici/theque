@@ -43,7 +43,7 @@ export function ShuffleButton({ shelfId }: { shelfId: ShelfId }) {
         size="sm"
         disabled={busy}
         onClick={() => void shuffle()}
-        className="min-h-11 gap-1.5 lg-fine:min-h-8"
+        className="min-h-11 gap-1.5 lg-fine:min-h-9"
       >
         <Dices className="size-4" aria-hidden />
         {busy ? "Picking…" : "Tonight's pick"}
