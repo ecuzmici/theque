@@ -11,7 +11,7 @@ import {
   type LlmCategoryEnhancement,
   validateLlmCategoryEnhancement,
 } from "../src/lib/enrichment/llm/category-schemas";
-import { buildGeminiCategoryPromptV2 } from "../src/lib/enrichment/llm/prompt-builder";
+import { buildGeminiCategoryPromptV3 } from "../src/lib/enrichment/llm/prompt-builder";
 
 const MODEL = "gemini-2.5-flash";
 const TEMPERATURE = 0.1;
@@ -28,6 +28,8 @@ const VALID_SOURCE_LABELS = [
   "json_ld",
   "title_tag",
   "existing_structured",
+  "page_text",
+  "model_knowledge",
 ] as const;
 
 const evalConfig = {
@@ -48,6 +50,7 @@ type GeminiCategoryInput = {
   image_url: string | null;
   structured: Record<string, unknown>;
   rawMetadata: RawMetadata;
+  pageText: string | null;
 };
 
 type ExpectedOutcome = {
@@ -270,6 +273,7 @@ const evalCases: EvalCase[] = [
         openGraph: {},
         jsonLd: [],
       }),
+      pageText: null,
     },
     expected: {
       titleShouldBeAbsent: true,
@@ -293,6 +297,7 @@ const evalCases: EvalCase[] = [
       rawMetadata: rawMetadata("https://www.selva-restaurant.com/en/", {
         statusCode: 403,
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "Selva",
@@ -334,6 +339,7 @@ const evalCases: EvalCase[] = [
           },
         ],
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "Lemon Herb Pasta",
@@ -378,6 +384,7 @@ const evalCases: EvalCase[] = [
           },
         ],
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "Fellow Stagg",
@@ -418,6 +425,7 @@ const evalCases: EvalCase[] = [
           },
         ],
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "In the Mood for Love",
@@ -457,6 +465,7 @@ const evalCases: EvalCase[] = [
           },
         ],
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "The Great Gatsby",
@@ -494,6 +503,7 @@ const evalCases: EvalCase[] = [
           },
         ],
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "About",
@@ -524,6 +534,7 @@ const evalCases: EvalCase[] = [
           "article:published_time": "2026-04-12T10:00:00.000Z",
         },
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "Quiet Interfaces",
@@ -551,6 +562,7 @@ const evalCases: EvalCase[] = [
           statusCode: 403,
         },
       ),
+      pageText: null,
     },
     expected: {
       titleContains: "Copenhagen",
@@ -575,6 +587,7 @@ const evalCases: EvalCase[] = [
       rawMetadata: rawMetadata("https://www.google.com/maps/place/Cafe+De+Jaren/@52.3676,4.8931,17z/", {
         statusCode: 403,
       }),
+      pageText: null,
     },
     expected: {
       titleContains: "Cafe De Jaren",
@@ -895,7 +908,7 @@ async function runEval(): Promise<void> {
 
   for (const [index, evalCase] of evalCases.entries()) {
     const oldPrompt = buildGeminiCategoryPrompt(evalCase.input);
-    const newPrompt = buildGeminiCategoryPromptV2(evalCase.input);
+    const newPrompt = buildGeminiCategoryPromptV3(evalCase.input);
 
     console.error(`Running case ${index + 1}/${evalCases.length}: ${evalCase.name} (old)`);
     const oldResult = await runPrompt(ai, "old", evalCase.input, evalCase.expected, oldPrompt);
@@ -929,7 +942,7 @@ function printDryRun(): void {
     index: index + 1,
     name: evalCase.name,
     oldPromptChars: buildGeminiCategoryPrompt(evalCase.input).length,
-    newPromptChars: buildGeminiCategoryPromptV2(evalCase.input).length,
+    newPromptChars: buildGeminiCategoryPromptV3(evalCase.input).length,
   }));
   console.log(JSON.stringify({ model: MODEL, cases }, null, 2));
 }
