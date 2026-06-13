@@ -25,6 +25,7 @@ const baseRewriteInput = {
     json_ld: [],
     parser: "generic",
   },
+  pageText: null,
 };
 
 describe("buildGeminiItemRewritePrompt", () => {
@@ -95,5 +96,44 @@ describe("normalizeGeminiItemRewritePayload", () => {
     });
 
     expect(result.status).toBe("failed");
+  });
+});
+
+describe("buildGeminiItemRewritePrompt v3 additions", () => {
+  const input = {
+    finalUrl: "https://www.goodreads.com/book/show/44767458-dune",
+    currentCategory: "books" as const,
+    title: "Dune",
+    subtitle: null,
+    description: null,
+    image_url: null,
+    structured: {},
+    rawMetadata: {
+      fetched_at: "2026-06-13T00:00:00.000Z",
+      final_url: "https://www.goodreads.com/book/show/44767458-dune",
+      status_code: 200,
+      open_graph: {},
+      twitter: {},
+      json_ld: [],
+      parser: "goodreads",
+    },
+    pageText: "Dune is set in the distant future amidst a feudal interstellar society.",
+  };
+
+  it("includes page text when provided", () => {
+    const prompt = buildGeminiItemRewritePrompt(input);
+    expect(prompt).toContain("Page text:");
+    expect(prompt).toContain("feudal interstellar society");
+  });
+
+  it("omits the page text line when null", () => {
+    const prompt = buildGeminiItemRewritePrompt({ ...input, pageText: null });
+    expect(prompt).not.toContain("Page text:");
+  });
+
+  it("allows bounded world knowledge but bans volatile facts", () => {
+    const prompt = buildGeminiItemRewritePrompt(input);
+    expect(prompt).toContain("model_knowledge");
+    expect(prompt).toMatch(/NEVER invent .*(prices|volatile)/i);
   });
 });

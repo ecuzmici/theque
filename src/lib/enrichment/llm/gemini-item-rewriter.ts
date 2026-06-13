@@ -18,6 +18,8 @@ export type GeminiItemRewriteInput = {
   image_url: string | null;
   structured: Record<string, unknown>;
   rawMetadata: RawMetadata;
+  /** Readable main-content text (snapshot innerText or freshly fetched). */
+  pageText: string | null;
 };
 
 export type GeminiItemRewriteResult =
@@ -78,7 +80,8 @@ export function buildGeminiItemRewritePrompt(input: GeminiItemRewriteInput): str
       : "Populate the structured fields that match the chosen category.",
     "Always preserve existing structured values when they are still accurate, and fill in any supported fields you have evidence for. Do not return an empty structured object when supported fields can be populated from the evidence.",
     "When evidence is strong from the URL or title, use it to correct obvious misclassifications.",
-    "Do not invent facts like authors, prices, ratings, or dates without evidence.",
+    "If the URL or title unambiguously identifies a specific well-known work, venue, or product (e.g. an IMDb title ID, a Goodreads book page, an exact title plus author), you MAY fill widely-known stable facts (authors, directors, year, genres, page counts, cuisine) from your own knowledge; include \"model_knowledge\" in sources when you do.",
+    "NEVER invent volatile or unverifiable facts: prices, current ratings, ratings counts, availability, addresses, phone numbers, opening hours. These require page evidence.",
     "",
     `URL: ${input.finalUrl}`,
     `Title: ${input.title ?? ""}`,
@@ -90,6 +93,7 @@ export function buildGeminiItemRewritePrompt(input: GeminiItemRewriteInput): str
     `Twitter: ${JSON.stringify(input.rawMetadata.twitter)}`,
     `JSON-LD: ${JSON.stringify(input.rawMetadata.json_ld)}`,
     `Parser: ${input.rawMetadata.parser}`,
+    ...(input.pageText ? [`Page text: ${input.pageText}`] : []),
   ].join("\n");
 }
 

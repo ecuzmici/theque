@@ -1,6 +1,9 @@
 import type { Json } from "@/lib/database.types";
 import type { RawMetadata } from "@/lib/enrichment/extract";
+import { fetchPage } from "@/lib/enrichment/fetch";
 import { rewriteItemWithGemini } from "@/lib/enrichment/llm/gemini-item-rewriter";
+import { extractPageText } from "@/lib/enrichment/page-text";
+import { readCaptureSnapshot } from "@/lib/enrichment/snapshot-adapter";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { AiEnrichmentProposalResponseBody } from "@/lib/types/api";
 import { rateLimit } from "@/lib/rate-limit";
@@ -46,6 +49,17 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
+  const snapshot = readCaptureSnapshot(row.raw_metadata);
+  let pageText: string | null = snapshot?.text ?? null;
+  if (!pageText) {
+    try {
+      const fetched = await fetchPage(row.canonical_url);
+      pageText = extractPageText(fetched.html);
+    } catch {
+      pageText = null;
+    }
+  }
+
   const result = await rewriteItemWithGemini({
     finalUrl: row.canonical_url,
     currentCategory: row.category,
@@ -55,6 +69,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     image_url: row.image_url,
     structured: asRecord(row.structured),
     rawMetadata: normalizeRawMetadata(row.raw_metadata, row.canonical_url),
+    pageText,
   });
 
   if (result.status === "skipped") {
