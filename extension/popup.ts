@@ -1,4 +1,5 @@
 import { CATEGORY_HINT_OPTIONS } from "./category-hints.js";
+import { collectPageSnapshot, type PageSnapshot } from "./page-snapshot.js";
 
 const STORAGE_KEYS = {
   token: "theque_capture_token",
@@ -40,13 +41,13 @@ async function loadSettings(): Promise<{ token: string; baseUrl: string; email: 
   return { token, baseUrl, email };
 }
 
-async function getActiveTab(): Promise<{ url: string; title: string } | null> {
+async function getActiveTab(): Promise<{ id: number | undefined; url: string; title: string } | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url;
   if (!url || url.startsWith("chrome://") || url.startsWith("chrome-extension://")) {
     return null;
   }
-  return { url, title: tab.title?.trim() || "Current tab" };
+  return { id: tab.id, url, title: tab.title?.trim() || "Current tab" };
 }
 
 async function openConnectPage() {
@@ -122,6 +123,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         return;
       }
 
+      let captureSnapshot: PageSnapshot | null = null;
+      if (typeof tab.id === "number") {
+        try {
+          const [injection] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: collectPageSnapshot,
+          });
+          captureSnapshot = (injection?.result as PageSnapshot | undefined) ?? null;
+        } catch {
+          captureSnapshot = null;
+        }
+      }
+
       const note = noteEl.value.trim();
       const categoryHint = categoryEl.value.trim();
       const res = await fetch(`${apiBase}/api/capture`, {
@@ -134,6 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           url: tab.url,
           ...(note ? { note } : {}),
           ...(categoryHint ? { category_hint: categoryHint } : {}),
+          ...(captureSnapshot ? { capture_snapshot: captureSnapshot } : {}),
           source: "chrome_extension",
         }),
       });

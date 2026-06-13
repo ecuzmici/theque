@@ -46,7 +46,7 @@ describe("extension popup", () => {
     storageSet = vi.fn().mockResolvedValue(undefined);
     tabsCreate = vi.fn().mockResolvedValue(undefined);
     tabsQuery = vi.fn().mockResolvedValue([
-      { url: "https://example.com/story", title: "Example Story" },
+      { id: 42, url: "https://example.com/story", title: "Example Story" },
     ]);
     fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -59,6 +59,7 @@ describe("extension popup", () => {
       runtime: { id: "extension-id" },
       storage: { local: { get: storageGet, set: storageSet } },
       tabs: { create: tabsCreate, query: tabsQuery },
+      scripting: { executeScript: vi.fn().mockResolvedValue([{ result: null }]) },
     });
   });
 
