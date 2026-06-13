@@ -1,5 +1,8 @@
 import type { ItemCategory } from "@/lib/database.types";
 
+export const FIELD_SOURCE_VALUES = ["page", "model_knowledge", "grounded_search"] as const;
+export type FieldSource = (typeof FIELD_SOURCE_VALUES)[number];
+
 export type LlmCategoryEnhancement = {
   category_suggestion?: ItemCategory;
   category_confidence?: number;
@@ -8,6 +11,8 @@ export type LlmCategoryEnhancement = {
   description?: string;
   image_url?: string;
   structured?: Record<string, unknown>;
+  /** Per-structured-field provenance, e.g. { authors: "model_knowledge" }. */
+  field_sources?: Record<string, FieldSource>;
   confidence: number;
   sources: string[];
   notes?: string;
@@ -268,7 +273,12 @@ const fieldValidators: Record<ItemCategory, Record<string, FieldValidator>> = {
   },
 };
 
-export function validateLlmCategoryEnhancement(category: ItemCategory, value: unknown): LlmValidationResult {
+const validFieldSources = new Set<string>(FIELD_SOURCE_VALUES);
+
+export function validateLlmCategoryEnhancement(
+  category: ItemCategory | null,
+  value: unknown,
+): LlmValidationResult {
   if (!isRecord(value)) return { ok: false, reason: "output_not_object" };
 
   const confidence = value.confidence;
@@ -307,11 +317,30 @@ export function validateLlmCategoryEnhancement(category: ItemCategory, value: un
     const structuredCategory = allowedCategories.has(categorySuggestion as ItemCategory)
       ? (categorySuggestion as ItemCategory)
       : category;
-    const allowed = allowedStructuredFields[structuredCategory];
-    const validators = fieldValidators[structuredCategory];
-    for (const [key, fieldValue] of Object.entries(structured)) {
-      if (!allowed.has(key)) return { ok: false, reason: `unknown_structured_field:${key}` };
-      if (!validators[key]?.(fieldValue)) return { ok: false, reason: `invalid_structured_field:${key}` };
+    if (structuredCategory === null) {
+      if (Object.keys(structured).length > 0) {
+        return { ok: false, reason: "structured_without_category" };
+      }
+    } else {
+      const allowed = allowedStructuredFields[structuredCategory];
+      const validators = fieldValidators[structuredCategory];
+      for (const [key, fieldValue] of Object.entries(structured)) {
+        if (!allowed.has(key)) return { ok: false, reason: `unknown_structured_field:${key}` };
+        if (!validators[key]?.(fieldValue)) return { ok: false, reason: `invalid_structured_field:${key}` };
+      }
+    }
+  }
+
+  let fieldSources: Record<string, FieldSource> | undefined;
+  const rawFieldSources = value.field_sources;
+  if (rawFieldSources !== undefined) {
+    if (!isRecord(rawFieldSources)) return { ok: false, reason: "invalid_field_sources" };
+    fieldSources = {};
+    for (const [key, source] of Object.entries(rawFieldSources)) {
+      if (typeof source !== "string" || !validFieldSources.has(source)) {
+        return { ok: false, reason: "invalid_field_sources" };
+      }
+      fieldSources[key] = source as FieldSource;
     }
   }
 
@@ -327,6 +356,7 @@ export function validateLlmCategoryEnhancement(category: ItemCategory, value: un
       description: typeof value.description === "string" ? value.description : undefined,
       image_url: typeof value.image_url === "string" ? value.image_url : undefined,
       structured: isRecord(structured) ? structured : undefined,
+      field_sources: fieldSources,
       confidence,
       sources: value.sources,
       notes: typeof value.notes === "string" ? value.notes : undefined,
