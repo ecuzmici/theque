@@ -15,6 +15,7 @@ import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/snapshot-adapter";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { resolveCategoryEvidence } from "@/lib/enrichment/resolvers/index";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EnrichOutcome = "ready" | "pending_retry" | "failed" | "skipped";
@@ -31,6 +32,25 @@ function hasUsefulValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (value && typeof value === "object") return Object.keys(value).length > 0;
   return false;
+}
+
+const RESOLVER_IMPORTANT_FIELDS: Partial<Record<ItemCategory, string[]>> = {
+  movies_and_tv: ["year", "directors"],
+  books: ["authors", "published_year"],
+  music: ["artist", "album"],
+  videos: ["channel"],
+  apps: ["developer"],
+};
+
+function resolverFieldsSparse(
+  category: ItemCategory | null,
+  structured: Record<string, unknown>,
+): boolean {
+  if (!category) return false;
+  const fields = RESOLVER_IMPORTANT_FIELDS[category];
+  if (!fields) return false;
+  const filled = fields.filter((f) => hasUsefulValue(structured[f])).length;
+  return filled < fields.length;
 }
 
 function hasSparseFetchEvidence(input: {
@@ -191,6 +211,32 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     let mergedCategory = classification.category;
     let mergedCategoryConfidence = classification.category_confidence;
     let mergedCategorySource = classification.category_source;
+
+    // Phase 3: free deterministic API resolvers. Only when important fields are
+    // still sparse; fills missing fields and ranks above any later LLM merge.
+    if (resolverFieldsSparse(mergedCategory, mergedStructured)) {
+      const patch = await resolveCategoryEvidence(mergedCategory, {
+        canonicalUrl: fetchResult.finalUrl,
+        title: mergedTitle,
+        structured: mergedStructured,
+      });
+      if (patch) {
+        if (patch.structured) {
+          for (const [key, value] of Object.entries(patch.structured)) {
+            if (value !== undefined && value !== null && !hasUsefulValue(mergedStructured[key])) {
+              mergedStructured[key] = value;
+            }
+          }
+        }
+        if (patch.title && isWeakTitle(mergedTitle)) mergedTitle = patch.title;
+        if (patch.description && !mergedDescription?.trim()) mergedDescription = patch.description;
+        if (patch.image_url && !mergedImageUrl) mergedImageUrl = patch.image_url;
+        mergedRawMetadata = {
+          ...mergedRawMetadata,
+          resolver: { source: patch.source, fields: Object.keys(patch.structured ?? {}) },
+        };
+      }
+    }
 
     const fetchBlocked = snapshot ? false : isBotBlockPage(fetchResult.html, fetchResult.statusCode);
     const fetchSparse = hasSparseFetchEvidence({
