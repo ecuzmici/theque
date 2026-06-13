@@ -6,6 +6,7 @@ import { classify } from "@/lib/classify/index";
 import { applyEnrichmentFallbacks } from "@/lib/enrichment/apply-fallbacks";
 import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
+import { fetchViaJinaReader } from "@/lib/enrichment/jina-reader";
 import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
 import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
@@ -14,6 +15,7 @@ import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/snapshot-adapter";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { resolveCategoryEvidence } from "@/lib/enrichment/resolvers/index";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EnrichOutcome = "ready" | "pending_retry" | "failed" | "skipped";
@@ -30,6 +32,25 @@ function hasUsefulValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0;
   if (value && typeof value === "object") return Object.keys(value).length > 0;
   return false;
+}
+
+const RESOLVER_IMPORTANT_FIELDS: Partial<Record<ItemCategory, string[]>> = {
+  movies_and_tv: ["year", "directors"],
+  books: ["authors", "published_year"],
+  music: ["artist", "album"],
+  videos: ["channel"],
+  apps: ["developer"],
+};
+
+function resolverFieldsSparse(
+  category: ItemCategory | null,
+  structured: Record<string, unknown>,
+): boolean {
+  if (!category) return false;
+  const fields = RESOLVER_IMPORTANT_FIELDS[category];
+  if (!fields) return false;
+  const filled = fields.filter((f) => hasUsefulValue(structured[f])).length;
+  return filled < fields.length;
 }
 
 function hasSparseFetchEvidence(input: {
@@ -134,7 +155,17 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
           { requestUrl: row.canonical_url },
         );
 
-    const pageText = snapshot?.text ?? (openLibrary ? null : extractPageText(fetchResult.html));
+    let jinaResult: Awaited<ReturnType<typeof fetchViaJinaReader>> = null;
+    let pageText = snapshot?.text ?? (openLibrary ? null : extractPageText(fetchResult.html));
+    // Phase 2: when a server fetch was blocked/empty and there's no snapshot,
+    // try the Jina Reader readability proxy (opt-in, fail-open).
+    if (!snapshot && !openLibrary) {
+      const blockedOrEmpty = isBotBlockPage(fetchResult.html, fetchResult.statusCode) || !pageText;
+      if (blockedOrEmpty) {
+        jinaResult = await fetchViaJinaReader(row.canonical_url);
+        if (jinaResult) pageText = jinaResult.markdown;
+      }
+    }
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
@@ -167,15 +198,45 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       ...(extracted.raw_metadata as unknown as Record<string, unknown>),
       ...(snapshot
         ? { capture_snapshot: snapshot, evidence_source: "capture_snapshot" }
-        : { evidence_source: openLibrary ? "open_library" : "server_fetch" }),
+        : { evidence_source: jinaResult ? "jina_reader" : openLibrary ? "open_library" : "server_fetch" }),
+      ...(jinaResult ? { jina: { used: true } } : {}),
     };
     let mergedTitle = extracted.title?.trim() || null;
+    if (jinaResult?.title && isWeakTitle(mergedTitle)) {
+      mergedTitle = jinaResult.title;
+    }
     let mergedSubtitle = extracted.subtitle ?? null;
     let mergedDescription = extracted.description ?? row.description;
     let mergedImageUrl = extracted.image_url ?? row.image_url;
     let mergedCategory = classification.category;
     let mergedCategoryConfidence = classification.category_confidence;
     let mergedCategorySource = classification.category_source;
+
+    // Phase 3: free deterministic API resolvers. Only when important fields are
+    // still sparse; fills missing fields and ranks above any later LLM merge.
+    if (resolverFieldsSparse(mergedCategory, mergedStructured)) {
+      const patch = await resolveCategoryEvidence(mergedCategory, {
+        canonicalUrl: fetchResult.finalUrl,
+        title: mergedTitle,
+        structured: mergedStructured,
+      });
+      if (patch) {
+        if (patch.structured) {
+          for (const [key, value] of Object.entries(patch.structured)) {
+            if (value !== undefined && value !== null && !hasUsefulValue(mergedStructured[key])) {
+              mergedStructured[key] = value;
+            }
+          }
+        }
+        if (patch.title && isWeakTitle(mergedTitle)) mergedTitle = patch.title;
+        if (patch.description && !mergedDescription?.trim()) mergedDescription = patch.description;
+        if (patch.image_url && !mergedImageUrl) mergedImageUrl = patch.image_url;
+        mergedRawMetadata = {
+          ...mergedRawMetadata,
+          resolver: { source: patch.source, fields: Object.keys(patch.structured ?? {}) },
+        };
+      }
+    }
 
     const fetchBlocked = snapshot ? false : isBotBlockPage(fetchResult.html, fetchResult.statusCode);
     const fetchSparse = hasSparseFetchEvidence({
@@ -196,6 +257,8 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       description: mergedDescription,
       image_url: mergedImageUrl,
       structured: mergedStructured,
+      groundingEnabled: process.env.LLM_GROUNDING_ENABLED === "true",
+      canonicalUrl: fetchResult.finalUrl,
     });
 
     if (llmEligibility.eligible) {
@@ -211,6 +274,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         structured: mergedStructured,
         rawMetadata: extracted.raw_metadata,
         pageText,
+        groundingRecommended: llmEligibility.eligible ? llmEligibility.groundingRecommended : false,
       });
 
       const merged = mergeLlmEnrichment({

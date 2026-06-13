@@ -122,3 +122,71 @@ describe("decideLlmEligibility uncategorized", () => {
     expect(result.reason).toBe("disabled");
   });
 });
+
+describe("decideLlmEligibility groundingRecommended", () => {
+  const base = {
+    enabled: true,
+    hasApiKey: true,
+    title: null,
+    description: null,
+    structured: {},
+  };
+
+  it("recommends grounding for a blocked, non-identifiable page when flag on", () => {
+    const result = decideLlmEligibility({
+      ...base,
+      fetchBlocked: true,
+      category: "restaurants",
+      groundingEnabled: true,
+      canonicalUrl: "https://www.google.com/maps/place/Selva",
+    });
+    expect(result.eligible).toBe(true);
+    expect(result.groundingRecommended).toBe(true);
+  });
+
+  it("does NOT recommend grounding for an identifiable URL", () => {
+    const result = decideLlmEligibility({
+      ...base,
+      fetchBlocked: true,
+      category: "movies_and_tv",
+      groundingEnabled: true,
+      canonicalUrl: "https://www.imdb.com/title/tt0468569/",
+    });
+    expect(result.groundingRecommended).toBe(false);
+  });
+
+  it("does NOT recommend grounding when the flag is off", () => {
+    const result = decideLlmEligibility({
+      ...base,
+      fetchBlocked: true,
+      category: "restaurants",
+      groundingEnabled: false,
+      canonicalUrl: "https://selva.example/",
+    });
+    expect(result.groundingRecommended).toBe(false);
+  });
+
+  it("does NOT recommend grounding for a healthy page", () => {
+    const result = decideLlmEligibility({
+      enabled: true,
+      hasApiKey: true,
+      fetchBlocked: false,
+      category: "articles",
+      title: "A complete title",
+      description: "A sufficiently long description that clears the thresholds for enrichment.",
+      structured: { author: "x", publisher: "y", published_at: "2026" },
+      groundingEnabled: true,
+      canonicalUrl: "https://blog.example/post",
+    });
+    expect(result.groundingRecommended).toBe(false);
+  });
+
+  it("defaults groundingRecommended to false when grounding inputs are omitted", () => {
+    const result = decideLlmEligibility({
+      ...base,
+      fetchBlocked: true,
+      category: "restaurants",
+    });
+    expect(result.groundingRecommended).toBe(false);
+  });
+});

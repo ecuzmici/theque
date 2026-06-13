@@ -9,6 +9,7 @@ import {
   validateLlmCategoryEnhancement,
 } from "@/lib/enrichment/llm/category-schemas";
 import { buildGeminiCategoryPromptV3 } from "@/lib/enrichment/llm/prompt-builder";
+import { groundedLookup } from "@/lib/enrichment/llm/grounded-search";
 
 /**
  * Direct Gemini SDK enrichment (unified LLM core, phase 1 of the evidence
@@ -38,6 +39,8 @@ export type GeminiCategoryInput = {
   rawMetadata: RawMetadata;
   /** Readable main-content text (snapshot innerText or stripped fetched HTML). */
   pageText: string | null;
+  /** Phase 2: when true, run a grounded Google-Search lookup before structuring. */
+  groundingRecommended?: boolean;
 };
 
 export type GeminiCategoryResult =
@@ -123,7 +126,19 @@ export async function enhanceCategoryWithGemini(
   const timeoutEnv = Number.parseInt(process.env.ENRICHMENT_TIMEOUT_MS ?? "", 10);
   const timeoutMs = Number.isFinite(timeoutEnv) && timeoutEnv > 0 ? timeoutEnv : DEFAULT_TIMEOUT_MS;
 
-  const prompt = buildGeminiCategoryPromptV3(input);
+  let effectivePageText = input.pageText;
+  let groundedUsed = false;
+  if (input.groundingRecommended) {
+    const grounded = await groundedLookup({ finalUrl: input.finalUrl, title: input.title });
+    if (grounded) {
+      groundedUsed = true;
+      effectivePageText = effectivePageText
+        ? `Search findings (treat as grounded_search evidence): ${grounded}\n\n${effectivePageText}`
+        : `Search findings (treat as grounded_search evidence): ${grounded}`;
+    }
+  }
+
+  const prompt = buildGeminiCategoryPromptV3({ ...input, pageText: effectivePageText });
   const schema = buildGeminiResponseJsonSchema(
     input.categorySuggestionAllowed === true,
     input.category,
@@ -157,7 +172,7 @@ export async function enhanceCategoryWithGemini(
       if (normalized.status === "enhanced") {
         return {
           ...normalized,
-          providerMetadata: { ...normalized.providerMetadata, model },
+          providerMetadata: { ...normalized.providerMetadata, model, grounded: groundedUsed },
         };
       }
       if (normalized.status === "failed") lastReason = normalized.reason;
