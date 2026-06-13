@@ -65,3 +65,13 @@ Record failures as GitHub issues with: URL used, capture client, response status
 | Bot-walled product/article (no snapshot) | Manual add | `JINA_READER_ENABLED=true` | Page text recovered via Jina; `raw_metadata.evidence_source = "jina_reader"`; card gets a real title/description |
 | Restaurant via Google Maps / Yelp | Manual add | `LLM_GROUNDING_ENABLED=true` | `place_name`/`cuisine` filled; `raw_metadata.llm.field_sources` shows `grounded_search`; `raw_metadata.llm.grounded = true` |
 | IMDb title link (identifiable) | Manual add | `LLM_GROUNDING_ENABLED=true` | Grounding is SKIPPED (URL has canonical id); world knowledge fills fields instead |
+
+## Category resolvers (phase 3, free APIs)
+
+| URL | Category | Expected |
+|-----|----------|----------|
+| Bare youtube.com/watch URL | videos | `channel` + thumbnail filled from oEmbed; no LLM call needed |
+| github.com/owner/repo | apps | `developer` + `category_tag` (language) + description; `raw_metadata.resolver.source = "github"` |
+| Apple Music / album page | music | `artist`, `album`, `release_year`, `genre` from iTunes |
+| Book page that isn't an Open Library work | books | `authors`/`published_year` from Google Books |
+| IMDb/TMDb movie with sparse OG (needs TMDB_API_KEY) | movies_and_tv | `year` + poster from TMDB |
