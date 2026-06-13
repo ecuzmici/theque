@@ -56,6 +56,20 @@ export function isWeakTitle(title: string | null | undefined, siteName?: string)
   return false;
 }
 
+const BLOCK_TEXT_RE =
+  /\b(access denied|robot check|are you a robot|are you a human|enable javascript|captcha|verify you are|unusual traffic)\b/i;
+
+/**
+ * A description that should not block an LLM replacement: missing, too short
+ * to be useful, or error/bot-wall boilerplate that leaked into metadata.
+ */
+export function isJunkDescription(description: string | null | undefined): boolean {
+  if (!description?.trim()) return true;
+  const d = description.trim();
+  if (d.length < 30) return true;
+  return isErrorPageTitle(d) || BLOCK_TEXT_RE.test(d);
+}
+
 export function parseTitleTag(titleTag: string | undefined, siteName?: string): string | undefined {
   if (!titleTag?.trim()) return undefined;
   let t = titleTag.trim();
