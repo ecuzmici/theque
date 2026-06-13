@@ -251,3 +251,128 @@ describe("mergeLlmEnrichment", () => {
     });
   });
 });
+
+describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
+  it("replaces a junk description", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "The Dark Knight",
+        subtitle: null,
+        description: "Access Denied - you do not have permission to view this page today.",
+        image_url: null,
+        category: "movies_and_tv",
+        category_confidence: 0.95,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.8,
+          sources: ["page_text"],
+          description: "Batman faces the Joker as Gotham descends into chaos.",
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.description).toBe("Batman faces the Joker as Gotham descends into chaos.");
+  });
+
+  it("applies a category suggestion to an uncategorized item", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "selva-restaurant",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: null,
+        category_confidence: 0.3,
+        category_source: "heuristic",
+        structured: {},
+        rawMetadata: {},
+      },
+      categorySuggestionAllowed: true,
+      categorySuggestionReason: "uncategorized",
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.6,
+          sources: ["url"],
+          category_suggestion: "restaurants",
+          category_confidence: 0.75,
+          title: "Selva",
+          structured: { place_name: "Selva" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.category).toBe("restaurants");
+    expect(merged.category_source).toBe("llm");
+    expect(merged.structured.place_name).toBe("Selva");
+  });
+
+  it("clamps recorded confidence to 0.7 when all fields are model knowledge", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Dune",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "books",
+        category_confidence: 0.95,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.95,
+          sources: ["model_knowledge"],
+          structured: { authors: ["Frank Herbert"], published_year: 1965 },
+          field_sources: { authors: "model_knowledge", published_year: "model_knowledge" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    const llmMeta = merged.rawMetadata.llm as Record<string, unknown>;
+    expect(llmMeta.confidence).toBe(0.7);
+    expect(llmMeta.field_sources).toEqual({
+      authors: "model_knowledge",
+      published_year: "model_knowledge",
+    });
+  });
+
+  it("rejects volatile structured fields sourced from model_knowledge", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Widget Pro",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "products",
+        category_confidence: 0.95,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.8,
+          sources: ["model_knowledge"],
+          structured: { brand: "Acme", price: "$49.99" },
+          field_sources: { brand: "model_knowledge", price: "model_knowledge" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.structured).toEqual({ brand: "Acme" });
+    expect(merged.structured).not.toHaveProperty("price");
+  });
+});

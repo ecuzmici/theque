@@ -117,6 +117,53 @@ describe("validateLlmCategoryEnhancement", () => {
   });
 });
 
+describe("validateLlmCategoryEnhancement field_sources and null category", () => {
+  it("accepts valid field_sources values", () => {
+    const result = validateLlmCategoryEnhancement("books", {
+      confidence: 0.6,
+      sources: ["model_knowledge"],
+      structured: { authors: ["Frank Herbert"], published_year: 1965 },
+      field_sources: { authors: "model_knowledge", published_year: "page" },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.field_sources).toEqual({
+        authors: "model_knowledge",
+        published_year: "page",
+      });
+    }
+  });
+
+  it("rejects unknown field_sources values", () => {
+    const result = validateLlmCategoryEnhancement("books", {
+      confidence: 0.6,
+      sources: ["url"],
+      field_sources: { authors: "telepathy" },
+    });
+    expect(result).toEqual({ ok: false, reason: "invalid_field_sources" });
+  });
+
+  it("validates structured against the suggestion when category is null", () => {
+    const result = validateLlmCategoryEnhancement(null, {
+      confidence: 0.5,
+      sources: ["url"],
+      category_suggestion: "restaurants",
+      category_confidence: 0.7,
+      structured: { place_name: "Selva" },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects structured fields when category is null and no suggestion is given", () => {
+    const result = validateLlmCategoryEnhancement(null, {
+      confidence: 0.5,
+      sources: ["url"],
+      structured: { place_name: "Selva" },
+    });
+    expect(result).toEqual({ ok: false, reason: "structured_without_category" });
+  });
+});
+
 describe("validateLlmItemRewriteProposal", () => {
   it("accepts a full rewrite proposal with a new category", () => {
     const result = validateLlmItemRewriteProposal({

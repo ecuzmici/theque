@@ -48,3 +48,12 @@ For each URL above:
 ## Regression notes
 
 Record failures as GitHub issues with: URL used, capture client, response status/code, item id if any, screenshot of card state.
+
+## Extension snapshot capture (phase 1, evidence pipeline)
+
+| URL | Client | Expected |
+|-----|--------|----------|
+| Amazon product page | Chrome extension | Card gets real title + image; `raw_metadata.evidence_source = "capture_snapshot"`; no `fetch_blocked_or_sparse` |
+| Google Maps place | Chrome extension | Place name extracted from snapshot meta/URL; category `restaurants` or `travel` |
+| Same Amazon URL, re-saved via extension | Chrome extension | Response `created: false`; snapshot stored; sparse/failed item re-enriches |
+| Obscure homepage | Manual add (no snapshot) | LLM runs with reason `uncategorized`; `raw_metadata.llm.field_sources` labels model-knowledge fields |

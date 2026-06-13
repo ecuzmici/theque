@@ -1,6 +1,5 @@
 import "server-only";
 
-import { isGatewayConfigured } from "@/lib/ai/gateway-config";
 import { captureCategoryHintFromStructured } from "@/lib/capture/category-hint";
 import type { CategorySource, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import { classify } from "@/lib/classify/index";
@@ -10,7 +9,9 @@ import { fetchPage } from "@/lib/enrichment/fetch";
 import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
 import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
-import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { enhanceCategoryWithGemini, isGeminiConfigured } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { extractPageText } from "@/lib/enrichment/page-text";
+import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/snapshot-adapter";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -110,13 +111,18 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
   await admin.from("items").update({ processing_status: "processing" }).eq("id", itemId);
 
   try {
-    // Open Library work pages are scraped via the JSON API (clean English title,
-    // author, cover) instead of the generic HTML pipeline, which would otherwise
-    // pick up a non-English default edition. Falls back to HTML if the API fails.
+    // Open Library work pages keep their JSON-API path (clean English title);
+    // otherwise a capture snapshot (rendered, logged-in, bot-check-passed DOM
+    // from the extension) beats a server fetch of the same URL.
     const openLibrary = await enrichOpenLibraryWork(row.canonical_url);
+    const snapshot = openLibrary ? null : readCaptureSnapshot(row.raw_metadata);
+
     const fetchResult = openLibrary
       ? openLibrary.fetchResult
-      : await fetchPage(row.canonical_url);
+      : snapshot
+        ? snapshotToFetchResult(snapshot, row.canonical_url)
+        : await fetchPage(row.canonical_url);
+
     const extracted = openLibrary
       ? openLibrary.extracted
       : await applyEnrichmentFallbacks(
@@ -127,6 +133,8 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
           }),
           { requestUrl: row.canonical_url },
         );
+
+    const pageText = snapshot?.text ?? (openLibrary ? null : extractPageText(fetchResult.html));
 
     const urlObj = new URL(fetchResult.finalUrl);
     const preserveManual = row.category_source === "manual" && row.category !== null;
@@ -155,7 +163,12 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         : null;
     const structuredClean = stripExtractHints(extracted.structured) as Record<string, unknown>;
     let mergedStructured = { ...structuredClean };
-    let mergedRawMetadata = extracted.raw_metadata as unknown as Record<string, unknown>;
+    let mergedRawMetadata: Record<string, unknown> = {
+      ...(extracted.raw_metadata as unknown as Record<string, unknown>),
+      ...(snapshot
+        ? { capture_snapshot: snapshot, evidence_source: "capture_snapshot" }
+        : { evidence_source: openLibrary ? "open_library" : "server_fetch" }),
+    };
     let mergedTitle = extracted.title?.trim() || null;
     let mergedSubtitle = extracted.subtitle ?? null;
     let mergedDescription = extracted.description ?? row.description;
@@ -164,7 +177,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     let mergedCategoryConfidence = classification.category_confidence;
     let mergedCategorySource = classification.category_source;
 
-    const fetchBlocked = isBotBlockPage(fetchResult.html, fetchResult.statusCode);
+    const fetchBlocked = snapshot ? false : isBotBlockPage(fetchResult.html, fetchResult.statusCode);
     const fetchSparse = hasSparseFetchEvidence({
       title: mergedTitle,
       description: mergedDescription,
@@ -172,23 +185,20 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       structured: mergedStructured,
     });
 
-    // LLM enrichment requires a known category — skip when classification returned null.
-    const llmEligibility = mergedCategory
-      ? decideLlmEligibility({
-          enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
-          hasApiKey: isGatewayConfigured(),
-          fetchBlocked,
-          fetchSparse,
-          category: mergedCategory,
-          categorySource: classification.category_source,
-          title: mergedTitle,
-          description: mergedDescription,
-          image_url: mergedImageUrl,
-          structured: mergedStructured,
-        })
-      : { eligible: false as const, reason: "disabled" as const, categorySuggestionAllowed: false as const, categorySuggestionReason: "disabled" as const };
+    const llmEligibility = decideLlmEligibility({
+      enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
+      hasApiKey: isGeminiConfigured(),
+      fetchBlocked,
+      fetchSparse,
+      category: mergedCategory,
+      categorySource: classification.category_source,
+      title: mergedTitle,
+      description: mergedDescription,
+      image_url: mergedImageUrl,
+      structured: mergedStructured,
+    });
 
-    if (llmEligibility.eligible && mergedCategory) {
+    if (llmEligibility.eligible) {
       const llmResult = await enhanceCategoryWithGemini({
         finalUrl: fetchResult.finalUrl,
         category: mergedCategory,
@@ -200,6 +210,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         image_url: mergedImageUrl,
         structured: mergedStructured,
         rawMetadata: extracted.raw_metadata,
+        pageText,
       });
 
       const merged = mergeLlmEnrichment({
