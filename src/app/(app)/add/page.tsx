@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, CopyCheck, Loader2 } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { CheckCircle2, CircleAlert, CopyCheck, Loader2, Undo2 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { formatDateMedium } from "@/lib/format-timestamp";
@@ -27,6 +27,20 @@ type BatchResult = {
   itemId?: string;
 };
 
+type CapturedItem = {
+  id: string;
+  title: string | null;
+  domain: string;
+};
+
+type ShareState =
+  | "saving"
+  | "saved"
+  | "duplicate"
+  | "failed"
+  | "undoing"
+  | "undone";
+
 function parseUrlLines(raw: string): string[] {
   return Array.from(
     new Set(
@@ -36,6 +50,22 @@ function parseUrlLines(raw: string): string[] {
         .filter((line) => /^https?:\/\//i.test(line)),
     ),
   );
+}
+
+// Share targets (and the iOS Shortcut fallback) may pass a bare URL or a blob
+// of text with the URL embedded ("Look at this https://…"). Pull the first
+// http(s) token out so auto-save gets a clean URL.
+function extractFirstUrl(raw: string): string {
+  const match = raw.match(/https?:\/\/[^\s]+/i);
+  return (match ? match[0] : raw).trim();
+}
+
+function hostOf(rawUrl: string): string {
+  try {
+    return new URL(rawUrl).host.replace(/^www\./, "");
+  } catch {
+    return rawUrl;
+  }
 }
 
 function AddForm() {
@@ -50,22 +80,96 @@ function AddForm() {
   const [batchInput, setBatchInput] = useState("");
   const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null);
 
-  // Pre-populate from PWA share target (?url=, ?text=, ?title=).
-  // Android share sheet may put the URL in any of these fields.
+  // Shared captures (PWA share target on Android, or the iOS Shortcut's failure
+  // fallback opening /add?url=…) should save on arrival — no tap. The manual
+  // paste flow below is unchanged.
+  const sharedRaw = searchParams.get("url") ?? searchParams.get("text") ?? "";
+  const sharedUrl = sharedRaw ? extractFirstUrl(sharedRaw) : "";
+  const sharedTitle = searchParams.get("title") ?? "";
+  const isSharedCapture = /^https?:\/\//i.test(sharedUrl);
+
+  const [shareState, setShareState] = useState<ShareState | null>(null);
+  const [shareItem, setShareItem] = useState<CapturedItem | null>(null);
+  const [shareError, setShareError] = useState<string | null>(null);
+  // Lets the user drop out of the auto-save panel into the normal form.
+  const [manualOverride, setManualOverride] = useState(false);
+  const autoSaveStarted = useRef(false);
+
+  // Pre-populate the manual form from share params (used when the shared value
+  // has no usable URL, or after "Add another").
   useEffect(() => {
-    const sharedUrl =
-      searchParams.get("url") ?? searchParams.get("text") ?? "";
-    const sharedTitle = searchParams.get("title") ?? "";
     if (sharedUrl) setUrl(sharedUrl);
     if (sharedTitle) setNote((prev) => prev || sharedTitle);
-  }, [searchParams]);
+  }, [sharedUrl, sharedTitle]);
 
-  const isSharedCapture = Boolean(
-    searchParams.get("url") ?? searchParams.get("text"),
-  );
+  async function runShareCapture(targetUrl: string, withNote: string) {
+    setShareState("saving");
+    setShareError(null);
+    try {
+      const res = await fetch("/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: targetUrl,
+          source: "mobile_share_extension",
+          note: withNote || undefined,
+        }),
+      });
+      const body = (await res.json()) as {
+        code?: string;
+        created?: boolean;
+        item?: { id: string; title: string | null; domain: string };
+      };
+      if (!res.ok || !body.item) {
+        setShareError(body.code ?? "Could not save link.");
+        setShareState("failed");
+        return;
+      }
+      setShareItem({
+        id: body.item.id,
+        title: body.item.title,
+        domain: body.item.domain,
+      });
+      setShareState(body.created === false ? "duplicate" : "saved");
+      router.refresh();
+    } catch {
+      setShareError("Network error.");
+      setShareState("failed");
+    }
+  }
 
-  // Duplicate lookup as you type/paste, debounced.
+  // Fire the auto-save exactly once when arriving from a share.
   useEffect(() => {
+    if (!isSharedCapture || autoSaveStarted.current) return;
+    autoSaveStarted.current = true;
+    void runShareCapture(sharedUrl, sharedTitle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSharedCapture, sharedUrl, sharedTitle]);
+
+  async function onUndo() {
+    if (!shareItem) return;
+    setShareState("undoing");
+    try {
+      const res = await fetch(`/api/items/${shareItem.id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 204) {
+        setShareState("saved");
+        return;
+      }
+      setShareState("undone");
+      router.refresh();
+    } catch {
+      setShareState("saved");
+    }
+  }
+
+  const showSharePanel = isSharedCapture && !manualOverride && shareState != null;
+
+  // Duplicate lookup as you type/paste, debounced. (Manual form only.)
+  useEffect(() => {
+    if (showSharePanel) {
+      setExisting(null);
+      return;
+    }
     const trimmed = url.trim();
     if (!/^https?:\/\//i.test(trimmed)) {
       setExisting(null);
@@ -88,7 +192,7 @@ function AddForm() {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [url]);
+  }, [url, showSharePanel]);
 
   async function captureOne(targetUrl: string, withNote?: string) {
     const res = await fetch("/api/capture", {
@@ -96,7 +200,7 @@ function AddForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         url: targetUrl,
-        source: isSharedCapture ? "mobile_share_extension" : "manual",
+        source: "manual",
         note: withNote || undefined,
       }),
     });
@@ -163,9 +267,111 @@ function AddForm() {
     }
   }
 
+  function startManualEntry() {
+    setManualOverride(true);
+    setShareState(null);
+  }
+
   const savedAgo = existing ? formatDateMedium(existing.created_at) : null;
   const batchUrlCount = parseUrlLines(batchInput).length;
   const batchDone = batchResults != null && batchResults.every((r) => r.state !== "pending");
+
+  if (showSharePanel) {
+    const label = shareItem?.title || shareItem?.domain || hostOf(sharedUrl);
+    return (
+      <div>
+        <PageHeader
+          title="Saving to thèque"
+          description="We grab the details and fill in the card automatically."
+        />
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            {shareState === "saving" || shareState === "undoing" ? (
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Loader2 className="size-5 shrink-0 animate-spin" aria-hidden />
+                <span>
+                  {shareState === "undoing" ? "Removing…" : `Saving ${hostOf(sharedUrl)}…`}
+                </span>
+              </div>
+            ) : null}
+
+            {shareState === "saved" || shareState === "duplicate" ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  {shareState === "saved" ? (
+                    <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />
+                  ) : (
+                    <CopyCheck className="mt-0.5 size-5 shrink-0 text-accent-foreground" aria-hidden />
+                  )}
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">
+                      {shareState === "saved" ? "Saved to your library" : "Already in your library"}
+                    </p>
+                    <p className="truncate text-sm text-muted-foreground">{label}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  {shareItem ? (
+                    <Button nativeButton={false} render={<Link href={`/item/${shareItem.id}`} />}>
+                      View item
+                    </Button>
+                  ) : null}
+                  <Button nativeButton={false} render={<Link href="/library" />} variant="outline">
+                    Go to library
+                  </Button>
+                  {shareState === "saved" && shareItem ? (
+                    <button
+                      type="button"
+                      className="ks-pointer-coarse-min-hit ml-auto inline-flex items-center gap-1.5 rounded-md px-1 text-sm font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      onClick={() => void onUndo()}
+                    >
+                      <Undo2 className="size-4" aria-hidden />
+                      Undo
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {shareState === "undone" ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <CircleAlert className="mt-0.5 size-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <p className="font-medium text-foreground">Removed from your library</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button onClick={startManualEntry}>Add a link</Button>
+                  <Button nativeButton={false} render={<Link href="/library" />} variant="outline">
+                    Go to library
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {shareState === "failed" ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" aria-hidden />
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">Couldn’t save that link</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {shareError ?? hostOf(sharedUrl)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button onClick={() => void runShareCapture(sharedUrl, sharedTitle)}>Retry</Button>
+                  <Button variant="outline" onClick={startManualEntry}>
+                    Edit manually
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div>
