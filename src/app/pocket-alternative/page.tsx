@@ -11,21 +11,21 @@ const SUPPORT_EMAIL = "ecuzmici@gmail.com";
 export const metadata: Metadata = {
   title: "A private, visual Pocket alternative | thèque",
   description:
-    "Pocket shut down in 2025. thèque is a private, visual home for the things you save — every link becomes a card on a shelf. No feed, no ads. Free.",
+    "Pocket shut down in 2025. thèque is a private, visual home for the things you save. Every link becomes a card on a shelf. No feed, no ads. Free.",
   alternates: { canonical: "/pocket-alternative" },
   openGraph: {
     type: "website",
     url: "https://theque.app/pocket-alternative",
-    title: "thèque — a private, visual Pocket alternative",
+    title: "thèque: a private, visual Pocket alternative",
     description:
-      "Pocket is gone. thèque turns the links you save into a beautiful private library — cards on shelves, not a text list. No feed, no ads. Free.",
+      "Pocket is gone. thèque turns the links you save into a private library of cards on shelves, not a text list. No feed, no ads. Free.",
   },
 };
 
 const COMPARISON = [
   { feature: "What a save looks like", pocket: "A text list entry", theque: "A visual card with cover art" },
   { feature: "Organization", pocket: "Tags you add by hand", theque: "Auto-sorted onto shelves" },
-  { feature: "Feed / recommendations", pocket: "Sponsored discover feed", theque: "None — it's just your library" },
+  { feature: "Feed / recommendations", pocket: "Sponsored discover feed", theque: "None, it's just your library" },
   { feature: "Ads", pocket: "Yes", theque: "Never" },
   { feature: "Privacy", pocket: "Browsing fed recommendations", theque: "Private by design" },
   { feature: "Capture", pocket: "Extension / share", theque: "One click, Chrome or phone" },
@@ -35,7 +35,7 @@ const COMPARISON = [
 const FAQ = [
   {
     q: "Is Pocket really gone?",
-    a: "Yes — Mozilla shut Pocket down in 2025. If you were a Pocket user looking for a new home for your saves, thèque is a private, visual place to keep them.",
+    a: "Yes, Mozilla shut Pocket down in 2025. If you were a Pocket user looking for a new home for your saves, thèque is a private, visual place to keep them.",
   },
   {
     q: "Can I import my Pocket saves?",
@@ -43,11 +43,11 @@ const FAQ = [
   },
   {
     q: "Is thèque free?",
-    a: "Yes, free while it grows. Sign in with your email — no password, no credit card.",
+    a: "Yes, free while it grows. Sign in with your email. No password, no credit card.",
   },
   {
     q: "How is it different from a read-later app?",
-    a: "Read-later apps store a URL and a title. thèque reads the page and builds a card — cover, author, rating, price — then files it on a shelf (Books, Watch, Listen, Eat, Shop, Read, Cook, Tools). It's a library you browse, not a queue you forget.",
+    a: "Read-later apps store a URL and a title. thèque reads the page and builds a card with cover, author, rating, and price, then files it on a shelf (Books, Watch, Listen, Eat, Shop, Read, Cook, Tools). It's a library you browse, not a queue you forget.",
   },
 ] as const;
 
@@ -65,7 +65,7 @@ export default function PocketAlternativePage() {
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
             thèque is a private, visual library for everything you save. Each link becomes a card on
-            a shelf — books, films, places, recipes, products — not a text list you forget. No feed,
+            a shelf (books, films, places, recipes, products), not a text list you forget. No feed,
             no ads, no algorithm.
           </p>
           <div className="mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
@@ -190,7 +190,7 @@ export default function PocketAlternativePage() {
             size="lg"
             className="h-11 min-h-11 w-full px-6 text-base sm:w-auto"
           >
-            Start your library — free
+            Start your library for free
           </Button>
         </section>
       </main>

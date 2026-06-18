@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: Bookmark,
     title: "Save in one click",
-    detail: "Hit the thèque button on any page — from Chrome or your phone. No forms, no copy-paste.",
+    detail: "Hit the thèque button on any page, from Chrome or your phone. No forms, no copy-paste.",
   },
   {
     icon: WandSparkles,
@@ -58,11 +58,11 @@ const VALUES = [
 const FAQ = [
   {
     q: "How is this different from bookmarks or Pocket?",
-    a: "Bookmarks store a URL and a title. thèque reads the page and builds a visual card — cover art, author, rating, price — then files it on the right shelf. It's a library you'll actually want to browse, not a list you forget.",
+    a: "Bookmarks store a URL and a title. thèque reads the page and builds a visual card with cover art, author, rating, and price, then files it on the right shelf. It's a library you'll actually want to browse, not a list you forget.",
   },
   {
     q: "Is it really private?",
-    a: "Yes. thèque is your personal library — there's no feed, no likes, no algorithm, and no ads. The extension only saves a page when you click it, and it never tracks your browsing or sells your data.",
+    a: "Yes. thèque is your personal library. There's no feed, no likes, no algorithm, and no ads. The extension only saves a page when you click it, and it never tracks your browsing or sells your data.",
   },
   {
     q: "Does it cost anything?",
@@ -70,7 +70,7 @@ const FAQ = [
   },
   {
     q: "Do I need the Chrome extension?",
-    a: "It's the fastest way to save, but you don't have to use it — you can paste any URL into thèque directly, or save from your phone.",
+    a: "It's the fastest way to save, but you don't have to use it. You can paste any URL into thèque directly, or save from your phone.",
   },
 ] as const;
 
@@ -101,7 +101,7 @@ export default async function Home() {
           </h1>
           <p className="mt-5 max-w-md text-lg leading-relaxed text-muted-foreground">
             Save books, films, places, and anything else worth a second look. Each link becomes a
-            card on a shelf — a library of your taste, not a pile of dead bookmarks.
+            card on a shelf. A library of your taste, not a pile of dead bookmarks.
           </p>
 
           <div className="mt-8 flex w-full max-w-md flex-col gap-3 sm:flex-row sm:justify-center">
@@ -125,11 +125,11 @@ export default async function Home() {
             </Button>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Free · No passwords — we email you a sign-in code · Private by design
+            Free · No passwords, just an emailed sign-in code · Private by design
           </p>
         </section>
 
-        {/* Real library screenshot — the promise of what's inside */}
+        {/* Real library screenshot: the promise of what's inside */}
         <div className="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
           <img
             src="/landing-library.png"

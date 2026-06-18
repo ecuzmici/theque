@@ -48,7 +48,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="font-heading text-xl text-foreground">3. Your account</h2>
             <p>
-              You sign in with your email address using a one-time code — there is no password. You
+              You sign in with your email address using a one-time code. There is no password. You
               are responsible for maintaining access to your email account and for activity that
               happens under your account. Capture tokens you create authenticate saving on your
               behalf; keep them private and revoke any you no longer use.
@@ -98,7 +98,7 @@ export default function TermsPage() {
             <p>
               The Service is provided on an “as available” basis. We do not guarantee uptime, and we
               may modify, suspend, or discontinue the Service. While we aim to keep your data safe,
-              we do not guarantee against loss — please keep your own copy of anything important.
+              we do not guarantee against loss, so please keep your own copy of anything important.
             </p>
           </section>
 
