@@ -94,7 +94,7 @@ export function TagsPageClient({ initialTags }: { initialTags: TagListEntry[] })
         <CardContent className="flex flex-col items-center px-6 py-12 text-center sm:px-10">
           <div className="w-full max-w-md">
             <Tag className="mx-auto size-10 text-muted-foreground" aria-hidden />
-            <h2 className="mt-4 font-serif text-lg font-medium">No tags yet</h2>
+            <h2 className="mt-4 font-heading text-lg font-medium">No tags yet</h2>
             <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
               Tags are added when you capture or edit items.
             </p>

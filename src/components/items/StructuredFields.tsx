@@ -42,7 +42,7 @@ export function StructuredFields({
 
   return (
     <section className="mt-8">
-      <h2 className="font-serif text-lg text-foreground">Details</h2>
+      <h2 className="font-heading text-lg text-foreground">Details</h2>
       {/* Catalog-card rows: one bordered list, label column + value column */}
       <dl className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {entries.map(([key, value]) => (

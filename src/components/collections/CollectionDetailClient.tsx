@@ -249,7 +249,7 @@ function PlacesSection({ items }: { items: ReturnType<typeof libraryItemFromSumm
 
   return (
     <section className="mt-10" aria-label="Places in this collection">
-      <h2 className="font-serif text-lg text-foreground">Places</h2>
+      <h2 className="font-heading text-lg text-foreground">Places</h2>
       <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         {places.map((place) => (
           <li key={place.id} className="flex items-center gap-3 px-4 py-3">

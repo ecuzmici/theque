@@ -125,7 +125,7 @@ export function InboxTriageStack({
   if (!current) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card px-6 py-14 text-center">
-        <h2 className="font-serif text-lg font-medium text-card-foreground">Inbox zero</h2>
+        <h2 className="font-heading text-lg font-medium text-card-foreground">Inbox zero</h2>
         <p className="mt-2 text-sm text-muted-foreground">
           {history.length > 0
             ? `Nice, ${history.length} ${history.length === 1 ? "item" : "items"} triaged.`
@@ -278,14 +278,14 @@ function CardFace({ item, imgSrc }: { item: LibraryItemRow; imgSrc: string | nul
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
-            <span className="font-serif text-sm text-white/90">
+            <span className="font-heading text-sm text-white/90">
               {categoryPlaceholderLabel(item.category)}
             </span>
           </div>
         )}
       </div>
       <div className="p-4">
-        <p className="line-clamp-2 font-serif text-base font-semibold leading-snug text-card-foreground">
+        <p className="line-clamp-2 font-heading text-base font-semibold leading-snug text-card-foreground">
           {item.title ?? item.domain}
         </p>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">

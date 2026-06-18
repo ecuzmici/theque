@@ -60,7 +60,7 @@ export default function PocketAlternativePage() {
           <p className="inline-flex min-h-9 items-center rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:text-sm">
             Pocket alternative
           </p>
-          <h1 className="mt-6 max-w-2xl font-serif text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
+          <h1 className="mt-6 max-w-2xl font-heading text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
             Pocket is gone. Give your saves a prettier home.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">
@@ -106,7 +106,7 @@ export default function PocketAlternativePage() {
         <section aria-labelledby="compare-heading" className="w-full">
           <h2
             id="compare-heading"
-            className="text-center font-serif text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
+            className="text-center font-heading text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
           >
             thèque vs. Pocket
           </h2>
@@ -154,7 +154,7 @@ export default function PocketAlternativePage() {
         <section aria-labelledby="faq-heading" className="w-full max-w-2xl">
           <h2
             id="faq-heading"
-            className="text-center font-serif text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
+            className="text-center font-heading text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
           >
             Questions
           </h2>
@@ -181,7 +181,7 @@ export default function PocketAlternativePage() {
 
         {/* Final CTA */}
         <section className="flex w-full max-w-md flex-col items-center gap-4 text-center">
-          <h2 className="font-serif text-2xl tracking-[0.02em] text-foreground">
+          <h2 className="font-heading text-2xl tracking-[0.02em] text-foreground">
             Move your saves somewhere beautiful
           </h2>
           <Button

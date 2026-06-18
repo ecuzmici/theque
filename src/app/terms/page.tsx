@@ -20,14 +20,14 @@ export default function TermsPage() {
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
           thèque
         </p>
-        <h1 className="mt-3 font-serif text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
+        <h1 className="mt-3 font-heading text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
           Terms of Service
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">Last updated: June 18, 2026</p>
 
         <div className="mt-8 space-y-7 text-base leading-7 text-muted-foreground">
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">1. Acceptance</h2>
+            <h2 className="font-heading text-xl text-foreground">1. Acceptance</h2>
             <p>
               thèque is a private personal library for saving and organizing links. By creating an
               account or using thèque (the “Service”), you agree to these Terms. If you do not
@@ -36,7 +36,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">2. The Service</h2>
+            <h2 className="font-heading text-xl text-foreground">2. The Service</h2>
             <p>
               thèque lets you save links and turns them into organized cards by reading public
               metadata from the pages you save. thèque is offered free of charge and is under
@@ -46,7 +46,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">3. Your account</h2>
+            <h2 className="font-heading text-xl text-foreground">3. Your account</h2>
             <p>
               You sign in with your email address using a one-time code — there is no password. You
               are responsible for maintaining access to your email account and for activity that
@@ -56,7 +56,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">4. Acceptable use</h2>
+            <h2 className="font-heading text-xl text-foreground">4. Acceptable use</h2>
             <p>You agree not to:</p>
             <ul className="ml-5 list-disc space-y-1">
               <li>use the Service for any unlawful purpose, or to store unlawful content;</li>
@@ -74,7 +74,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">5. Your content</h2>
+            <h2 className="font-heading text-xl text-foreground">5. Your content</h2>
             <p>
               The notes, tags, collections, and saved items in your library are yours. You grant
               thèque permission to store and process them, and to fetch and process metadata from
@@ -85,7 +85,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">6. Automated enrichment</h2>
+            <h2 className="font-heading text-xl text-foreground">6. Automated enrichment</h2>
             <p>
               thèque builds cards using automated extraction and, optionally, AI. This information
               (titles, covers, ratings, categories, and similar fields) is provided for convenience
@@ -94,7 +94,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">7. Availability and data</h2>
+            <h2 className="font-heading text-xl text-foreground">7. Availability and data</h2>
             <p>
               The Service is provided on an “as available” basis. We do not guarantee uptime, and we
               may modify, suspend, or discontinue the Service. While we aim to keep your data safe,
@@ -103,7 +103,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">8. Disclaimer and liability</h2>
+            <h2 className="font-heading text-xl text-foreground">8. Disclaimer and liability</h2>
             <p>
               The Service is provided “as is,” without warranties of any kind, express or implied.
               To the fullest extent permitted by law, thèque and its operator will not be liable for
@@ -113,7 +113,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">9. Termination</h2>
+            <h2 className="font-heading text-xl text-foreground">9. Termination</h2>
             <p>
               You may stop using thèque and delete your account at any time. We may suspend or
               terminate access if these Terms are violated or to protect the Service.
@@ -121,7 +121,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">10. Changes</h2>
+            <h2 className="font-heading text-xl text-foreground">10. Changes</h2>
             <p>
               We may update these Terms as the Service evolves. Material changes will be reflected by
               the “Last updated” date above. Continued use after a change means you accept the
@@ -130,7 +130,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-serif text-xl text-foreground">11. Contact</h2>
+            <h2 className="font-heading text-xl text-foreground">11. Contact</h2>
             <p>
               Questions about these Terms? Contact the site owner at{" "}
               <a

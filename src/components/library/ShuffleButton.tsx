@@ -53,7 +53,7 @@ export function ShuffleButton({ shelfId }: { shelfId: ShelfId }) {
         <DialogContent className="max-w-sm gap-0 overflow-hidden p-0">
           {empty || !pick ? (
             <div className="p-6">
-              <DialogTitle className="font-serif text-lg">Nothing left to pick</DialogTitle>
+              <DialogTitle className="font-heading text-lg">Nothing left to pick</DialogTitle>
               <p className="mt-2 text-sm text-muted-foreground">
                 Everything on this shelf is done or dismissed. Go save something new.
               </p>
@@ -73,7 +73,7 @@ export function ShuffleButton({ shelfId }: { shelfId: ShelfId }) {
               </div>
               <div className="p-5">
                 <Badge variant="outline">{formatCategory(pick.category)}</Badge>
-                <DialogTitle className="mt-3 font-serif text-xl leading-snug tracking-tight">
+                <DialogTitle className="mt-3 font-heading text-xl leading-snug tracking-tight">
                   {pick.title ?? pick.domain}
                 </DialogTitle>
                 {pick.subtitle ? (

@@ -146,7 +146,7 @@ export function CollectionsPageClient({
           <CardContent className="flex flex-col items-center px-6 py-12 text-center sm:px-10">
             <div className="w-full max-w-md">
               <FolderOpen className="mx-auto size-10 text-muted-foreground" aria-hidden />
-              <h2 className="mt-4 font-serif text-lg font-medium">No collections yet</h2>
+              <h2 className="mt-4 font-heading text-lg font-medium">No collections yet</h2>
               <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
                 Collections group saves by reason. Shelves group them by type.
               </p>
@@ -162,7 +162,7 @@ export function CollectionsPageClient({
                   <CardHeader className="flex flex-row items-center gap-4">
                     <CollectionMosaic tiles={mosaics[c.id] ?? []} />
                     <div className="min-w-0">
-                      <CardTitle className="font-serif">{c.name}</CardTitle>
+                      <CardTitle className="font-heading">{c.name}</CardTitle>
                       <CardDescription className="mt-1">
                         {c.item_count} {c.item_count === 1 ? "item" : "items"}
                         {c.description ? ` · ${c.description}` : ""}

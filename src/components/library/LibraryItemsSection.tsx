@@ -209,7 +209,7 @@ export function LibraryItemsSection({
       <Card className="border-dashed">
         <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
           <div className="w-full max-w-md">
-            <h2 className="font-serif text-lg font-medium text-card-foreground">{empty.title}</h2>
+            <h2 className="font-heading text-lg font-medium text-card-foreground">{empty.title}</h2>
             <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
               {empty.description}
             </p>

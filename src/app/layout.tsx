@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { Geist, Geist_Mono, Newsreader, Source_Serif_4 } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 
 import Script from "next/script";
@@ -34,6 +34,12 @@ const geistMono = Geist_Mono({
 const thequeSerif = Source_Serif_4({
   variable: "--font-theque-serif",
   subsets: ["latin"],
+});
+
+const thequeHeading = Newsreader({
+  variable: "--font-theque-heading",
+  subsets: ["latin"],
+  axes: ["opsz"],
 });
 
 export const viewport: Viewport = {
@@ -78,7 +84,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${thequeSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${thequeSerif.variable} ${thequeHeading.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">

@@ -144,7 +144,7 @@ export default async function Home() {
         <section aria-labelledby="how-heading" className="w-full">
           <h2
             id="how-heading"
-            className="text-center font-serif text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
+            className="text-center font-heading text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
           >
             From a link to a library, automatically
           </h2>
@@ -171,7 +171,7 @@ export default async function Home() {
         <section aria-labelledby="shelves-heading" className="w-full text-center">
           <h2
             id="shelves-heading"
-            className="font-serif text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
+            className="font-heading text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
           >
             A shelf for everything you save
           </h2>
@@ -208,7 +208,7 @@ export default async function Home() {
         <section aria-labelledby="faq-heading" className="w-full max-w-2xl">
           <h2
             id="faq-heading"
-            className="text-center font-serif text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
+            className="text-center font-heading text-2xl tracking-[0.02em] text-foreground sm:text-3xl"
           >
             Questions
           </h2>
@@ -235,7 +235,7 @@ export default async function Home() {
 
         {/* Final CTA */}
         <section className="flex w-full max-w-md flex-col items-center gap-3 text-center">
-          <h2 className="font-serif text-2xl tracking-[0.02em] text-foreground">
+          <h2 className="font-heading text-2xl tracking-[0.02em] text-foreground">
             Start saving what you love
           </h2>
           <div className="mt-2 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">

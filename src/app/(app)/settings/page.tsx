@@ -31,7 +31,7 @@ export default async function SettingsPage() {
       <CaptureTokens initialTokens={tokens ?? []} userEmail={user.email ?? undefined} />
 
       <section className="mt-10" aria-labelledby="settings-library-heading">
-        <h2 id="settings-library-heading" className="font-serif text-lg text-foreground">
+        <h2 id="settings-library-heading" className="font-heading text-lg text-foreground">
           Library
         </h2>
         <Link

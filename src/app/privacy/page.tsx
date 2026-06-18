@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
           thèque Capture
         </p>
-        <h1 className="mt-3 font-serif text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
+        <h1 className="mt-3 font-heading text-4xl tracking-[0.02em] text-foreground sm:text-5xl">
           Privacy Policy
         </h1>
 

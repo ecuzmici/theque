@@ -63,7 +63,7 @@ export function QuickLookDialog({
             <Badge variant="secondary">{formatStatus(item.status)}</Badge>
             {item.category ? <Badge variant="outline">{formatCategory(item.category)}</Badge> : null}
           </div>
-          <DialogTitle className="mt-3 font-serif text-xl leading-snug tracking-tight">
+          <DialogTitle className="mt-3 font-heading text-xl leading-snug tracking-tight">
             {item.title ?? item.domain}
           </DialogTitle>
           {item.subtitle ? (

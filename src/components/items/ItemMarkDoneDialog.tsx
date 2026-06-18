@@ -96,7 +96,7 @@ export function ItemMarkDoneDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-serif">
+          <DialogTitle className="font-heading">
             {verb === "done" ? "Done" : `You ${verb} it`}
           </DialogTitle>
           <DialogDescription>

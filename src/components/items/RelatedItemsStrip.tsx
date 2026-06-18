@@ -11,7 +11,7 @@ export function RelatedItemsStrip({ items }: { items: LibraryItemRow[] }) {
 
   return (
     <section className="mt-10" aria-label="More from your shelves">
-      <h2 className="font-serif text-lg text-foreground">More from your shelves</h2>
+      <h2 className="font-heading text-lg text-foreground">More from your shelves</h2>
       <ul className="-mx-1 mt-3 flex gap-3 overflow-x-auto px-1 pb-2 scrollbar-none">
         {items.map((item) => {
           const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);

@@ -53,7 +53,7 @@ export default async function SharedCollectionPage({
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
       <header className="text-center">
         <ThequeLogo size="md" />
-        <h1 className="mt-6 font-serif text-3xl leading-tight tracking-tight text-foreground">
+        <h1 className="mt-6 font-heading text-3xl leading-tight tracking-tight text-foreground">
           {collection.name}
         </h1>
         {collection.description ? (
@@ -97,7 +97,7 @@ export default async function SharedCollectionPage({
                     ) : null}
                   </div>
                   <div className="p-3">
-                    <p className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
+                    <p className="line-clamp-2 font-heading text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
                       {item.title ?? item.domain}
                     </p>
                     {item.subtitle ? (

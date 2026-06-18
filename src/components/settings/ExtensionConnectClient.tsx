@@ -84,7 +84,7 @@ export function ExtensionConnectClient({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-serif text-xl">Connect Chrome extension</CardTitle>
+        <CardTitle className="font-heading text-xl">Connect Chrome extension</CardTitle>
         <CardDescription>
           This creates a new capture token from your logged-in session and stores it in Chrome.
         </CardDescription>

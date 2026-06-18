@@ -112,7 +112,7 @@ export function CaptureTokens({
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-serif text-xl">Capture tokens</CardTitle>
+          <CardTitle className="font-heading text-xl">Capture tokens</CardTitle>
           <CardDescription>
             Tokens power Chrome and iOS Shortcut capture. The full secret is shown only once at
             creation.
