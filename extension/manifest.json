@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "thèque",
   "short_name": "thèque",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "Save the current tab to your thèque library.",
   "action": {
     "default_popup": "popup.html",
