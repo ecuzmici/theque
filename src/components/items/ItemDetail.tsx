@@ -286,7 +286,7 @@ export function ItemDetail({
             ))}
           </div>
 
-          <h1 className="mt-4 font-heading text-3xl leading-tight tracking-tight text-foreground">
+          <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground">
             {item.title ?? item.domain}
           </h1>
           {item.subtitle ? (

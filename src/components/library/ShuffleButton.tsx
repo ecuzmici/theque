@@ -73,7 +73,7 @@ export function ShuffleButton({ shelfId }: { shelfId: ShelfId }) {
               </div>
               <div className="p-5">
                 <Badge variant="outline">{formatCategory(pick.category)}</Badge>
-                <DialogTitle className="mt-3 font-heading text-xl leading-snug tracking-tight">
+                <DialogTitle className="mt-3 font-serif text-xl leading-snug tracking-tight">
                   {pick.title ?? pick.domain}
                 </DialogTitle>
                 {pick.subtitle ? (
