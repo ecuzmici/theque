@@ -44,13 +44,29 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://theque.app"),
   title: "thèque | Private taste library",
-  description: "Your private taste library. Save what you'll love later.",
+  description:
+    "Save books, films, places, and anything worth a second look. Each link becomes a card on a shelf — a private library of your taste, not a pile of dead bookmarks.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     title: "thèque",
     statusBarStyle: "default",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "thèque",
+    url: "https://theque.app",
+    title: "thèque | Private taste library",
+    description:
+      "Save books, films, places, and anything worth a second look. Each link becomes a card on a shelf.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "thèque | Private taste library",
+    description:
+      "Save books, films, places, and anything worth a second look. Each link becomes a card on a shelf.",
   },
 };
 
