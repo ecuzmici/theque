@@ -126,7 +126,7 @@ export function ItemCard({
                   <span className="text-xs text-white/80">Gathering details…</span>
                 ) : (
                   <>
-                    <span className="font-heading text-sm font-medium text-white/90">
+                    <span className="font-serif text-sm font-medium text-white/90">
                       {categoryPlaceholderLabel(item.category)}
                     </span>
                     <span className="mt-1 break-all text-[11px] text-white/70">{item.domain}</span>
@@ -146,7 +146,7 @@ export function ItemCard({
 
         {wall ? null : (
           <div className="p-3">
-            <p className="line-clamp-2 font-heading text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
+            <p className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
               {item.title ?? item.domain}
             </p>
             {item.subtitle ? (

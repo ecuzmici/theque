@@ -278,14 +278,14 @@ function CardFace({ item, imgSrc }: { item: LibraryItemRow; imgSrc: string | nul
           </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center px-4 text-center">
-            <span className="font-heading text-sm text-white/90">
+            <span className="font-serif text-sm text-white/90">
               {categoryPlaceholderLabel(item.category)}
             </span>
           </div>
         )}
       </div>
       <div className="p-4">
-        <p className="line-clamp-2 font-heading text-base font-semibold leading-snug text-card-foreground">
+        <p className="line-clamp-2 font-serif text-base font-semibold leading-snug text-card-foreground">
           {item.title ?? item.domain}
         </p>
         <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
