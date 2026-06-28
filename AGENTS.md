@@ -98,6 +98,20 @@ After cloning, run once: `npm run qa:install-browsers`.
 | **QA Integration** | Local-first; **no magic-link tests**. Paste `docs/sessions/qa-integration-prompt.md`; auth via `npm run qa:session-url` |
 | Code reviewer | After large feature chunks (superpowers plugin) |
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in **GitHub Issues** for `ecuzmici/theque`, via the `gh` CLI. External PRs are **not** a triage surface. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+**Single-context**: one `CONTEXT.md` + `docs/adr/` at the repo root (created lazily by the domain skills). See `docs/agents/domain.md`.
+
 ## Working conventions
 
 - Match existing patterns; minimal diffs; no drive-by refactors.

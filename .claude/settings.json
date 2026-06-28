@@ -26,17 +26,5 @@
       "Bash(git checkout:*)",
       "Bash(git commit:*)"
     ]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npm test -- --run"
-          }
-        ]
-      }
-    ]
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Star } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +76,14 @@ export function ItemMarkDoneDialog({
   const [verdict, setVerdict] = useState(initialVerdict ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setRating(initialRating);
+      setVerdict(initialVerdict ?? "");
+      setError(false);
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save() {
     setBusy(true);

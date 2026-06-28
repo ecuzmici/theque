@@ -92,7 +92,7 @@ export function ItemCardVerdictControl({ item, shelfId, onItemPatch }: ItemCardV
       </div>
 
       <ItemMarkDoneDialog
-        key={`${item.id}:${dialogOpen}:${item.rating_personal}:${item.verdict}`}
+        key={item.id}
         open={dialogOpen}
         onOpenChange={handleDialogOpenChange}
         verb={verb}

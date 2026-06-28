@@ -6,9 +6,12 @@ import SearchPage from "./page";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock("@/hooks/useItems", () => ({
-  useDebouncedItemSearch: () => ({ items: [], loading: false, hasQuery: false }),
-}));
+// Return a stable reference: SearchPage has `useEffect(..., [items])`, so a fresh
+// `items` array on every render would loop forever inside `act`.
+vi.mock("@/hooks/useItems", () => {
+  const result = { items: [], loading: false, hasQuery: false };
+  return { useDebouncedItemSearch: () => result };
+});
 
 describe("SearchPage", () => {
   let root: Root | undefined;
