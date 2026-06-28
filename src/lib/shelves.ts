@@ -79,17 +79,24 @@ export function parseShelfParam(param: string | null | undefined): ShelfId {
 }
 
 /**
- * The shelves the tab strip should render, in order. Pass-through for now
- * (returns every shelf, ignoring counts); a later slice hides empty shelves.
+ * The shelves the tab strip should render, in order. The strip is conservative:
+ * `all`, `books`, `watch`, `read` (Articles), and `done` are always shown, while
+ * `other` and `inbox` appear only when they hold something. `forgotten` is never
+ * a tab (it surfaces via the insights chip / digest instead).
  */
-export function visibleShelves(_counts: Partial<Record<ShelfId, number>>): ShelfId[] {
-  return SHELVES.map((s) => s.id);
+export function visibleShelves(counts: Partial<Record<ShelfId, number>>): ShelfId[] {
+  return SHELVES.filter((s) => {
+    if (s.id === "forgotten") return false;
+    if (s.id === "other" || s.id === "inbox") return (counts[s.id] ?? 0) > 0;
+    return true;
+  }).map((s) => s.id);
 }
 
 /**
- * The shelf the library should treat as active. Pass-through for now (returns
- * the requested shelf); a later slice falls back to "all" when it is hidden.
+ * The shelf the library should treat as active. Keeps the requested shelf while
+ * it is visible; otherwise falls back to "all" so an emptied or unknown shelf
+ * never strands the view on a vanished tab.
  */
-export function resolveActiveShelf(requested: ShelfId, _visible: ShelfId[]): ShelfId {
-  return requested;
+export function resolveActiveShelf(requested: ShelfId, visible: ShelfId[]): ShelfId {
+  return visible.includes(requested) ? requested : "all";
 }

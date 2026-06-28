@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
+import { itemMatchesShelf } from "@/lib/shelf-filter";
 import {
   SHELVES,
   getShelf,
@@ -61,8 +62,6 @@ export function LibraryPageClient({
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
-  const visibleShelfIds = visibleShelves({});
-  const activeShelf = resolveActiveShelf(pendingShelf ?? urlShelf, visibleShelfIds);
 
   const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
@@ -71,9 +70,26 @@ export function LibraryPageClient({
   }, [itemsCache]);
 
   const [inboxCount, setInboxCount] = useState<number | null>(null);
+  const [otherCount, setOtherCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [wall, setWall] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
+
+  // Only Other and Inbox are dynamic; both hide when empty. Prefer the live
+  // count from a shelf's already-loaded items (so consuming its last item hides
+  // the tab and falls the view back to All on the next render), and fall back to
+  // the lightweight count query when that shelf has not been loaded yet.
+  const liveOtherCount = itemsCache.other
+    ? itemsCache.other.items.filter((i) => itemMatchesShelf(i, "other")).length
+    : null;
+  const liveInboxCount = itemsCache.inbox
+    ? itemsCache.inbox.items.filter((i) => itemMatchesShelf(i, "inbox")).length
+    : null;
+  const visibleShelfIds = visibleShelves({
+    other: liveOtherCount ?? otherCount ?? 0,
+    inbox: liveInboxCount ?? inboxCount ?? 0,
+  });
+  const activeShelf = resolveActiveShelf(pendingShelf ?? urlShelf, visibleShelfIds);
 
   // Leaving the inbox shelf always exits triage.
   useEffect(() => {
@@ -141,6 +157,26 @@ export function LibraryPageClient({
         .eq("status", "inbox");
       if (cancelled || error) return;
       setInboxCount(count ?? 0);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeShelf]);
+
+  // Lightweight count for the grouped Other shelf (its categories, minus the
+  // done/dismissed statuses excluded by `itemMatchesShelf(item, "other")`), so
+  // its tab can appear even before the shelf itself has been loaded.
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    void (async () => {
+      const { count, error } = await supabase
+        .from("items")
+        .select("id", { count: "exact", head: true })
+        .in("category", ["restaurants", "products", "travel", "recipes"])
+        .not("status", "in", "(done,dismissed)");
+      if (cancelled || error) return;
+      setOtherCount(count ?? 0);
     })();
     return () => {
       cancelled = true;
