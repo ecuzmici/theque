@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveActiveShelf, visibleShelves, type ShelfId } from "./shelves";
+import {
+  resolveActiveShelf,
+  resolveRequestedShelf,
+  visibleShelves,
+  type ShelfId,
+} from "./shelves";
 
 const ALWAYS_VISIBLE: ShelfId[] = ["all", "books", "watch", "read", "done"];
 
@@ -64,5 +69,26 @@ describe("resolveActiveShelf", () => {
   it("falls back to All for an unknown requested id", () => {
     const visible = visibleShelves({});
     expect(resolveActiveShelf("nonsense" as ShelfId, visible)).toBe("all");
+  });
+
+  it("never resolves to forgotten, since it is not a visible tab", () => {
+    const visible = visibleShelves({ other: 1, inbox: 1 });
+    expect(visible.includes("forgotten")).toBe(false);
+    expect(resolveActiveShelf("forgotten", visible)).toBe("all");
+  });
+});
+
+describe("resolveRequestedShelf", () => {
+  it("keeps forgotten reachable when explicitly requested, despite no tab", () => {
+    const visible = visibleShelves({ other: 1, inbox: 1 });
+    expect(visible.includes("forgotten")).toBe(false);
+    expect(resolveRequestedShelf("forgotten", visible)).toBe("forgotten");
+  });
+
+  it("defers to resolveActiveShelf for every other shelf", () => {
+    const visible = visibleShelves({});
+    expect(resolveRequestedShelf("books", visible)).toBe("books");
+    expect(resolveRequestedShelf("other", visible)).toBe("all");
+    expect(resolveRequestedShelf("nonsense" as ShelfId, visible)).toBe("all");
   });
 });

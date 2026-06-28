@@ -21,7 +21,7 @@ import {
   SHELVES,
   getShelf,
   parseShelfParam,
-  resolveActiveShelf,
+  resolveRequestedShelf,
   visibleShelves,
   type ShelfId,
 } from "@/lib/shelves";
@@ -89,7 +89,7 @@ export function LibraryPageClient({
     other: liveOtherCount ?? otherCount ?? 0,
     inbox: liveInboxCount ?? inboxCount ?? 0,
   });
-  const activeShelf = resolveActiveShelf(pendingShelf ?? urlShelf, visibleShelfIds);
+  const activeShelf = resolveRequestedShelf(pendingShelf ?? urlShelf, visibleShelfIds);
 
   // Leaving the inbox shelf always exits triage.
   useEffect(() => {

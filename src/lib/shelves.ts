@@ -100,3 +100,15 @@ export function visibleShelves(counts: Partial<Record<ShelfId, number>>): ShelfI
 export function resolveActiveShelf(requested: ShelfId, visible: ShelfId[]): ShelfId {
   return visible.includes(requested) ? requested : "all";
 }
+
+/**
+ * Like `resolveActiveShelf`, but keeps `forgotten` reachable when it is the
+ * explicitly requested shelf. `forgotten` is intentionally never a rendered tab
+ * (`visibleShelves` excludes it), so a plain `?shelf=forgotten` link would be
+ * bounced to "all". The insights chip links there, so an explicit request must
+ * load the forgotten view even though no tab is shown for it.
+ */
+export function resolveRequestedShelf(requested: ShelfId, visible: ShelfId[]): ShelfId {
+  if (requested === "forgotten") return "forgotten";
+  return resolveActiveShelf(requested, visible);
+}
