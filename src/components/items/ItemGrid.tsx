@@ -20,6 +20,7 @@ type ItemGridProps = {
     patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
     opts?: { remove?: boolean },
   ) => void;
+  onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 
 export function ItemGrid({
@@ -29,6 +30,7 @@ export function ItemGrid({
   wall,
   selectedId,
   onItemPatch,
+  onOpenMarkDone,
 }: ItemGridProps) {
   const inboxShelf = shelfId === "inbox";
 
@@ -54,6 +56,7 @@ export function ItemGrid({
             wall={wall}
             selected={selectedId === item.id}
             onItemPatch={onItemPatch}
+            onOpenMarkDone={onOpenMarkDone}
           />
         </li>
       ))}

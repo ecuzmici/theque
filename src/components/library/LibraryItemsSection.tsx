@@ -6,11 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ItemGrid } from "@/components/items/ItemGrid";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
+import { doneVerb } from "@/lib/item-labels";
+import { itemMatchesShelf } from "@/lib/shelf-filter";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { ShelfId } from "@/lib/shelves";
@@ -50,6 +53,7 @@ export function LibraryItemsSection({
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [quickLookOpen, setQuickLookOpen] = useState(false);
+  const [markDoneItem, setMarkDoneItem] = useState<LibraryItemRow | null>(null);
   const offsetRef = useRef(initialItems.length);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const hasPendingItems = hasPendingEnrichment(items);
@@ -203,6 +207,51 @@ export function LibraryItemsSection({
     [],
   );
 
+  // Opens the mark-done dialog for an item. Fires the status PATCH immediately
+  // (with optimistic update), then opens the verdict dialog. The dialog is rendered
+  // at this level — not inside ItemCard — so it isn't unmounted when the item
+  // disappears from an excludeDone shelf via the realtime handler.
+  const openMarkDoneItem = useCallback(
+    async (item: LibraryItemRow) => {
+      if (item.status !== "done") {
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id
+              ? { ...i, status: "done" as const, done_at: new Date().toISOString() }
+              : i,
+          ),
+        );
+      }
+      setMarkDoneItem(item);
+
+      if (item.status !== "done") {
+        const res = await fetch(`/api/items/${item.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "done" }),
+        });
+        if (!res.ok) {
+          setMarkDoneItem(null);
+          router.refresh();
+        }
+      }
+    },
+    [router],
+  );
+
+  const handleMarkDoneDialogChange = useCallback(
+    (open: boolean) => {
+      if (!open && markDoneItem) {
+        const doneItem = { ...markDoneItem, status: "done" as const };
+        if (!itemMatchesShelf(doneItem, shelfId)) {
+          setItems((prev) => prev.filter((i) => i.id !== markDoneItem.id));
+        }
+        setMarkDoneItem(null);
+      }
+    },
+    [markDoneItem, shelfId],
+  );
+
   if (items.length === 0) {
     const empty = SHELF_EMPTY[shelfId];
     return (
@@ -231,6 +280,7 @@ export function LibraryItemsSection({
         wall={wall}
         selectedId={selectedItem?.id ?? null}
         onItemPatch={onItemPatch}
+        onOpenMarkDone={openMarkDoneItem}
       />
       {/* Infinite scroll sentinel */}
       <div ref={sentinelRef} className="h-1" aria-hidden />
@@ -251,6 +301,34 @@ export function LibraryItemsSection({
         onNext={() => setSelectedIdx((i) => Math.min(items.length - 1, (i ?? -1) + 1))}
         onPrev={() => setSelectedIdx((i) => Math.max(0, (i ?? 1) - 1))}
       />
+
+      {markDoneItem ? (
+        <ItemMarkDoneDialog
+          key={markDoneItem.id}
+          open
+          onOpenChange={handleMarkDoneDialogChange}
+          verb={doneVerb(markDoneItem.category)}
+          title={markDoneItem.title ?? markDoneItem.domain ?? ""}
+          initialRating={markDoneItem.rating_personal}
+          initialVerdict={markDoneItem.verdict}
+          onSave={async (rating, verdict) => {
+            const patch = { rating_personal: rating, verdict };
+            setItems((prev) =>
+              prev.map((i) => (i.id === markDoneItem.id ? { ...i, ...patch } : i)),
+            );
+            const res = await fetch(`/api/items/${markDoneItem.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(patch),
+            });
+            if (!res.ok) {
+              router.refresh();
+              return false;
+            }
+            return true;
+          }}
+        />
+      ) : null}
     </div>
   );
 }

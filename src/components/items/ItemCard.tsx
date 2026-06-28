@@ -39,6 +39,7 @@ type ItemCardProps = {
     patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
     opts?: { remove?: boolean },
   ) => void;
+  onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 
 function monthsOnShelf(createdAt: string): number {
@@ -53,6 +54,7 @@ export function ItemCard({
   wall,
   selected,
   onItemPatch,
+  onOpenMarkDone,
 }: ItemCardProps) {
   const aspect = cardAspectRatio(item.category, item.display);
   const [aw, ah] = aspect.split("/").map(Number);
@@ -178,7 +180,7 @@ export function ItemCard({
       </Link>
 
       {showVerdictControl ? (
-        <ItemCardVerdictControl item={item} shelfId={shelfId} onItemPatch={onItemPatch} />
+        <ItemCardVerdictControl item={item} onOpenMarkDone={onOpenMarkDone} />
       ) : null}
     </Card>
   );

@@ -1,120 +1,42 @@
 "use client";
 
 import { CheckCircle2, Star } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 
-import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { Button } from "@/components/ui/button";
 import { doneVerb } from "@/lib/item-labels";
-import { itemMatchesShelf } from "@/lib/shelf-filter";
-import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-import type { ItemStatus } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
 
 type ItemCardVerdictControlProps = {
   item: LibraryItemRow;
-  shelfId: ShelfId;
-  onItemPatch?: (
-    itemId: string,
-    patch: Partial<LibraryItemRow> & { status?: ItemStatus },
-    opts?: { remove?: boolean },
-  ) => void;
+  onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 
-export function ItemCardVerdictControl({ item, shelfId, onItemPatch }: ItemCardVerdictControlProps) {
-  const router = useRouter();
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const markedDoneRef = useRef(false);
+// The dialog is intentionally NOT rendered here. It lives in LibraryItemsSection
+// so that a realtime event removing this item from the shelf list cannot unmount
+// the dialog mid-interaction (books/watch shelves have excludeDone:true).
+export function ItemCardVerdictControl({ item, onOpenMarkDone }: ItemCardVerdictControlProps) {
   const verb = doneVerb(item.category);
   const isDone = item.status === "done";
-  const title = item.title ?? item.domain;
-
-  const finishShelfTransition = useCallback(() => {
-    if (!markedDoneRef.current) return;
-    markedDoneRef.current = false;
-    const doneItem = { ...item, status: "done" as const };
-    onItemPatch?.(item.id, doneItem, {
-      remove: !itemMatchesShelf(doneItem, shelfId),
-    });
-  }, [item, onItemPatch, shelfId]);
-
-  const handleDialogOpenChange = useCallback(
-    (open: boolean) => {
-      setDialogOpen(open);
-      if (!open) finishShelfTransition();
-    },
-    [finishShelfTransition],
-  );
-
-  const markDoneAndOpen = useCallback(async () => {
-    const patch = { status: "done" as const, done_at: new Date().toISOString() };
-    markedDoneRef.current = true;
-    onItemPatch?.(item.id, patch, { remove: false });
-    setDialogOpen(true);
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/items/${item.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "done" }),
-      });
-      if (!res.ok) {
-        markedDoneRef.current = false;
-        router.refresh();
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [item, onItemPatch, router]);
 
   const handleActivate = useCallback(() => {
-    if (isDone) setDialogOpen(true);
-    else void markDoneAndOpen();
-  }, [isDone, markDoneAndOpen]);
+    onOpenMarkDone?.(item);
+  }, [item, onOpenMarkDone]);
 
   return (
-    <>
-      <div className="border-t border-border px-3 py-2" onClick={(e) => e.stopPropagation()}>
-        <Button
-          type="button"
-          variant={isDone ? "outline" : "secondary"}
-          size="sm"
-          className="h-9 w-full min-h-9 gap-1.5 text-xs font-medium"
-          disabled={busy}
-          onClick={() => void handleActivate()}
-        >
-          <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
-          {isDone ? "Edit verdict" : `Mark ${verb}`}
-        </Button>
-      </div>
-
-      <ItemMarkDoneDialog
-        key={item.id}
-        open={dialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        verb={verb}
-        title={title}
-        initialRating={item.rating_personal}
-        initialVerdict={item.verdict}
-        onSave={async (rating, verdict) => {
-          const patch = { rating_personal: rating, verdict };
-          onItemPatch?.(item.id, patch);
-          const res = await fetch(`/api/items/${item.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(patch),
-          });
-          if (!res.ok) {
-            router.refresh();
-            return false;
-          }
-          return true;
-        }}
-      />
-    </>
+    <div className="border-t border-border px-3 py-2" onClick={(e) => e.stopPropagation()}>
+      <Button
+        type="button"
+        variant={isDone ? "outline" : "secondary"}
+        size="sm"
+        className="h-9 w-full min-h-9 gap-1.5 text-xs font-medium"
+        onClick={handleActivate}
+      >
+        <CheckCircle2 className="size-3.5 shrink-0" aria-hidden />
+        {isDone ? "Edit verdict" : `Mark ${verb}`}
+      </Button>
+    </div>
   );
 }
 
