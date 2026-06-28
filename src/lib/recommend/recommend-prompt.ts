@@ -6,7 +6,7 @@
  */
 
 import type { RecommendShelfId, TasteProfile, TasteProfileItem } from "@/lib/recommend/recommend-types";
-import { RECOMMEND_OVER_REQUEST, RECOMMEND_VERDICT_NOTE_MAX } from "@/lib/recommend/recommend-config";
+import { RECOMMEND_OVER_REQUEST } from "@/lib/recommend/recommend-config";
 
 const SHELF_LABELS: Record<RecommendShelfId, string> = {
   books: "books",
@@ -18,22 +18,13 @@ const CREATOR_LABELS: Record<RecommendShelfId, string> = {
   watch: "director",
 };
 
-/**
- * Format a taste profile item for inclusion in the prompt.
- * e.g. `- "Piranesi" by Susanna Clarke (2020) — "beautifully strange"`
- */
-function truncateVerdictNote(note: string): string {
-  if (note.length <= RECOMMEND_VERDICT_NOTE_MAX) return note;
-  return `${note.slice(0, RECOMMEND_VERDICT_NOTE_MAX - 1)}…`;
-}
-
 function formatProfileItem(item: TasteProfileItem, includeVerdict: boolean): string {
   const parts: string[] = [`"${item.title}"`];
   if (item.creator) parts.push(`by ${item.creator}`);
   if (item.year) parts.push(`(${item.year})`);
   let line = `- ${parts.join(" ")}`;
   if (includeVerdict && item.verdictNote) {
-    line += ` — "${truncateVerdictNote(item.verdictNote)}"`;
+    line += ` — "${item.verdictNote}"`;
   }
   return line;
 }

@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 
   const { data: existing, error: lookupError } = await supabase
     .from("recommendation_outcomes")
-    .select("id, outcome")
+    .select("id")
     .eq("id", outcomeId)
     .eq("user_id", user.id)
     .maybeSingle();
@@ -83,10 +83,6 @@ export async function POST(req: Request) {
     return jsonResponse({ error: "Not found" }, { status: 404 });
   }
 
-  if (existing.outcome !== "shown") {
-    return jsonResponse({ error: "Outcome already recorded" }, { status: 409 });
-  }
-
   const actedAt = new Date().toISOString();
   const updatePayload =
     outcome === "dismissed"
@@ -97,15 +93,23 @@ export async function POST(req: Request) {
         }
       : { outcome, acted_at: actedAt };
 
-  const { error: updateError } = await supabase
+  // Guard against concurrent requests: adding .eq("outcome", "shown") makes the
+  // UPDATE a no-op if another request already acted, which we treat as 409.
+  const { data: updatedRows, error: updateError } = await supabase
     .from("recommendation_outcomes")
     .update(updatePayload)
     .eq("id", outcomeId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .eq("outcome", "shown")
+    .select("id");
 
   if (updateError) {
     console.error("[api/recommend/outcomes] update_failed:", updateError.message);
     return jsonResponse({ error: "Could not update outcome" }, { status: 500 });
+  }
+
+  if (!updatedRows?.length) {
+    return jsonResponse({ error: "Outcome already recorded" }, { status: 409 });
   }
 
   return jsonResponse({ ok: true }, { status: 200 });

@@ -99,11 +99,18 @@ function mockSupabase(options: {
     }),
   });
 
-  mocks.outcomesInsert.mockReturnValue({
-    select: vi.fn().mockReturnValue({
-      single: vi.fn().mockResolvedValue({ data: { id: insertId }, error: null }),
-    }),
-  });
+  // Batch insert: insert(rows[]).select("id, title_norm") — return matching rows
+  mocks.outcomesInsert.mockImplementation(
+    (rows: Array<{ title_norm: string; [k: string]: unknown }>) => {
+      const data = (Array.isArray(rows) ? rows : [rows]).map((r, i) => ({
+        id: i === 0 ? insertId : `${insertId}-${i}`,
+        title_norm: r.title_norm,
+      }));
+      return {
+        select: vi.fn().mockResolvedValue({ data, error: null }),
+      };
+    },
+  );
 
   mocks.from.mockImplementation((table: string) => {
     if (table === "items") {
@@ -319,12 +326,14 @@ describe("POST /api/recommend", () => {
       await POST(makeRequest({ shelfId: "books" }));
 
       expect(mocks.outcomesInsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          user_id: SAMPLE_USER.id,
-          category: "books",
-          external_id: "OL12345W",
-          outcome: "shown",
-        }),
+        expect.arrayContaining([
+          expect.objectContaining({
+            user_id: SAMPLE_USER.id,
+            category: "books",
+            external_id: "OL12345W",
+            outcome: "shown",
+          }),
+        ]),
       );
     });
 

@@ -3,8 +3,8 @@ import { describe, expect, it, vi, afterEach } from "vitest";
 // Mock server-only so it doesn't throw in test environment
 vi.mock("server-only", () => ({}));
 
+import { normalizeTitle } from "@/lib/recommend/dedup";
 import {
-  normalizeTitle,
   splitCreatorTokens,
   resolveBookWithOpenLibrary,
 } from "@/lib/recommend/resolve/open-library";

@@ -127,13 +127,15 @@ function RecommendCard({
             label="Not for me because…"
             onPick={onDismissReason}
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={onDismissCancel}
-            className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+            className="self-start px-0 text-xs text-muted-foreground underline-offset-2 hover:underline"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">

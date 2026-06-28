@@ -65,6 +65,20 @@ describe("buildTasteProfile", () => {
     expect(profile.never).toContain("dismissed pick");
   });
 
+  it("does not put loved/disliked items in never", () => {
+    const profile = buildTasteProfile(
+      [
+        item({ title: "Great Book", status: "done", rating_personal: 5 }),
+        item({ title: "Bad Book", status: "done", rating_personal: 1 }),
+      ],
+      [],
+    );
+    expect(profile.never).not.toContain("Great Book");
+    expect(profile.never).not.toContain("Bad Book");
+    expect(profile.loved.map((i) => i.title)).toContain("Great Book");
+    expect(profile.disliked.map((i) => i.title)).toContain("Bad Book");
+  });
+
   it("truncates verdict notes to ~200 chars", () => {
     const longNote = "x".repeat(250);
     const profile = buildTasteProfile(

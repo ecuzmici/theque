@@ -115,17 +115,16 @@ describe("buildRecommendPrompt", () => {
     });
   });
 
-  describe("verdict note truncation", () => {
-    it("includes truncated verdict notes at ~200 chars", () => {
-      const longNote = "a".repeat(250);
+  describe("verdict note pass-through", () => {
+    it("includes verdictNote verbatim (truncation is taste-profile's responsibility)", () => {
+      const note = "beautifully strange";
       const prompt = buildRecommendPrompt("books", {
-        loved: [{ title: "Rated Book", creator: "Author", year: 2020, verdictNote: longNote }],
+        loved: [{ title: "Piranesi", creator: "Susanna Clarke", year: 2020, verdictNote: note }],
         disliked: [],
         backlog: [],
         never: [],
       });
-      expect(prompt).toContain(`"${"a".repeat(199)}…"`);
-      expect(prompt).not.toContain(`"${"a".repeat(250)}"`);
+      expect(prompt).toContain(`— "${note}"`);
     });
   });
 

@@ -28,7 +28,7 @@ export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
   const { state, fetch, reset } = useRecommendations();
 
   const titledCount = useMemo(
-    () => shelfItems.filter((item) => item.title).length,
+    () => shelfItems.filter((item) => item.title?.trim()).length,
     [shelfItems],
   );
 

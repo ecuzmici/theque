@@ -51,7 +51,7 @@ function buildSearchQuery(candidate: LlmCandidate, shelfId: "books" | "watch"): 
 }
 
 function isSuppressedOutcome(row: OutcomeRow, cutoffMs: number): boolean {
-  if (row.outcome === "dismissed") return true;
+  if (row.outcome === "dismissed" || row.outcome === "saved") return true;
   if (row.outcome === "shown") {
     return new Date(row.shown_at).getTime() > cutoffMs;
   }
@@ -96,6 +96,21 @@ export async function POST(req: Request) {
     );
   }
 
+  const rl = await rateLimit(
+    `recommend:${user.id}`,
+    RECOMMEND_RATE_LIMIT_PER_DAY,
+    86400,
+  );
+  if (!rl.ok) {
+    return jsonResponse(
+      { error: "Rate limit exceeded" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rl.retryAfter ?? 86400) },
+      },
+    );
+  }
+
   const supabase = await createClient();
   const categories = categoriesForShelf(shelfId);
   const outcomeCategory = outcomeCategoryForShelf(shelfId);
@@ -118,21 +133,6 @@ export async function POST(req: Request) {
     return jsonResponse(
       { error: `At least ${RECOMMEND_MIN_ITEMS} items are required in this shelf` },
       { status: 400 },
-    );
-  }
-
-  const rl = await rateLimit(
-    `recommend:${user.id}`,
-    RECOMMEND_RATE_LIMIT_PER_DAY,
-    86400,
-  );
-  if (!rl.ok) {
-    return jsonResponse(
-      { error: "Rate limit exceeded" },
-      {
-        status: 429,
-        headers: { "Retry-After": String(rl.retryAfter ?? 86400) },
-      },
     );
   }
 
@@ -244,31 +244,40 @@ export async function POST(req: Request) {
   const filteredCards = filterNeverTitles(dedupedCards, tasteProfile.never);
   const finalCards = filteredCards.slice(0, RECOMMEND_COUNT);
 
-  const cardsWithOutcomes: ResolvedRecommendation[] = [];
-  for (const card of finalCards) {
-    const { data: inserted, error: insertError } = await supabase
-      .from("recommendation_outcomes")
-      .insert({
-        user_id: user.id,
-        category: outcomeCategory,
-        external_id: card.external_id,
-        title_norm: card.title_norm,
-        outcome: "shown",
-      })
-      .select("id")
-      .single();
-
-    if (insertError || !inserted) {
-      console.error("[api/recommend] outcome_insert_failed:", insertError?.message);
-      continue;
-    }
-
-    const { external_id: _e, title_norm: _t, ...responseCard } = card;
-    cardsWithOutcomes.push({
-      ...responseCard,
-      outcome_id: inserted.id,
-    });
+  if (finalCards.length === 0) {
+    return jsonResponse({ cards: [] } satisfies RecommendResponse, { status: 200 });
   }
+
+  const insertRows = finalCards.map((card) => ({
+    user_id: user.id,
+    category: outcomeCategory,
+    external_id: card.external_id,
+    title_norm: card.title_norm,
+    outcome: "shown" as const,
+  }));
+
+  const { data: insertedOutcomes, error: insertError } = await supabase
+    .from("recommendation_outcomes")
+    .insert(insertRows)
+    .select("id, title_norm");
+
+  if (insertError || !insertedOutcomes?.length) {
+    console.error("[api/recommend] outcome_insert_failed:", insertError?.message);
+    return jsonResponse({ error: "Could not record recommendations" }, { status: 500 });
+  }
+
+  const outcomeByTitleNorm = new Map(
+    insertedOutcomes.map((r) => [r.title_norm, r.id]),
+  );
+
+  const cardsWithOutcomes: ResolvedRecommendation[] = finalCards
+    .map((card) => {
+      const outcomeId = outcomeByTitleNorm.get(card.title_norm);
+      if (!outcomeId) return null;
+      const { external_id: _e, title_norm: _t, ...responseCard } = card;
+      return { ...responseCard, outcome_id: outcomeId };
+    })
+    .filter((c): c is ResolvedRecommendation => c !== null);
 
   const responseBody: RecommendResponse = { cards: cardsWithOutcomes };
   return jsonResponse(responseBody, { status: 200 });

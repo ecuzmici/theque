@@ -11,6 +11,7 @@
 import "server-only";
 
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
+import { normalizeTitle } from "@/lib/recommend/dedup";
 import type { LlmCandidate } from "@/lib/recommend/recommend-types";
 
 export type ResolvedBook = {
@@ -47,24 +48,6 @@ type OpenLibrarySearchResponse = {
 
 const OPEN_LIBRARY_SEARCH = "https://openlibrary.org/search.json";
 const TIMEOUT_MS = 8000;
-
-/**
- * Normalize a title for matching:
- * - NFD normalize → strip combining diacritical marks
- * - lowercase
- * - strip punctuation
- * - strip leading articles
- */
-export function normalizeTitle(title: string): string {
-  const stripped = title
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return stripped.replace(/^(the|a|an)\s+/, "");
-}
 
 /**
  * Split a creator/author string into individual tokens.

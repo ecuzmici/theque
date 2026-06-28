@@ -36,6 +36,18 @@ type TmdbResult = {
   poster_path?: string | null;
   vote_average?: number;
   vote_count?: number;
+  genre_ids?: number[];
+};
+
+const TMDB_GENRE_NAMES: Record<number, string> = {
+  28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
+  80: "Crime", 99: "Documentary", 18: "Drama", 10751: "Family",
+  14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music",
+  9648: "Mystery", 10749: "Romance", 878: "Sci-Fi", 10770: "TV Movie",
+  53: "Thriller", 10752: "War", 37: "Western",
+  10759: "Action & Adventure", 10762: "Kids", 10763: "News",
+  10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap",
+  10767: "Talk", 10768: "War & Politics",
 };
 
 type TmdbSearchResponse = {
@@ -104,6 +116,11 @@ export async function resolveMovieWithTmdb(
   const sourceRating =
     voteAverage !== undefined ? Math.round((voteAverage / 2) * 10) / 10 : null;
 
+  const genres = (best.genre_ids ?? [])
+    .map((id) => TMDB_GENRE_NAMES[id])
+    .filter((g): g is string => Boolean(g))
+    .slice(0, 3);
+
   return {
     canonical_url: `https://www.themoviedb.org/${best.media_type}/${best.id}`,
     cover_url: best.poster_path ? `${TMDB_IMAGE_BASE}${best.poster_path}` : null,
@@ -114,5 +131,6 @@ export async function resolveMovieWithTmdb(
     rating_count:
       best.vote_count !== undefined ? String(best.vote_count) : null,
     length: best.media_type === "tv" ? "TV series" : "Film",
+    genres: genres.length > 0 ? genres : undefined,
   };
 }

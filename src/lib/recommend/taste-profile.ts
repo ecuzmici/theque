@@ -111,10 +111,9 @@ export function buildTasteProfile(
   for (const row of items) {
     if (!row.title?.trim()) continue;
 
-    neverSet.add(row.title.trim());
-
     const structuredOk = hasStructuredData(row.structured);
     if (!structuredOk) {
+      neverSet.add(row.title.trim());
       continue;
     }
 

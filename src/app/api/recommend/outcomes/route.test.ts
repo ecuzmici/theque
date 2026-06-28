@@ -39,22 +39,27 @@ function mockSupabase(options: {
     updateError = null,
   } = options;
 
+  // Row is found iff existingRow is not null
   mocks.outcomesSelect.mockReturnValue({
     eq: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
         maybeSingle: vi.fn().mockResolvedValue({
-          data: existingRow,
+          data: existingRow ? { id: existingRow.id } : null,
           error: lookupError,
         }),
       }),
     }),
   });
 
-  mocks.outcomesUpdate.mockReturnValue({
-    eq: vi.fn().mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ error: updateError }),
-    }),
-  });
+  // UPDATE chain: .update(payload).eq(id).eq(userId).eq("outcome","shown").select("id")
+  // Returns 1 matched row if existingRow.outcome==="shown", else 0 rows (concurrent act)
+  const updateMatchesRow = existingRow?.outcome === "shown";
+  const updateData = updateMatchesRow ? [{ id: OUTCOME_ID }] : [];
+  const selectMock = vi.fn().mockResolvedValue({ data: updateData, error: updateError });
+  const eq3Mock = vi.fn().mockReturnValue({ select: selectMock });
+  const eq2Mock = vi.fn().mockReturnValue({ eq: eq3Mock });
+  const eq1Mock = vi.fn().mockReturnValue({ eq: eq2Mock });
+  mocks.outcomesUpdate.mockReturnValue({ eq: eq1Mock });
 
   mocks.from.mockImplementation((table: string) => {
     if (table === "recommendation_outcomes") {
@@ -124,7 +129,8 @@ describe("POST /api/recommend/outcomes", () => {
       makeRequest({ outcomeId: OUTCOME_ID, outcome: "saved" }),
     );
     expect(res.status).toBe(409);
-    expect(mocks.outcomesUpdate).not.toHaveBeenCalled();
+    // UPDATE is still attempted — the .eq("outcome","shown") predicate returns 0 rows → 409
+    expect(mocks.outcomesUpdate).toHaveBeenCalled();
   });
 
   it("updates saved outcome and sets acted_at", async () => {
