@@ -444,7 +444,7 @@ async function runTrial(model: ModelConfig, prompt: string): Promise<TrialResult
     });
 
     const latencyMs = Date.now() - start;
-    const u = (res.usage ?? {}) as Record<string, number>;
+    const u = (res.usage ?? {}) as unknown as Record<string, number>;
     const inputTokens = u["inputTokens"] ?? u["promptTokens"] ?? 0;
     const outputTokens = u["outputTokens"] ?? u["completionTokens"] ?? 0;
     const reasoningTokens = u["reasoningTokens"] ?? 0;
