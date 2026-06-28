@@ -57,11 +57,12 @@ export type ItemSummaryPayload = {
   processing_status: ProcessingStatus;
   canonical_url: string;
   created_at: string;
-  tags: string[];
-  collection_ids: string[];
   display: Json | null;
   dominant_color: string | null;
   dominant_hue: number | null;
+  rating_personal: number | null;
+  verdict: string | null;
+  done_at: string | null;
 };
 
 export type ItemsListResponseBody = {
@@ -70,10 +71,7 @@ export type ItemsListResponseBody = {
 };
 
 /** GET /api/items/:id and PATCH /api/items/:id */
-export type ItemDetailResponseBody = Database["public"]["Tables"]["items"]["Row"] & {
-  tags: string[];
-  collection_ids: string[];
-};
+export type ItemDetailResponseBody = Database["public"]["Tables"]["items"]["Row"];
 
 /** POST /api/items/:id/retry-enrichment */
 export type RetryEnrichmentResponseBody = {
@@ -141,19 +139,4 @@ export type CaptureTokenListEntry = {
 
 export type CaptureTokensListResponseBody = {
   tokens: CaptureTokenListEntry[];
-};
-
-/** GET /api/collections */
-export type CollectionListEntry = {
-  id: string;
-  name: string;
-  description: string | null;
-  cover_image_url: string | null;
-  created_at: string;
-  updated_at: string;
-  item_count: number;
-};
-
-export type CollectionsListResponseBody = {
-  collections: CollectionListEntry[];
 };

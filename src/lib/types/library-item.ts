@@ -18,6 +18,9 @@ export type LibraryItemRow = Pick<
   | "canonical_url"
   | "dominant_color"
   | "dominant_hue"
+  | "rating_personal"
+  | "verdict"
+  | "done_at"
 >;
 
 export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
@@ -36,5 +39,8 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     canonical_url: summary.canonical_url,
     dominant_color: summary.dominant_color,
     dominant_hue: summary.dominant_hue,
+    rating_personal: summary.rating_personal ?? null,
+    verdict: summary.verdict ?? null,
+    done_at: summary.done_at ?? null,
   };
 }

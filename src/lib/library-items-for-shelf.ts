@@ -5,7 +5,7 @@ import { SHELVES, olderThanCutoff, type ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 export const LIBRARY_ITEM_COLUMNS =
-  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue";
+  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue, rating_personal, verdict, done_at";
 
 const PAGE_SIZE = 24;
 
@@ -22,7 +22,11 @@ export async function fetchLibraryItemsForShelf(
 
   let query = supabase.from("items").select(LIBRARY_ITEM_COLUMNS);
 
-  if (sort === "color") {
+  const doneShelf = shelfId === "done";
+
+  if (doneShelf) {
+    query = query.order("done_at", { ascending: false, nullsFirst: false });
+  } else if (sort === "color") {
     // Hue walk around the wheel; items without an extracted color sink to the end.
     query = query
       .order("dominant_hue", { ascending: true, nullsFirst: false })
@@ -42,6 +46,10 @@ export async function fetchLibraryItemsForShelf(
 
   if (shelf.filter.excludeInbox) {
     query = query.neq("status", "inbox");
+  }
+
+  if (shelf.filter.excludeDone) {
+    query = query.neq("status", "done");
   }
 
   if (shelf.filter.category) {

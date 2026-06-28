@@ -1,19 +1,13 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { Database, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
-import { loadItemExtras } from "@/lib/items/extras";
 import {
-  hasMaxItems,
   hasMaxLength,
-  MAX_COLLECTION_IDS_PER_ITEM,
   MAX_NOTE_LENGTH,
-  MAX_TAGS_PER_ITEM,
   MAX_TITLE_LENGTH,
-  normalizeLimitedTagNames,
 } from "@/lib/input-limits";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-const STATUSES = new Set<ItemStatus>(["inbox", "want", "planned", "done", "dismissed"]);
+const STATUSES = new Set<ItemStatus>(["inbox", "want", "done", "dismissed"]);
 
 const CATEGORIES = new Set<ItemCategory>([
   "books",
@@ -57,13 +51,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  const extras = await loadItemExtras(supabase, id);
-
-  return Response.json({
-    ...row,
-    tags: extras.tags,
-    collection_ids: extras.collection_ids,
-  });
+  return Response.json(row);
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -149,7 +137,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     patch.verdict = body.verdict === null ? null : body.verdict;
   }
 
-  // done_at tracks the lifecycle: stamped on entering done, cleared on leaving.
   if (patch.status && patch.status !== row.status) {
     if (patch.status === "done") {
       patch.done_at = new Date().toISOString();
@@ -170,98 +157,13 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
   }
 
-  const admin = createAdminClient();
-
-  if (Array.isArray(body.tag_names)) {
-    if (
-      !hasMaxItems(body.tag_names, MAX_TAGS_PER_ITEM) ||
-      body.tag_names.some((name) => typeof name !== "string")
-    ) {
-      return Response.json({ code: "invalid_tags" }, { status: 400 });
-    }
-
-    const names = normalizeLimitedTagNames(body.tag_names);
-    if (!names) {
-      return Response.json({ code: "invalid_tags" }, { status: 400 });
-    }
-
-    await admin.from("item_tags").delete().eq("item_id", id);
-
-    const tagIds: string[] = [];
-    for (const name of names) {
-      const { data: tagRow, error: tagErr } = await admin
-        .from("tags")
-        .upsert({ user_id: user.id, name }, { onConflict: "user_id,name" })
-        .select("id")
-        .single();
-
-      if (tagErr || !tagRow) {
-        console.error("[api/items/:id] tag_failed:", tagErr?.message);
-        return Response.json({ code: "tag_failed" }, { status: 500 });
-      }
-      tagIds.push(tagRow.id);
-    }
-
-    if (tagIds.length) {
-      const rows = tagIds.map((tag_id) => ({ item_id: id, tag_id }));
-      const { error: linkErr } = await admin.from("item_tags").insert(rows);
-      if (linkErr) {
-        console.error("[api/items/:id] tag_link_failed:", linkErr.message);
-        return Response.json({ code: "tag_link_failed" }, { status: 500 });
-      }
-    }
-  }
-
-  if (Array.isArray(body.collection_ids)) {
-    if (
-      !hasMaxItems(body.collection_ids, MAX_COLLECTION_IDS_PER_ITEM) ||
-      body.collection_ids.some((collectionId) => typeof collectionId !== "string")
-    ) {
-      return Response.json({ code: "invalid_collections" }, { status: 400 });
-    }
-
-    const collection_ids = [...new Set(body.collection_ids)];
-
-    if (collection_ids.length) {
-      const { data: owned } = await admin
-        .from("collections")
-        .select("id")
-        .eq("user_id", user.id)
-        .in("id", collection_ids);
-
-      if (!owned || owned.length !== collection_ids.length) {
-        return Response.json({ code: "forbidden" }, { status: 403 });
-      }
-    }
-
-    await admin.from("collection_items").delete().eq("item_id", id);
-
-    if (collection_ids.length) {
-      const ciRows = collection_ids.map((collection_id) => ({
-        collection_id,
-        item_id: id,
-      }));
-      const { error: ciErr } = await admin.from("collection_items").insert(ciRows);
-      if (ciErr) {
-        console.error("[api/items/:id] collection_link_failed:", ciErr.message);
-        return Response.json({ code: "collection_link_failed" }, { status: 500 });
-      }
-    }
-  }
-
   const { data: updated } = await supabase.from("items").select("*").eq("id", id).single();
 
   if (!updated) {
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  const extras = await loadItemExtras(supabase, id);
-
-  return Response.json({
-    ...updated,
-    tags: extras.tags,
-    collection_ids: extras.collection_ids,
-  });
+  return Response.json(updated);
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

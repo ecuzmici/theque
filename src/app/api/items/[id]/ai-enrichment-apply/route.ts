@@ -2,7 +2,6 @@ import type { Json } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { applyItemRewriteProposal } from "@/lib/enrichment/llm/apply-item-rewrite-proposal";
 import { validateLlmItemRewriteProposal } from "@/lib/enrichment/llm/category-schemas";
-import { loadItemExtras } from "@/lib/items/extras";
 import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentApplyResponseBody,
@@ -97,12 +96,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  const extras = await loadItemExtras(supabase, id);
-  const response: AiEnrichmentApplyResponseBody = {
-    ...updated,
-    tags: extras.tags,
-    collection_ids: extras.collection_ids,
-  };
-
-  return Response.json(response);
+  return Response.json(updated as AiEnrichmentApplyResponseBody);
 }

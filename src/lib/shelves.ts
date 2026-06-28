@@ -11,6 +11,7 @@ export type ShelfId =
   | "read"
   | "cook"
   | "tools"
+  | "done"
   | "forgotten"
   | "inbox";
 
@@ -22,6 +23,8 @@ export type ShelfDefinition = {
     category?: ItemCategory | ItemCategory[];
     excludeDismissed?: boolean;
     excludeInbox?: boolean;
+    /** Backlog shelves hide consumed items; All and Done keep them visible. */
+    excludeDone?: boolean;
     /** Only items saved at least this many days ago (the Forgotten shelf). */
     olderThanDays?: number;
   };
@@ -37,23 +40,24 @@ export function olderThanCutoff(days: number): Date {
 
 export const SHELVES: ShelfDefinition[] = [
   { id: "all", label: "All", filter: { excludeDismissed: true } },
-  { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true } },
+  { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true, excludeDone: true } },
   {
     id: "watch",
     label: "Watch",
-    filter: { category: ["movies_and_tv", "videos"], excludeDismissed: true },
+    filter: { category: ["movies_and_tv", "videos"], excludeDismissed: true, excludeDone: true },
   },
-  { id: "listen", label: "Listen", filter: { category: "music", excludeDismissed: true } },
-  { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true } },
-  { id: "shop", label: "Shop", filter: { category: "products", excludeDismissed: true } },
-  { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true } },
+  { id: "listen", label: "Listen", filter: { category: "music", excludeDismissed: true, excludeDone: true } },
+  { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true, excludeDone: true } },
+  { id: "shop", label: "Shop", filter: { category: "products", excludeDismissed: true, excludeDone: true } },
+  { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true, excludeDone: true } },
   {
     id: "read",
     label: "Read",
-    filter: { category: "articles", excludeDismissed: true, excludeInbox: true },
+    filter: { category: "articles", excludeDismissed: true, excludeInbox: true, excludeDone: true },
   },
-  { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true } },
-  { id: "tools", label: "Tools", filter: { category: "apps", excludeDismissed: true } },
+  { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true, excludeDone: true } },
+  { id: "tools", label: "Tools", filter: { category: "apps", excludeDismissed: true, excludeDone: true } },
+  { id: "done", label: "Done", filter: { status: "done" } },
   {
     id: "forgotten",
     label: "Forgotten",

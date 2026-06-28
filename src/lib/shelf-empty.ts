@@ -52,4 +52,8 @@ export const SHELF_EMPTY: Record<
     title: "Inbox is clear",
     description: "Saves we couldn't sort confidently land here for a quick triage.",
   },
+  done: {
+    title: "Nothing done yet",
+    description: "Mark something consumed from a backlog shelf and it will show up here with your verdict.",
+  },
 };

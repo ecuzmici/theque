@@ -1,7 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
 import { ItemDetail } from "@/components/items/ItemDetail";
-import { loadItemExtras } from "@/lib/items/extras";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -27,11 +26,6 @@ export default async function ItemPage({ params }: PageProps) {
     notFound();
   }
 
-  const extras = await loadItemExtras(supabase, id);
-
-  const { data: collections } = await supabase.from("collections").select("id, name").order("name");
-
-  // "More from your shelves": same category, same-domain items surfacing first.
   let related: LibraryItemRow[] = [];
   if (row.category) {
     const { data: relatedRows } = await supabase
@@ -47,12 +41,5 @@ export default async function ItemPage({ params }: PageProps) {
       .slice(0, 8);
   }
 
-  return (
-    <ItemDetail
-      key={id}
-      initial={{ ...row, ...extras }}
-      collections={collections ?? []}
-      related={related}
-    />
-  );
+  return <ItemDetail key={id} initial={row} related={related} />;
 }

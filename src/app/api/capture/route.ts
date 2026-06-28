@@ -10,13 +10,9 @@ import {
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { CaptureItemPayload, CaptureRequestBody, CaptureResponseBody } from "@/lib/types/api";
 import {
-  hasMaxItems,
   hasMaxLength,
-  MAX_COLLECTION_IDS_PER_ITEM,
   MAX_NOTE_LENGTH,
-  MAX_TAGS_PER_ITEM,
   MAX_URL_LENGTH,
-  normalizeLimitedTagNames,
 } from "@/lib/input-limits";
 import { wouldBenefitFromLlmReenrichment } from "@/lib/enrichment/llm/eligibility";
 import { enrichItem } from "@/lib/jobs/enrich-item";
@@ -67,34 +63,9 @@ export async function POST(req: Request) {
     }
   }
 
-  let tagNames: string[] = [];
-  if (body.tag_names !== undefined) {
-    if (
-      !Array.isArray(body.tag_names) ||
-      !hasMaxItems(body.tag_names, MAX_TAGS_PER_ITEM) ||
-      body.tag_names.some((name) => typeof name !== "string")
-    ) {
-      return jsonResponse({ code: "invalid_tags" }, { status: 400 });
-    }
-
-    const normalized = normalizeLimitedTagNames(body.tag_names);
-    if (!normalized) {
-      return jsonResponse({ code: "invalid_tags" }, { status: 400 });
-    }
-    tagNames = normalized;
-  }
-
-  let collectionIds: string[] = [];
-  if (body.collection_ids !== undefined) {
-    if (
-      !Array.isArray(body.collection_ids) ||
-      !hasMaxItems(body.collection_ids, MAX_COLLECTION_IDS_PER_ITEM) ||
-      body.collection_ids.some((id) => typeof id !== "string")
-    ) {
-      return jsonResponse({ code: "invalid_collections" }, { status: 400 });
-    }
-    collectionIds = [...new Set(body.collection_ids)];
-  }
+  // Legacy extension fields — accepted and ignored for Web Store 1.0.0 compatibility.
+  void body.tag_names;
+  void body.collection_ids;
 
   const captureSnapshot =
     body.capture_snapshot !== undefined ? parseCaptureSnapshot(body.capture_snapshot) : null;
@@ -212,18 +183,6 @@ export async function POST(req: Request) {
     return jsonResponse({ code: "invalid_category_hint" }, { status: 400 });
   }
 
-  if (collectionIds.length) {
-    const { data: owned } = await admin
-      .from("collections")
-      .select("id")
-      .eq("user_id", userId)
-      .in("id", collectionIds);
-
-    if (!owned || owned.length !== collectionIds.length) {
-      return jsonResponse({ code: "forbidden" }, { status: 403 });
-    }
-  }
-
   const insertRow = {
     user_id: userId,
     url: body.url.trim(),
@@ -249,43 +208,6 @@ export async function POST(req: Request) {
   if (insertErr || !createdRow) {
     console.error("[api/capture] insert_failed:", insertErr?.message);
     return jsonResponse({ code: "insert_failed" }, { status: 500 });
-  }
-
-  const tagIds: string[] = [];
-
-  for (const name of tagNames) {
-    const { data: tagRow, error: tagErr } = await admin
-      .from("tags")
-      .upsert({ user_id: userId, name }, { onConflict: "user_id,name" })
-      .select("id")
-      .single();
-
-    if (tagErr || !tagRow) {
-      console.error("[api/capture] tag_failed:", tagErr?.message);
-      return jsonResponse({ code: "tag_failed" }, { status: 500 });
-    }
-    tagIds.push(tagRow.id);
-  }
-
-  if (tagIds.length) {
-    const rows = tagIds.map((tag_id) => ({ item_id: createdRow.id, tag_id }));
-    const { error: linkErr } = await admin.from("item_tags").insert(rows);
-    if (linkErr) {
-      console.error("[api/capture] tag_link_failed:", linkErr.message);
-      return jsonResponse({ code: "tag_link_failed" }, { status: 500 });
-    }
-  }
-
-  if (collectionIds.length) {
-    const ciRows = collectionIds.map((collection_id) => ({
-      collection_id,
-      item_id: createdRow.id,
-    }));
-    const { error: ciErr } = await admin.from("collection_items").insert(ciRows);
-    if (ciErr) {
-      console.error("[api/capture] collection_link_failed:", ciErr.message);
-      return jsonResponse({ code: "collection_link_failed" }, { status: 500 });
-    }
   }
 
   after(async () => {

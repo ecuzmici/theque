@@ -28,7 +28,7 @@ import { itemMatchesShelf } from "@/lib/shelf-filter";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
-const STATUS_ACTIONS: ItemStatus[] = ["want", "planned", "done", "dismissed"];
+const STATUS_ACTIONS: ItemStatus[] = ["want", "dismissed"];
 
 type ItemCardActionsProps = {
   item: LibraryItemRow;

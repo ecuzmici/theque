@@ -21,7 +21,6 @@ export type ItemCategory =
 export type ItemStatus =
   | "inbox"
   | "want"
-  | "planned"
   | "done"
   | "dismissed";
 
@@ -143,93 +142,6 @@ export type Database = {
           done_at?: string | null;
           created_at?: string;
           updated_at?: string;
-        };
-        Relationships: [];
-      };
-      tags: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          created_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          name?: string;
-          created_at?: string;
-        };
-        Relationships: [];
-      };
-      collections: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          description: string | null;
-          cover_image_url: string | null;
-          share_token: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          description?: string | null;
-          cover_image_url?: string | null;
-          share_token?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          name?: string;
-          description?: string | null;
-          cover_image_url?: string | null;
-          share_token?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-      item_tags: {
-        Row: {
-          item_id: string;
-          tag_id: string;
-        };
-        Insert: {
-          item_id: string;
-          tag_id: string;
-        };
-        Update: {
-          item_id?: string;
-          tag_id?: string;
-        };
-        Relationships: [];
-      };
-      collection_items: {
-        Row: {
-          collection_id: string;
-          item_id: string;
-          added_at: string;
-        };
-        Insert: {
-          collection_id: string;
-          item_id: string;
-          added_at?: string;
-        };
-        Update: {
-          collection_id?: string;
-          item_id?: string;
-          added_at?: string;
         };
         Relationships: [];
       };

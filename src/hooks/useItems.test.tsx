@@ -7,7 +7,7 @@ import { useDebouncedItemSearch } from "./useItems";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 function SearchHarness() {
-  useDebouncedItemSearch({ q: "", category: "books", status: "", tag: "", collectionId: "" });
+  useDebouncedItemSearch({ q: "", category: "books", status: "" });
   return null;
 }
 

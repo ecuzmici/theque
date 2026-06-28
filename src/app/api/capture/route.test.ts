@@ -545,4 +545,33 @@ describe("POST /api/capture capture_snapshot", () => {
     );
     expect(mocks.enrichItem).toHaveBeenCalledWith("item-sparse");
   });
+
+  it("accepts legacy tag_names and collection_ids without linking them", async () => {
+    const createdRow = baseRow();
+    const itemsTable = mocks.makeItemsTable(createdRow);
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/p/legacy",
+          source: "chrome_extension",
+          tag_names: ["sci-fi"],
+          collection_ids: ["00000000-0000-0000-0000-000000000001"],
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(mocks.adminFrom).toHaveBeenCalledWith("items");
+    expect(mocks.adminFrom.mock.calls.some(([table]) => table === "tags")).toBe(false);
+    expect(mocks.adminFrom.mock.calls.some(([table]) => table === "collections")).toBe(false);
+  });
 });

@@ -81,9 +81,6 @@ export function InboxActions({ itemId, category, onOptimistic }: InboxActionsPro
           <DropdownMenuItem onClick={() => void apply({ status: "want" }, { remove: true })}>
             Keep · Want
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => void apply({ status: "planned" }, { remove: true })}>
-            Plan
-          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>Wrong type…</DropdownMenuSubTrigger>
             <DropdownMenuSubContent className="max-h-48 overflow-y-auto">

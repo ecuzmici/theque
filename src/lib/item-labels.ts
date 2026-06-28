@@ -9,7 +9,6 @@ import type {
 export const STATUS_LABELS: Record<ItemStatus, string> = {
   inbox: "Inbox",
   want: "Want",
-  planned: "Planned",
   done: "Done",
   dismissed: "Dismissed",
 };

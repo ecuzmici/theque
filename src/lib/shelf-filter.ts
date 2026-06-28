@@ -16,6 +16,10 @@ export function itemMatchesShelf(
     return false;
   }
 
+  if (shelf.filter.excludeDone && item.status === "done") {
+    return false;
+  }
+
   if (shelf.filter.olderThanDays !== undefined) {
     if (!item.created_at) return false;
     if (new Date(item.created_at) > olderThanCutoff(shelf.filter.olderThanDays)) return false;

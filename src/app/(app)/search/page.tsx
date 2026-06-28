@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemGrid } from "@/components/items/ItemGrid";
@@ -18,9 +18,10 @@ import {
 } from "@/components/ui/select";
 import { useDebouncedItemSearch } from "@/hooks/useItems";
 import { CATEGORY_LABELS, STATUS_LABELS, formatCategory, formatStatus } from "@/lib/item-labels";
-import type { CollectionListEntry } from "@/lib/types/api";
 import { libraryItemFromSummary } from "@/lib/types/library-item";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
+import type { LibraryItemRow } from "@/lib/types/library-item";
+
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ItemCategory[];
 const STATUSES = Object.keys(STATUS_LABELS) as ItemStatus[];
 const ANY = "__any__";
@@ -29,40 +30,37 @@ export default function SearchPage() {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState(ANY);
   const [status, setStatus] = useState(ANY);
-  const [tag, setTag] = useState("");
-  const [collectionId, setCollectionId] = useState(ANY);
-  const [collections, setCollections] = useState<CollectionListEntry[]>([]);
-
-  useEffect(() => {
-    void (async () => {
-      const res = await fetch("/api/collections");
-      if (!res.ok) return;
-      const body = (await res.json()) as { collections: CollectionListEntry[] };
-      setCollections(body.collections);
-    })();
-  }, []);
 
   const { items, loading, hasQuery } = useDebouncedItemSearch({
     q,
     category: category === ANY ? "" : (category as ItemCategory),
     status: status === ANY ? "" : (status as ItemStatus),
-    tag,
-    collectionId: collectionId === ANY ? "" : collectionId,
   });
 
-  const mapped = items.map(libraryItemFromSummary);
-  const activeFilters =
-    (category !== ANY ? 1 : 0) +
-    (status !== ANY ? 1 : 0) +
-    (tag.trim() ? 1 : 0) +
-    (collectionId !== ANY ? 1 : 0);
-  const selectedCollection = collections.find((c) => c.id === collectionId);
+  const [rows, setRows] = useState<LibraryItemRow[]>([]);
+
+  useEffect(() => {
+    setRows(items.map(libraryItemFromSummary));
+  }, [items]);
+
+  const onItemPatch = useCallback(
+    (
+      itemId: string,
+      patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
+      opts?: { remove?: boolean },
+    ) => {
+      setRows((prev) => {
+        if (opts?.remove) return prev.filter((i) => i.id !== itemId);
+        return prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
+      });
+    },
+    [],
+  );
+  const activeFilters = (category !== ANY ? 1 : 0) + (status !== ANY ? 1 : 0);
 
   const clearFilters = () => {
     setCategory(ANY);
     setStatus(ANY);
-    setTag("");
-    setCollectionId(ANY);
   };
 
   return (
@@ -85,7 +83,7 @@ export default function SearchPage() {
         className="h-11 rounded-xl text-base"
       />
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Category</Label>
           <Select value={category} onValueChange={(v) => setCategory(v ?? ANY)}>
@@ -122,48 +120,17 @@ export default function SearchPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground" htmlFor="search-tag">
-            Tag
-          </Label>
-          <Input
-            id="search-tag"
-            value={tag}
-            onChange={(e) => setTag(e.target.value)}
-            placeholder="sci-fi"
-            className="h-11 rounded-xl text-base"
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label className="text-xs text-muted-foreground">Collection</Label>
-          <Select value={collectionId} onValueChange={(v) => setCollectionId(v ?? ANY)}>
-            <SelectTrigger className="h-11 w-full min-h-11">
-              <SelectValue>
-                {collectionId === ANY ? "Any collection" : (selectedCollection?.name ?? "Collection")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>Any collection</SelectItem>
-              {collections.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {activeFilters > 0 ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{activeFilters} filter{activeFilters === 1 ? "" : "s"}</Badge>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-auto text-xs font-medium text-muted-foreground underline-offset-2 hover:bg-transparent hover:text-muted-foreground hover:underline"
-            onClick={clearFilters}
-          >
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {category !== ANY ? (
+            <Badge variant="secondary">{formatCategory(category as ItemCategory)}</Badge>
+          ) : null}
+          {status !== ANY ? (
+            <Badge variant="secondary">{formatStatus(status as ItemStatus)}</Badge>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
             Clear filters
           </Button>
         </div>
@@ -171,21 +138,21 @@ export default function SearchPage() {
 
       <div className="mt-8">
         {!hasQuery ? (
-          <p className="text-center text-sm text-muted-foreground">
-            Type a query or pick a filter to search.
+          <p className="text-sm text-muted-foreground">
+            Type a query or choose a filter to search your library.
           </p>
         ) : loading ? (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 6 }, (_, i) => (
               <li key={i}>
                 <ItemCardSkeleton />
               </li>
             ))}
           </ul>
-        ) : mapped.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground">No matches.</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No items match your search.</p>
         ) : (
-          <ItemGrid items={mapped} shelfId="all" />
+          <ItemGrid items={rows} shelfId="all" itemActionsEnabled onItemPatch={onItemPatch} />
         )}
       </div>
     </div>

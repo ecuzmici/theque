@@ -18,7 +18,7 @@ type SampleRow = {
   title: string;
   subtitle: string | null;
   category: ItemCategory | null;
-  status: "inbox" | "want" | "planned" | "done" | "dismissed";
+  status: "inbox" | "want" | "done" | "dismissed";
   image_url?: string | null;
 };
 

@@ -3,31 +3,33 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  FolderOpen,
-  LayoutGrid,
-  Plus,
-  Search,
-  Settings,
-  Tag,
-} from "lucide-react";
+import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { cn } from "@/lib/utils";
 
-const LIBRARY = { href: "/library", label: "Library", icon: LayoutGrid, match: (p: string) => p === "/library" || p.startsWith("/library") } as const;
-const COLLECTIONS = { href: "/collections", label: "Collections", icon: FolderOpen, match: (p: string) => p.startsWith("/collections") } as const;
-const SEARCH = { href: "/search", label: "Search", icon: Search, match: (p: string) => p === "/search" } as const;
-const TAGS = { href: "/tags", label: "Tags", icon: Tag, match: (p: string) => p === "/tags" } as const;
-const SETTINGS = { href: "/settings", label: "Settings", icon: Settings, match: (p: string) => p === "/settings" } as const;
+const LIBRARY = {
+  href: "/library",
+  label: "Library",
+  icon: LayoutGrid,
+  match: (p: string) => p === "/library" || p.startsWith("/library"),
+} as const;
+const SEARCH = {
+  href: "/search",
+  label: "Search",
+  icon: Search,
+  match: (p: string) => p === "/search",
+} as const;
+const SETTINGS = {
+  href: "/settings",
+  label: "Settings",
+  icon: Settings,
+  match: (p: string) => p === "/settings",
+} as const;
 
-/* Daily destinations vs. upkeep. Tags is upkeep (rename/merge/delete), so it
-   lives in the sidebar's Manage group and behind Settings on mobile — keeping
-   the bottom bar at 2 + FAB + 2 so the add button stays centered. */
-const BROWSE_NAV = [LIBRARY, COLLECTIONS, SEARCH] as const;
-const MANAGE_NAV = [TAGS, SETTINGS] as const;
-const MOBILE_NAV = [LIBRARY, COLLECTIONS, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
   href,
@@ -107,20 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="mt-10 flex flex-col gap-1" aria-label="Primary">
-          {BROWSE_NAV.map((item) => (
-            <NavLink
-              key={item.href}
-              href={item.href}
-              label={item.label}
-              icon={item.icon}
-              active={item.match(activePath)}
-              onNavigate={markPending}
-            />
-          ))}
-          <p className="mt-6 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Manage
-          </p>
-          {MANAGE_NAV.map((item) => (
+          {DESKTOP_NAV.map((item) => (
             <NavLink
               key={item.href}
               href={item.href}
@@ -150,7 +139,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-full min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
           <ThequeLogo size="md" href="/library" />
-          <ThemeToggle />
+          <div className="flex items-center gap-1">
+            <Link
+              href="/settings"
+              onClick={() => markPending("/settings")}
+              className={cn(
+                "ks-pointer-coarse-min-hit inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                SETTINGS.match(activePath) && "bg-accent text-accent-foreground",
+              )}
+              aria-label="Settings"
+              aria-current={SETTINGS.match(activePath) ? "page" : undefined}
+            >
+              <Settings className="size-5" aria-hidden />
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(var(--ks-nav-height)+1rem)] pt-6 lg:pb-10">
@@ -164,18 +167,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
           aria-label="Primary"
         >
-          {MOBILE_NAV.slice(0, 2).map((item) => (
-            <div key={item.href} className="flex min-w-0 flex-1 justify-center">
-              <NavLink
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                active={item.match(activePath)}
-                compact
-                onNavigate={markPending}
-              />
-            </div>
-          ))}
+          <div className="flex min-w-0 flex-1 justify-center">
+            <NavLink
+              href={LIBRARY.href}
+              label={LIBRARY.label}
+              icon={LIBRARY.icon}
+              active={LIBRARY.match(activePath)}
+              compact
+              onNavigate={markPending}
+            />
+          </div>
           <div className="flex min-w-0 flex-1 flex-col items-center justify-end pb-0.5">
             <Link
               href="/add"
@@ -190,18 +191,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Plus className="size-8" />
             </Link>
           </div>
-          {MOBILE_NAV.slice(2).map((item) => (
-            <div key={item.href} className="flex min-w-0 flex-1 justify-center">
-              <NavLink
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                active={item.match(activePath)}
-                compact
-                onNavigate={markPending}
-              />
-            </div>
-          ))}
+          <div className="flex min-w-0 flex-1 justify-center">
+            <NavLink
+              href={SEARCH.href}
+              label={SEARCH.label}
+              icon={SEARCH.icon}
+              active={SEARCH.match(activePath)}
+              compact
+              onNavigate={markPending}
+            />
+          </div>
         </nav>
       </div>
     </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import type { ItemDetailModel } from "@/components/items/ItemDetail";
@@ -33,21 +32,17 @@ type ItemEditSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: ItemDetailModel;
-  collections: { id: string; name: string }[];
   onSave: (patch: Record<string, unknown>) => Promise<ItemDetailModel | null>;
 };
 
 function ItemEditForm({
   item,
-  collections,
   onSave,
   onClose,
 }: Omit<ItemEditSheetProps, "open" | "onOpenChange"> & { onClose: () => void }) {
   const [note, setNote] = useState(item.note ?? "");
   const [status, setStatus] = useState(item.status);
   const [categoryValue, setCategoryValue] = useState(item.category ?? UNCATEGORIZED);
-  const [tagsDraft, setTagsDraft] = useState(item.tags.join(", "));
-  const [collectionIds, setCollectionIds] = useState(item.collection_ids);
   const [busy, setBusy] = useState(false);
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -67,18 +62,12 @@ function ItemEditForm({
   const saveAll = async () => {
     setBusy(true);
     try {
-      const tag_names = tagsDraft
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const category =
         categoryValue === UNCATEGORIZED ? null : (categoryValue as ItemCategory);
       await onSave({
         note,
         status,
         category,
-        tag_names,
-        collection_ids: collectionIds,
       });
       onClose();
     } finally {
@@ -86,20 +75,11 @@ function ItemEditForm({
     }
   };
 
-  const toggleCollection = (id: string, checked: boolean) => {
-    setCollectionIds((prev) => {
-      const set = new Set(prev);
-      if (checked) set.add(id);
-      else set.delete(id);
-      return [...set];
-    });
-  };
-
   return (
     <>
       <DialogHeader>
         <DialogTitle>Edit details</DialogTitle>
-        <DialogDescription>Status, category, tags, and collections.</DialogDescription>
+        <DialogDescription>Status, category, and your note.</DialogDescription>
       </DialogHeader>
 
       <div className="grid gap-5">
@@ -154,44 +134,6 @@ function ItemEditForm({
           </div>
         </div>
 
-        <div className="grid gap-2">
-          <Label htmlFor="edit-tags">Tags</Label>
-          <Input
-            id="edit-tags"
-            value={tagsDraft}
-            onChange={(e) => setTagsDraft(e.target.value)}
-            placeholder="sci-fi, for-mom"
-            className="h-11 rounded-xl text-base"
-          />
-          <p className="text-xs text-muted-foreground">Comma-separated</p>
-        </div>
-
-        <fieldset className="grid gap-2">
-          <legend className="text-sm font-medium">Collections</legend>
-          <div className="max-h-40 space-y-2 overflow-y-auto rounded-lg border border-border bg-muted/30 p-3">
-            {collections.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No collections yet.{" "}
-                <Link href="/collections" className="underline">
-                  Create one
-                </Link>
-              </p>
-            ) : (
-              collections.map((c) => (
-                <label key={c.id} className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={collectionIds.includes(c.id)}
-                    onChange={(e) => toggleCollection(c.id, e.target.checked)}
-                    className="rounded border-border"
-                  />
-                  {c.name}
-                </label>
-              ))
-            )}
-          </div>
-        </fieldset>
-
         <Button type="button" className="h-11 w-full min-h-11" disabled={busy} onClick={() => void saveAll()}>
           {busy ? "Saving…" : "Done"}
         </Button>
@@ -204,7 +146,6 @@ export function ItemEditSheet({
   open,
   onOpenChange,
   item,
-  collections,
   onSave,
 }: ItemEditSheetProps) {
   return (
@@ -214,7 +155,6 @@ export function ItemEditSheet({
           <ItemEditForm
             key={`${item.id}-${item.updated_at}`}
             item={item}
-            collections={collections}
             onSave={onSave}
             onClose={() => onOpenChange(false)}
           />

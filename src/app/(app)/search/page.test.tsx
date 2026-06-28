@@ -27,13 +27,6 @@ describe("SearchPage", () => {
   });
 
   it("renders friendly filter values instead of internal sentinel tokens", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ collections: [] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -44,7 +37,6 @@ describe("SearchPage", () => {
 
     expect(container.textContent).toContain("Any category");
     expect(container.textContent).toContain("Any status");
-    expect(container.textContent).toContain("Any collection");
     expect(container.textContent).not.toContain("__any__");
   });
 });

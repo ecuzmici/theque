@@ -11,21 +11,17 @@ export type ItemSearchFilters = {
   q: string;
   category?: ItemCategory | "";
   status?: ItemStatus | "";
-  tag?: string;
-  collectionId?: string;
 };
 
 function buildSearchUrl(filters: ItemSearchFilters): string | null {
   const q = filters.q.trim();
-  if (!q && !filters.category && !filters.status && !filters.tag && !filters.collectionId) {
+  if (!q && !filters.category && !filters.status) {
     return null;
   }
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (filters.category) params.set("category", filters.category);
   if (filters.status) params.set("status", filters.status);
-  if (filters.tag?.trim()) params.set("tag", filters.tag.trim());
-  if (filters.collectionId) params.set("collection_id", filters.collectionId);
   params.set("limit", "48");
   return `/api/items?${params.toString()}`;
 }

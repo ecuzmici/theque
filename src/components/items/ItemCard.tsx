@@ -7,6 +7,10 @@ import { useCallback } from "react";
 import { ViewTransition } from "@/lib/view-transition";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
+import {
+  ItemCardVerdictControl,
+  ItemCardVerdictDisplay,
+} from "@/components/items/ItemCardVerdictControl";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
@@ -71,6 +75,9 @@ export function ItemCard({
     },
     [item.id, onItemPatch],
   );
+
+  const showVerdictControl =
+    itemActionsEnabled && !wall && !inboxActionsEnabled && item.status !== "inbox";
 
   return (
     <Card
@@ -165,9 +172,14 @@ export function ItemCard({
                 </Badge>
               ) : null}
             </div>
+            <ItemCardVerdictDisplay item={item} />
           </div>
         )}
       </Link>
+
+      {showVerdictControl ? (
+        <ItemCardVerdictControl item={item} shelfId={shelfId} onItemPatch={onItemPatch} />
+      ) : null}
     </Card>
   );
 }

@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     query = query.eq("status", shelf.filter.status);
   } else {
     // The pick should be something still on the wishlist, not done/dismissed.
-    query = query.in("status", ["want", "planned"]);
+    query = query.in("status", ["want"]);
   }
 
   if (shelf.filter.category) {

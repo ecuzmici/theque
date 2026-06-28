@@ -21,59 +21,7 @@ function decodeItemsCursor(cursor: string | null): number {
   }
 }
 
-function intersectIds(a: string[], b: string[]): string[] {
-  const bs = new Set(b);
-  return a.filter((x) => bs.has(x));
-}
-
-
-async function loadTagsAndCollections(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  itemIds: string[],
-): Promise<{
-  tagsByItem: Map<string, string[]>;
-  collectionsByItem: Map<string, string[]>;
-}> {
-  const tagsByItem = new Map<string, string[]>();
-  const collectionsByItem = new Map<string, string[]>();
-  if (!itemIds.length) return { tagsByItem, collectionsByItem };
-
-  const { data: tagLinks } = await supabase
-    .from("item_tags")
-    .select("item_id, tag_id")
-    .in("item_id", itemIds);
-
-  const tagIds = [...new Set(tagLinks?.map((l) => l.tag_id) ?? [])];
-  const { data: tagRows } =
-    tagIds.length > 0
-      ? await supabase.from("tags").select("id, name").in("id", tagIds)
-      : { data: [] as { id: string; name: string }[] };
-
-  const tagNameById = new Map(tagRows?.map((t) => [t.id, t.name]) ?? []);
-
-  for (const link of tagLinks ?? []) {
-    const name = tagNameById.get(link.tag_id);
-    if (!name) continue;
-    const cur = tagsByItem.get(link.item_id) ?? [];
-    cur.push(name);
-    tagsByItem.set(link.item_id, cur);
-  }
-
-  const { data: colLinks } = await supabase
-    .from("collection_items")
-    .select("item_id, collection_id")
-    .in("item_id", itemIds);
-
-  for (const link of colLinks ?? []) {
-    const cur = collectionsByItem.get(link.item_id) ?? [];
-    cur.push(link.collection_id);
-    collectionsByItem.set(link.item_id, cur);
-  }
-
-  return { tagsByItem, collectionsByItem };
-}
-
-function mapSummary(row: ItemRow, tags: string[], collection_ids: string[]): ItemSummaryPayload {
+function mapSummary(row: ItemRow): ItemSummaryPayload {
   return {
     id: row.id,
     title: row.title,
@@ -86,11 +34,12 @@ function mapSummary(row: ItemRow, tags: string[], collection_ids: string[]): Ite
     processing_status: row.processing_status,
     canonical_url: row.canonical_url,
     created_at: row.created_at,
-    tags,
-    collection_ids,
     display: row.display,
     dominant_color: row.dominant_color,
     dominant_hue: row.dominant_hue,
+    rating_personal: row.rating_personal,
+    verdict: row.verdict,
+    done_at: row.done_at,
   };
 }
 
@@ -126,60 +75,9 @@ export async function GET(req: Request) {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const collectionId = qp.get("collection_id");
-  const tagParam = qp.get("tag");
   const q = qp.get("q");
 
   const supabase = await createClient();
-
-  let idRestrictions: string[] | null = null;
-
-  if (collectionId) {
-    const { data: ci } = await supabase
-      .from("collection_items")
-      .select("item_id")
-      .eq("collection_id", collectionId);
-
-    const ids = ci?.map((r) => r.item_id) ?? [];
-    idRestrictions = ids;
-    if (ids.length === 0) {
-      const body: ItemsListResponseBody = { items: [], next_cursor: null };
-      return Response.json(body);
-    }
-  }
-
-  if (tagParam) {
-    const normalizedTag = tagParam.trim().toLowerCase();
-    const { data: tagRow } = await supabase
-      .from("tags")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("name", normalizedTag)
-      .maybeSingle();
-
-    let tagIds: string[] = [];
-    if (tagRow?.id) {
-      const { data: links } = await supabase
-        .from("item_tags")
-        .select("item_id")
-        .eq("tag_id", tagRow.id);
-
-      tagIds = links?.map((l) => l.item_id) ?? [];
-    }
-
-    if (tagIds.length === 0) {
-      const body: ItemsListResponseBody = { items: [], next_cursor: null };
-      return Response.json(body);
-    }
-
-    idRestrictions =
-      idRestrictions === null ? tagIds : intersectIds(idRestrictions, tagIds);
-
-    if (idRestrictions.length === 0) {
-      const body: ItemsListResponseBody = { items: [], next_cursor: null };
-      return Response.json(body);
-    }
-  }
 
   let query = supabase
     .from("items")
@@ -187,10 +85,6 @@ export async function GET(req: Request) {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .order("id", { ascending: false });
-
-  if (idRestrictions) {
-    query = query.in("id", idRestrictions);
-  }
 
   if (statuses?.length) {
     query = query.in("status", statuses as ItemRow["status"][]);
@@ -228,16 +122,7 @@ export async function GET(req: Request) {
   const hasMore = list.length > limit;
   const pageRows = hasMore ? list.slice(0, limit) : list;
 
-  const ids = pageRows.map((r) => r.id);
-  const { tagsByItem, collectionsByItem } = await loadTagsAndCollections(supabase, ids);
-
-  const items: ItemSummaryPayload[] = pageRows.map((row) =>
-    mapSummary(
-      row,
-      (tagsByItem.get(row.id) ?? []).sort(),
-      collectionsByItem.get(row.id) ?? [],
-    ),
-  );
+  const items: ItemSummaryPayload[] = pageRows.map((row) => mapSummary(row));
 
   const body: ItemsListResponseBody = {
     items,

@@ -72,11 +72,9 @@ async function applyAiProposal(
 
 export function ItemDetail({
   initial,
-  collections,
   related = [],
 }: {
   initial: ItemDetailModel;
-  collections: { id: string; name: string }[];
   related?: LibraryItemRow[];
 }) {
   const router = useRouter();
@@ -213,10 +211,6 @@ export function ItemDetail({
   const refreshLabel =
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
-  const collectionNames = collections
-    .filter((c) => item.collection_ids.includes(c.id))
-    .map((c) => c.name);
-
   const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
   const verb = doneVerb(item.category);
@@ -279,11 +273,6 @@ export function ItemDetail({
             {item.category ? (
               <Badge variant="outline">{formatCategory(item.category)}</Badge>
             ) : null}
-            {item.tags.map((tag) => (
-              <Badge key={tag} variant="outline">
-                {tag}
-              </Badge>
-            ))}
           </div>
 
           <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground">
@@ -356,24 +345,20 @@ export function ItemDetail({
             </div>
           ) : null}
 
-          {collectionNames.length > 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              In{" "}
-              {collectionNames.map((name, i) => (
-                <span key={name}>
-                  {i > 0 ? ", " : null}
-                  <span className="font-medium text-foreground">{name}</span>
-                </span>
-              ))}
-            </p>
-          ) : null}
-
           <div className="mt-6 flex flex-wrap gap-2">
           <Button
             type="button"
             variant={isDone ? "outline" : "default"}
             className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => setMarkDoneOpen(true)}
+            onClick={() => {
+              if (!isDone) {
+                void syncPatch({ status: "done" }).then((next) => {
+                  if (next) setMarkDoneOpen(true);
+                });
+              } else {
+                setMarkDoneOpen(true);
+              }
+            }}
           >
             <CheckCircle2 className="size-4" />
             {isDone ? "Edit verdict" : `Mark as ${verb}`}
@@ -458,7 +443,7 @@ export function ItemDetail({
         initialVerdict={item.verdict}
         onSave={async (rating, verdict) => {
           const next = await syncPatch({
-            status: "done",
+            ...(isDone ? {} : { status: "done" }),
             rating_personal: rating,
             verdict,
           });
@@ -488,7 +473,6 @@ export function ItemDetail({
         open={editOpen}
         onOpenChange={setEditOpen}
         item={item}
-        collections={collections}
         onSave={syncPatch}
       />
 

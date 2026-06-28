@@ -1,15 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
-
 export const MAX_ITEMS_PER_USER = 10_000;
-export const MAX_COLLECTIONS_PER_USER = 500;
-export const MAX_TAGS_PER_USER = 2_000;
 export const MAX_CAPTURE_TOKENS_PER_USER = 20;
 
-type QuotaTable = "items" | "collections" | "capture_tokens" | "tags";
+type QuotaTable = "items" | "capture_tokens";
 
 export async function checkQuota(
-  db: SupabaseClient<Database>,
+  db: import("@supabase/supabase-js").SupabaseClient<import("@/lib/database.types").Database>,
   userId: string,
   table: QuotaTable,
   max: number,
@@ -21,7 +16,6 @@ export async function checkQuota(
 
   if (error) {
     console.error(`[quotas] count_failed (${table}):`, error.message);
-    // Fail open: if we can't count, allow the operation.
     return { ok: true };
   }
 
