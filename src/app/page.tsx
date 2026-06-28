@@ -32,7 +32,7 @@ const STEPS = [
   {
     icon: FolderHeart,
     title: "It finds its shelf",
-    detail: "Every save sorts itself by what it is, and you can group anything into collections.",
+    detail: "Every save sorts itself onto the right shelf by what it is, ready to browse.",
   },
 ] as const;
 
@@ -51,7 +51,7 @@ const SHELVES = [
 const VALUES = [
   { icon: Bookmark, label: "One-tap save", detail: "from Chrome or your phone" },
   { icon: WandSparkles, label: "Auto-enriched cards", detail: "covers, authors, ratings" },
-  { icon: Search, label: "Browse by taste", detail: "shelves, search, collections" },
+  { icon: Search, label: "Browse by taste", detail: "shelves, color sort, search" },
   { icon: FolderHeart, label: "Only yours", detail: "private, no feeds, no likes" },
 ] as const;
 
@@ -62,7 +62,11 @@ const FAQ = [
   },
   {
     q: "Is it really private?",
-    a: "Yes. thèque is your personal library. There's no feed, no likes, no algorithm, and no ads. The extension only saves a page when you click it, and it never tracks your browsing or sells your data.",
+    a: "Yes. thèque is your personal library. There's no feed, no likes, no ads, and nothing built to keep you scrolling. The extension only saves a page when you click it, and it never tracks your browsing or sells your data.",
+  },
+  {
+    q: "Does it recommend things to me?",
+    a: "Yes, once it has something to go on. Mark what you finish with a quick verdict, and thèque builds a sense of your taste and starts suggesting new books and films you'll probably love, drawn from your ratings instead of a trending feed. It stays quiet until you've rated a few things.",
   },
   {
     q: "Does it cost anything?",
@@ -176,8 +180,8 @@ export default async function Home() {
             A shelf for everything you save
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Saves sort themselves onto image-forward shelves. Group anything into collections for
-            trips, projects, and gift lists.
+            Saves sort themselves onto image-forward shelves. Mark what you finish with a quick
+            verdict, and thèque starts turning up new things you'll probably love.
           </p>
           <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2">
             {SHELVES.map((shelf) => (

@@ -86,11 +86,12 @@ async function main() {
     await settle(page);
     await shoot(page, `app-library-${colorScheme}-1280x800.png`);
 
-    // A couple of category shelves (skipped if no cards render).
+    // A couple of category shelves + the Done shelf (verdicts). Skipped if no cards render.
     for (const [shelf, label] of [
       ["books", "books"],
       ["watch", "watch"],
       ["shop", "shop"],
+      ["done", "done"],
     ]) {
       await page.goto(`${base}/library?shelf=${shelf}`, { waitUntil: "networkidle" });
       await settle(page);

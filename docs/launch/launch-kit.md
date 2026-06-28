@@ -11,15 +11,17 @@ App: https://theque.app · Extension: https://chromewebstore.google.com/detail/b
 
 **One-liner:** A private, visual library for the things you want to come back to.
 
-**The wedge (say this everywhere):** *Not a feed. Not a read-later graveyard. A library of your taste.*
-Bookmarks and read-later apps store URLs you forget. thèque reads the page and builds a beautiful
-card with cover, author, rating, and price, and files it on a shelf. No likes, no algorithm, no ads.
+**The wedge (say this everywhere):** *A library, not a feed.* Your bookmarks pile up and you forget
+them. thèque reads the page and builds a card with the cover, author, rating, and price, then files
+it on a shelf. No likes, no ads, nothing built to keep you scrolling. And as you rate what you
+finish, it starts turning up new things you'll probably love.
 
 **Timely hook:** Pocket shut down in 2025. There's an active wave of people searching for
 "Pocket alternative." thèque is a prettier, private home for saves. Lean into this.
 
 **Closest competitor:** mymind (visual, private, AI, but a paid subscription). thèque's angle:
-free, taste-library framing, category-aware shelves, one-click capture.
+free, taste-library framing, category-aware shelves, and recommendations that learn from the
+verdicts you leave.
 
 **Who to target first (warm, specific communities, not "everyone"):**
 - Book people (Goodreads / StoryGraph crowd), film people (Letterboxd crowd).
@@ -28,6 +30,8 @@ free, taste-library framing, category-aware shelves, one-click capture.
 
 **Voice:** calm, understated, a little literary. Lowercase "thèque". Never hype-y. Never "AI-powered
 everything." The enrichment is mostly deterministic, and that honesty plays well (especially on HN).
+When you do talk about recommendations, say plainly that they lean on your ratings and stay weak
+until you've left a few. Owning the cold start beats overselling the magic.
 
 ---
 
@@ -38,9 +42,9 @@ Launching drives your one-time burst of attention at each channel. Don't waste i
 - [ ] **Store listing refreshed:** real screenshots (not the old synthetic mockups), new description. See `docs/chrome-store/listing.md`.
 - [ ] **Landing page** shows what the product looks like (real screenshot embedded) and has the **Add to Chrome** button (done) + Privacy/Terms in the footer (done).
 - [ ] **Terms + Privacy** live (done: `/terms`, `/privacy`).
-- [ ] **You've watched 5–10 real people use it** and fixed the worst friction. Today: 9 users, 3 active, **0 collections**. Validate that the core loop (save → browse → come back) actually lands before buying attention.
-- [ ] **Cost guardrails confirmed:** rate limits + quotas are on (they are). Know your Gemini/enrichment spend per active user so growth doesn't surprise you.
-- [ ] **A 20–40s demo video/GIF** of: click extension → card appears → shelf fills. This is the single highest-converting asset across every channel.
+- [ ] **You've watched 7–10 real people run the current build** (post verdict-loop) and fixed the worst friction. Today: 9 users, 3 active. Bar: most of them save 3+ items, get cards they call accurate and good-looking, and come back at least once without you nudging them. Recommender quality is **not** a launch gate; cold-start makes it unfair to judge on day one. By this bar you are not through the gate yet, so finish it before you spend the launch.
+- [ ] **Cost guardrails confirmed:** rate limits + quotas are on (they are). Know your Gemini spend per active user, both enrichment and recommendation inference, so growth doesn't surprise you.
+- [ ] **A 20–40s demo video/GIF** that leads with the instant loop: click extension → card appears → shelf fills, then a short closing tag of the recommendation deck getting smarter. The instant loop is the hook; the deck is the "it grows with you" promise. This is the single highest-converting asset across every channel.
 
 ---
 
@@ -61,17 +65,19 @@ ask for upvotes, that's against the rules).
 - **Description (260 char):**
   > thèque turns the links you save into a beautiful private library. One click captures any page (a book, film, place, recipe, product) and thèque builds a rich card and files it on a shelf. No feed, no likes, no ads. Just your taste, organized.
 - **First (maker's) comment:**
-  > Hi PH 👋 I built thèque because my bookmarks were a graveyard, hundreds of URLs I never reopened. I wanted a *library*, not a list: something that reads the page, pulls the cover and details, and sorts it onto a shelf automatically. It's private by design: no feed, no algorithm, no ads. Capture is one click from Chrome (or your phone). Enrichment is mostly deterministic, with optional AI only to fill gaps. Free while it grows. I'd love your honest feedback on the capture → shelf flow. *[name]*
+  > Hi PH 👋 I built thèque because my bookmarks were a graveyard, hundreds of URLs I never reopened. I wanted a *library*, not a list: something that reads the page, pulls the cover and details, and sorts it onto a shelf automatically. It's private by design: no feed, no ads, nothing built to keep you scrolling. Capture is one click from Chrome (or your phone). Enrichment is mostly deterministic, with optional AI only to fill gaps. And as you rate what you finish, it starts suggesting new things to read or watch, pulled from your taste instead of a trending feed. Free while it grows. I'd love your honest feedback on the capture → shelf flow. *[name]*
 
 ### Hacker News, "Show HN"
 HN rewards technical honesty and dislikes marketing language. Post the bare link + a plain first
 comment. Best ~8–10am ET weekday. Reply to everyone; don't get defensive.
 
-- **Title:** `Show HN: Thèque – a private visual library for the things you save`
+- **Title:** `Show HN: thèque, a private visual library for the things you save`
 - **First comment:**
   > I got tired of bookmarks I never reopened, so I built a personal "taste library." You click once on any page and it becomes a visual card (cover, author/director, rating, price) filed on a shelf (Books, Watch, Listen, Eat, Shop, Read, Cook, Tools…). It's single-purpose and private: no feed, no social graph, no ads.
   >
   > Stack: Next.js 16 + Supabase (Postgres/RLS) on Vercel; a Chrome MV3 extension for capture. Classification is deterministic first (a domain map + schema.org + heuristics + free resolvers like Open Library and TMDB), and only falls back to an LLM (Gemini) to fill sparse fields, gated behind env flags. The server-side fetcher has SSRF guards (IP/redirect validation, body caps) since it fetches arbitrary user URLs.
+  >
+  > There's also a recommender, but it leans on you: it builds a taste profile from the verdicts you leave (4-5★ items as positive signal, 1-2★ as negative), keeps a persisted outcome log so it never re-suggests the same title, and grounds picks against Open Library/TMDB rather than free-associating. It's deliberately weak until you've rated a handful of things, since there's nothing to reason from on day one.
   >
   > It's free while I figure out what it wants to be. Happy to go deep on the enrichment pipeline or the privacy/abuse model. Feedback welcome.
 
@@ -82,7 +88,7 @@ comment. Best ~8–10am ET weekday. Reply to everyone; don't get defensive.
 - **r/productivity / r/PKMS / r/Notion refugees:** lead with the *problem*, not the tool:
   > **I replaced my bookmark graveyard with a "taste library": here's the idea**
   > *(short story: bookmarks I never reopened → wanted a visual, private library that auto-organizes)*. I ended up building it; link in a comment if allowed. Curious how others here handle the "saved and forgot" problem.
-- **r/DigitalMinimalism:** lead with the anti-feed angle (no algorithm, no likes, private).
+- **r/DigitalMinimalism:** lead with the anti-feed angle (no feed, no likes, nothing built to keep you scrolling, private).
 - **r/pocket / r/save / Pocket-alternative threads:** "Pocket shut down, so I built/found a private, visual alternative." Be helpful, not spammy.
 
 ### Indie Hackers
@@ -92,8 +98,8 @@ enrichment decision and the PoC→public hardening (rate limits, quotas, SSRF) a
 ### X / Twitter launch thread (5 tweets)
 1. Hook + GIF: "Your bookmarks are a graveyard. I built a library instead. → [20s GIF of capture → shelf]"
 2. "One click on any page → thèque reads it and builds a card: cover, author, rating, price. No copy-paste."
-3. "It sorts itself onto shelves: Books, Watch, Listen, Eat, Shop, Read, Cook. Group anything into collections."
-4. "Private by design. No feed, no likes, no algorithm, no ads. It's *your* library."
+3. "It sorts itself onto shelves: Books, Watch, Listen, Eat, Shop, Read, Cook. Rate what you finish and it starts finding you more."
+4. "Private by design. No feed, no likes, no ads, nothing built to keep you scrolling. It's *your* library."
 5. "Free while it grows. Try it: theque.app · Chrome: [store link]. RTs appreciated 🙏"
 
 ---
@@ -118,9 +124,10 @@ enrichment decision and the PoC→public hardening (rate limits, quotas, SSRF) a
 ## 6. Metrics & when to spend money
 Watch, in order of importance:
 1. **Activation:** % of signups who save ≥3 items in week 1. (If low, fix onboarding before anything else.)
-2. **Retention:** % who come back in week 2 and have ≥1 collection or ≥10 items. This is the real signal.
-3. **Capture source mix:** extension vs web vs mobile, which tells you where to invest.
-4. **Cost per active user** (enrichment/AI): keep it sane.
+2. **Verdict rate (the canary):** % of active users who record ≥1 verdict by end of week 2. This is the on-ramp to recommendations, your one differentiated payoff. If it's flat, nobody is reaching the loop that makes thèque more than a bookmark app, so fix that before anything else.
+3. **Retention:** % who come back in week 2 and have ≥10 items or ≥1 verdict. This is the real signal.
+4. **Capture source mix:** extension vs web vs mobile, which tells you where to invest.
+5. **Cost per active user** (enrichment + recommendation inference): keep it sane.
 
 **Only consider paid acquisition once week-2 retention is healthy.** Paid traffic into an unvalidated
 loop just burns money. Until then, every dollar of effort goes into the funnel (landing + store) and
