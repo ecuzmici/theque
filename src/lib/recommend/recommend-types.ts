@@ -56,3 +56,18 @@ export type RecommendRequest = {
 export type RecommendResponse = {
   cards: ResolvedRecommendation[];
 };
+
+/** Final outcome actions the deck can log (not `shown`). */
+export type RecommendOutcomeAction = "saved" | "dismissed";
+
+export type RecommendDismissReason =
+  | "not_my_thing"
+  | "already_seen"
+  | "not_right_now";
+
+/** POST /api/recommend/outcomes request body. */
+export type RecommendOutcomeRequest = {
+  outcomeId: string;
+  outcome: RecommendOutcomeAction;
+  dismissReason?: RecommendDismissReason;
+};
