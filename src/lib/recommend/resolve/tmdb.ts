@@ -14,6 +14,8 @@ export type ResolvedMovie = {
   canonical_url: string;
   cover_url: string | null;
   confirmed_year: number | null;
+  /** TMDB movie or TV id as a string. */
+  external_id: string;
   /** Always null for movies/TV — TMDB multi-search doesn't return a director,
    * so the displayed creator falls back to the LLM candidate. Present for a
    * uniform shape with ResolvedBook. */
@@ -96,6 +98,7 @@ export async function resolveMovieWithTmdb(
     canonical_url: `https://www.themoviedb.org/${best.media_type}/${best.id}`,
     cover_url: best.poster_path ? `${TMDB_IMAGE_BASE}${best.poster_path}` : null,
     confirmed_year: Number.isFinite(confirmedYear) ? (confirmedYear as number) : null,
+    external_id: String(best.id),
     verified_author: null,
   };
 }

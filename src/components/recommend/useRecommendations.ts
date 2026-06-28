@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import type {
-  RecommendInputItem,
   RecommendResponse,
   RecommendShelfId,
   ResolvedRecommendation,
@@ -18,13 +17,13 @@ export type RecommendState =
 export function useRecommendations() {
   const [state, setState] = useState<RecommendState>({ status: "idle" });
 
-  async function fetch(shelfId: RecommendShelfId, items: RecommendInputItem[]) {
+  async function fetch(shelfId: RecommendShelfId) {
     setState({ status: "loading" });
     try {
       const res = await globalThis.fetch("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shelfId, items }),
+        body: JSON.stringify({ shelfId }),
       });
 
       if (!res.ok) {

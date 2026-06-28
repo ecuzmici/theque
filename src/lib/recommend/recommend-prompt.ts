@@ -5,8 +5,8 @@
  * It NEVER emits URLs — grounding is handled deterministically by the resolver layer.
  */
 
-import type { RecommendInputItem, RecommendShelfId } from "@/lib/recommend/recommend-types";
-import { RECOMMEND_MAX_INPUT_ITEMS, RECOMMEND_OVER_REQUEST } from "@/lib/recommend/recommend-config";
+import type { RecommendShelfId, TasteProfile, TasteProfileItem } from "@/lib/recommend/recommend-types";
+import { RECOMMEND_OVER_REQUEST, RECOMMEND_VERDICT_NOTE_MAX } from "@/lib/recommend/recommend-config";
 
 const SHELF_LABELS: Record<RecommendShelfId, string> = {
   books: "books",
@@ -19,50 +19,92 @@ const CREATOR_LABELS: Record<RecommendShelfId, string> = {
 };
 
 /**
- * Format a single library item for inclusion in the prompt.
- * e.g. `- "Piranesi" by Susanna Clarke (2020)`
+ * Format a taste profile item for inclusion in the prompt.
+ * e.g. `- "Piranesi" by Susanna Clarke (2020) — "beautifully strange"`
  */
-function formatItem(item: RecommendInputItem): string {
+function truncateVerdictNote(note: string): string {
+  if (note.length <= RECOMMEND_VERDICT_NOTE_MAX) return note;
+  return `${note.slice(0, RECOMMEND_VERDICT_NOTE_MAX - 1)}…`;
+}
+
+function formatProfileItem(item: TasteProfileItem, includeVerdict: boolean): string {
   const parts: string[] = [`"${item.title}"`];
   if (item.creator) parts.push(`by ${item.creator}`);
   if (item.year) parts.push(`(${item.year})`);
-  return `- ${parts.join(" ")}`;
+  let line = `- ${parts.join(" ")}`;
+  if (includeVerdict && item.verdictNote) {
+    line += ` — "${truncateVerdictNote(item.verdictNote)}"`;
+  }
+  return line;
+}
+
+function formatNeverTitle(title: string): string {
+  return `- "${title}"`;
 }
 
 /**
- * Build the identity-only recommendation prompt for the given shelf and library items.
- *
- * @param shelfId - "books" or "watch"
- * @param items   - The user's existing library items for this shelf (capped at RECOMMEND_MAX_INPUT_ITEMS)
+ * Build the identity-only recommendation prompt for the given shelf and taste profile.
  */
 export function buildRecommendPrompt(
   shelfId: RecommendShelfId,
-  items: RecommendInputItem[],
+  profile: TasteProfile,
 ): string {
-  const capped = items.slice(0, RECOMMEND_MAX_INPUT_ITEMS);
   const label = SHELF_LABELS[shelfId];
   const creatorLabel = CREATOR_LABELS[shelfId];
+  const sections: string[] = [];
 
-  const formattedItems = capped.map(formatItem).join("\n");
-
-  return [
+  sections.push(
     `Role: recommendation engine for Theque, a personal taste library.`,
-    `Task: given the user's saved ${label}, suggest ${RECOMMEND_OVER_REQUEST} other ${label} they'd likely enjoy.`,
+    `Task: given the user's taste profile for ${label}, suggest ${RECOMMEND_OVER_REQUEST} other ${label} they'd likely enjoy.`,
     `Look for patterns in genre, tone, era, themes, style.`,
-    ``,
+  );
+
+  if (profile.loved.length > 0) {
+    sections.push(
+      "",
+      `LOVED (rated 4–5★):`,
+      profile.loved.map((item) => formatProfileItem(item, true)).join("\n"),
+    );
+  }
+
+  if (profile.disliked.length > 0) {
+    sections.push(
+      "",
+      `DISLIKED (rated 1–2★) — avoid ${label} that resemble these:`,
+      profile.disliked.map((item) => formatProfileItem(item, true)).join("\n"),
+    );
+  }
+
+  if (profile.backlog.length > 0) {
+    sections.push(
+      "",
+      `BACKLOG (saved, not yet consumed — weaker signal):`,
+      profile.backlog.map((item) => formatProfileItem(item, false)).join("\n"),
+    );
+  }
+
+  if (profile.never.length > 0) {
+    sections.push(
+      "",
+      `NEVER suggest these titles:`,
+      profile.never.map(formatNeverTitle).join("\n"),
+    );
+  }
+
+  sections.push(
+    "",
     `Rules:`,
-    `- Never suggest a title already in the user's list (shown below).`,
-    `- Output identity only: title, ${creatorLabel} (as "creator"), year, a 1–2 sentence spoiler-free description, and one sentence on why it connects to their library.`,
+    `- Never suggest any title from the NEVER list above.`,
+    `- Output identity only: title, ${creatorLabel} (as "creator"), year, a 1–2 sentence spoiler-free description, and one sentence on why it connects to their taste.`,
     `- Do NOT output URLs or links of any kind.`,
     `- Mix well-known and lesser-known titles.`,
-    ``,
-    `User's ${label}:`,
-    formattedItems,
     ``,
     `Respond with ONLY a JSON object of exactly this shape (no other text):`,
     `{"candidates":[{"title":string,"creator":string,"year":number,"description":string,"reason":string}]}`,
     `Return ${RECOMMEND_OVER_REQUEST} candidates in the array.`,
-  ].join("\n");
+  );
+
+  return sections.join("\n");
 }
 
 /**

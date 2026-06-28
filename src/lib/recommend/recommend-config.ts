@@ -22,6 +22,18 @@ export const RECOMMEND_MAX_INPUT_ITEMS = Number.parseInt(
   10,
 );
 
+/** Max LOVED slots in the taste profile (4–5★ verdicts). */
+export const RECOMMEND_LOVED_MAX = 10;
+
+/** Max DISLIKED slots in the taste profile (1–2★ verdicts). */
+export const RECOMMEND_DISLIKED_MAX = 3;
+
+/** Max chars of verdict note included in the prompt. */
+export const RECOMMEND_VERDICT_NOTE_MAX = 200;
+
+/** Cooldown window for shown-but-not-acted outcomes (days). */
+export const RECOMMEND_SHOWN_COOLDOWN_DAYS = 30;
+
 /** Number of candidates requested from the LLM (buffer for dedup/resolve drops). */
 export const RECOMMEND_OVER_REQUEST = 8;
 
@@ -46,32 +58,30 @@ export const RECOMMEND_RATE_LIMIT_PER_DAY = Number.parseInt(
 /**
  * Ordered AI Gateway model fallback for recommendations.
  *
- * Chosen from an A/B benchmark on this exact task (15-book shelf, identity-only
- * output). The latency problem was never the provider — it was *reasoning*: the
- * old primary (gpt-5-mini, default reasoning) spent ~28s and ~1.7k reasoning
- * tokens per call, and every "reasoning" model on the Gateway was slow
- * (DeepSeek 23s, GLM 54s, Qwen 72s, Kimi 178s). The fast tier is the
- * non-reasoning mini/nano/lite models at ~4s.
+ * Chosen from a repeatable benchmark (scripts/bench-recommend.ts, 2026-06-28):
+ * 9 models × 2 trials on a 22-book fixture with the ADR 0002 redesign prompt.
+ * Latency gate: p50 ≤ 15s. Sorted by resolve-rate among survivors.
  *
- * Primary gpt-5-nano (capped to minimal reasoning via RECOMMEND_PROVIDER_OPTIONS)
- * was the cheapest *and* tied-fastest, with the most interesting deep-cut picks.
- * Gemini Flash-Lite and Claude Haiku follow as cross-provider fallbacks so one
- * provider's overload can't take the feature down.
+ * gemini-3.1-flash-lite: primary — fastest (2.7s p50), 73% resolve, best era
+ * diversity. gemini-2.5-flash-lite: highest resolve (88%) when stable, cheap.
+ * claude-haiku-4.5: cross-provider fallback, best pick quality.
+ *
+ * Note: openai/gpt-5-nano (former primary) was absent from the Gateway catalog
+ * on the benchmark date and removed.
  */
 export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
-  "openai/gpt-5-nano",
+  "google/gemini-3.1-flash-lite",
   "google/gemini-2.5-flash-lite",
   "anthropic/claude-haiku-4.5",
 ]);
 
 /**
  * Provider-specific options forwarded to every recommendation model attempt.
- * `reasoningEffort: minimal` disables the multi-second reasoning pass on OpenAI
- * models; the key is ignored for the non-OpenAI fallbacks (which don't reason
- * by default), so the same object is safe across the whole fallback list.
+ * thinkingBudget: 0 disables the thinking pass on Google models (latency gate).
+ * The google key is a no-op for Anthropic fallbacks.
  */
 export const RECOMMEND_PROVIDER_OPTIONS = {
-  openai: { reasoningEffort: "minimal" },
+  google: { thinkingConfig: { thinkingBudget: 0 } },
 };
 
 /** Temperature for recommendations (some variety, but steadier than before). */

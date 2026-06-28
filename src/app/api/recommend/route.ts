@@ -2,23 +2,22 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import type { ItemCategory } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { generateJsonWithFallback } from "@/lib/ai/gateway";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   RECOMMEND_COUNT,
-  RECOMMEND_MAX_INPUT_ITEMS,
   RECOMMEND_MIN_ITEMS,
   RECOMMEND_MODELS,
   RECOMMEND_OVER_REQUEST,
   RECOMMEND_PROVIDER_OPTIONS,
   RECOMMEND_RATE_LIMIT_PER_DAY,
+  RECOMMEND_SHOWN_COOLDOWN_DAYS,
   RECOMMEND_TEMPERATURE,
   RECOMMEND_TIMEOUT_MS,
   isShelfRecommendEnabled,
 } from "@/lib/recommend/recommend-config";
-import { dedupRecommendations } from "@/lib/recommend/dedup";
+import { dedupRecommendations, normalizeTitle } from "@/lib/recommend/dedup";
 import { buildRecommendPrompt } from "@/lib/recommend/recommend-prompt";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
 import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
@@ -28,16 +27,18 @@ import type {
   RecommendResponse,
   ResolvedRecommendation,
 } from "@/lib/recommend/recommend-types";
+import {
+  buildTasteProfile,
+  categoriesForShelf,
+  filterNeverTitles,
+  outcomeCategoryForShelf,
+  type LibraryItemRow,
+  type OutcomeRow,
+} from "@/lib/recommend/taste-profile";
 import { createClient } from "@/lib/supabase/server";
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return Response.json(body, init);
-}
-
-/** Return category filter(s) for a given shelf. */
-function categoriesForShelf(shelfId: "books" | "watch"): ItemCategory[] {
-  if (shelfId === "books") return ["books"];
-  return ["movies_and_tv", "videos"];
 }
 
 /** Build a Google search fallback query. */
@@ -49,14 +50,20 @@ function buildSearchQuery(candidate: LlmCandidate, shelfId: "books" | "watch"): 
   return parts.join(" ");
 }
 
+function isSuppressedOutcome(row: OutcomeRow, cutoffMs: number): boolean {
+  if (row.outcome === "dismissed") return true;
+  if (row.outcome === "shown") {
+    return new Date(row.shown_at).getTime() > cutoffMs;
+  }
+  return false;
+}
+
 export async function POST(req: Request) {
-  // Auth
   const user = await getSessionUserOrNull();
   if (!user) {
     return jsonResponse({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Parse body
   let body: unknown;
   try {
     body = await req.json();
@@ -64,9 +71,17 @@ export async function POST(req: Request) {
     return jsonResponse({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { shelfId, items } = (body ?? {}) as Partial<RecommendRequest>;
+  const parsed = (body ?? {}) as Partial<RecommendRequest> & { items?: unknown };
 
-  // Validate shelfId
+  if ("items" in parsed && parsed.items !== undefined) {
+    return jsonResponse(
+      { error: "items must not be sent; the server builds the taste profile" },
+      { status: 400 },
+    );
+  }
+
+  const { shelfId } = parsed;
+
   if (shelfId !== "books" && shelfId !== "watch") {
     return jsonResponse(
       { error: "shelfId must be 'books' or 'watch'" },
@@ -74,7 +89,6 @@ export async function POST(req: Request) {
     );
   }
 
-  // Gate check (defense-in-depth; button should already be hidden)
   if (!isShelfRecommendEnabled(shelfId)) {
     return jsonResponse(
       { error: "Recommendations not configured" },
@@ -82,27 +96,31 @@ export async function POST(req: Request) {
     );
   }
 
-  // Validate items
-  if (!Array.isArray(items) || items.length === 0) {
-    return jsonResponse(
-      { error: "items must be a non-empty array" },
-      { status: 400 },
-    );
+  const supabase = await createClient();
+  const categories = categoriesForShelf(shelfId);
+  const outcomeCategory = outcomeCategoryForShelf(shelfId);
+
+  const { data: libraryRows, error: libraryError } = await supabase
+    .from("items")
+    .select("title, status, rating_personal, verdict, structured, category")
+    .eq("user_id", user.id)
+    .in("category", categories);
+
+  if (libraryError) {
+    console.error("[api/recommend] library_query_failed:", libraryError.message);
+    return jsonResponse({ error: "Could not load library" }, { status: 500 });
   }
-  if (items.length > RECOMMEND_MAX_INPUT_ITEMS) {
+
+  const libraryItems = (libraryRows ?? []) as LibraryItemRow[];
+  const titledItems = libraryItems.filter((row) => row.title?.trim());
+
+  if (titledItems.length < RECOMMEND_MIN_ITEMS) {
     return jsonResponse(
-      { error: `items must not exceed ${RECOMMEND_MAX_INPUT_ITEMS}` },
-      { status: 400 },
-    );
-  }
-  if (items.length < RECOMMEND_MIN_ITEMS) {
-    return jsonResponse(
-      { error: `At least ${RECOMMEND_MIN_ITEMS} items are required` },
+      { error: `At least ${RECOMMEND_MIN_ITEMS} items are required in this shelf` },
       { status: 400 },
     );
   }
 
-  // B1 rate limit (daily cap per user)
   const rl = await rateLimit(
     `recommend:${user.id}`,
     RECOMMEND_RATE_LIMIT_PER_DAY,
@@ -118,20 +136,30 @@ export async function POST(req: Request) {
     );
   }
 
-  // Load existing titles for dedup (one scoped query)
-  const supabase = await createClient();
-  const categories = categoriesForShelf(shelfId);
-  const { data: existingRows } = await supabase
-    .from("items")
-    .select("title")
-    .eq("user_id", user.id)
-    .in("category", categories);
-  const existingTitles = (existingRows ?? []).map((r) => r.title);
+  const cutoffMs =
+    Date.now() - RECOMMEND_SHOWN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
 
-  // Ask the LLM (via AI Gateway, with model fallback) for identity-only candidates
+  const { data: outcomeRows, error: outcomeError } = await supabase
+    .from("recommendation_outcomes")
+    .select("title_norm, outcome, shown_at")
+    .eq("user_id", user.id)
+    .eq("category", outcomeCategory);
+
+  if (outcomeError) {
+    console.error("[api/recommend] outcomes_query_failed:", outcomeError.message);
+    return jsonResponse({ error: "Could not load recommendation history" }, { status: 500 });
+  }
+
+  const suppressedTitles = ((outcomeRows ?? []) as OutcomeRow[])
+    .filter((row) => isSuppressedOutcome(row, cutoffMs))
+    .map((row) => row.title_norm);
+
+  const tasteProfile = buildTasteProfile(libraryItems, suppressedTitles);
+  const existingTitles = titledItems.map((row) => row.title!);
+
   let candidates: LlmCandidate[];
   try {
-    const prompt = buildRecommendPrompt(shelfId, items);
+    const prompt = buildRecommendPrompt(shelfId, tasteProfile);
     const { data } = await generateJsonWithFallback<{ candidates?: unknown[] }>({
       models: RECOMMEND_MODELS,
       prompt,
@@ -160,9 +188,13 @@ export async function POST(req: Request) {
     );
   }
 
-  // Resolve candidates in parallel
   const isWatch = shelfId === "watch";
   const overRequested = candidates.slice(0, RECOMMEND_OVER_REQUEST);
+
+  type ResolvedCardDraft = ResolvedRecommendation & {
+    external_id: string;
+    title_norm: string;
+  };
 
   const settledResults = await Promise.allSettled(
     overRequested.map(async (candidate) => {
@@ -172,8 +204,6 @@ export async function POST(req: Request) {
 
       if (!resolved) return null;
 
-      // Prefer the resolver's verified author over the LLM's creator, which can
-      // be hallucinated (e.g. "The Gone World" misattributed to Tom DeLonge).
       const subtitle = [
         resolved.verified_author ?? candidate.creator,
         resolved.confirmed_year ?? candidate.year,
@@ -181,8 +211,9 @@ export async function POST(req: Request) {
         .filter(Boolean)
         .join(" · ");
 
-      const card: ResolvedRecommendation = {
+      const card: ResolvedCardDraft = {
         id: randomUUID(),
+        outcome_id: "",
         title: candidate.title,
         subtitle,
         description: candidate.description,
@@ -191,22 +222,50 @@ export async function POST(req: Request) {
         cover_url: resolved.cover_url,
         search_query: buildSearchQuery(candidate, shelfId),
         source: isWatch ? "tmdb" : "open_library",
+        external_id: resolved.external_id,
+        title_norm: normalizeTitle(candidate.title),
       };
       return card;
     }),
   );
 
-  // Collect resolved cards (drop nulls and rejections)
   const resolvedCards = settledResults
     .map((r) => (r.status === "fulfilled" ? r.value : null))
-    .filter((c): c is ResolvedRecommendation => c !== null);
+    .filter((c): c is ResolvedCardDraft => c !== null);
 
-  // Dedup against existing library
-  const dedupedCards = dedupRecommendations(resolvedCards, existingTitles);
+  const dedupedCards = dedupRecommendations(
+    resolvedCards,
+    existingTitles,
+  ) as ResolvedCardDraft[];
+  const filteredCards = filterNeverTitles(dedupedCards, tasteProfile.never);
+  const finalCards = filteredCards.slice(0, RECOMMEND_COUNT);
 
-  // Return up to RECOMMEND_COUNT
-  const finalCards = dedupedCards.slice(0, RECOMMEND_COUNT);
+  const cardsWithOutcomes: ResolvedRecommendation[] = [];
+  for (const card of finalCards) {
+    const { data: inserted, error: insertError } = await supabase
+      .from("recommendation_outcomes")
+      .insert({
+        user_id: user.id,
+        category: outcomeCategory,
+        external_id: card.external_id,
+        title_norm: card.title_norm,
+        outcome: "shown",
+      })
+      .select("id")
+      .single();
 
-  const responseBody: RecommendResponse = { cards: finalCards };
+    if (insertError || !inserted) {
+      console.error("[api/recommend] outcome_insert_failed:", insertError?.message);
+      continue;
+    }
+
+    const { external_id: _e, title_norm: _t, ...responseCard } = card;
+    cardsWithOutcomes.push({
+      ...responseCard,
+      outcome_id: inserted.id,
+    });
+  }
+
+  const responseBody: RecommendResponse = { cards: cardsWithOutcomes };
   return jsonResponse(responseBody, { status: 200 });
 }

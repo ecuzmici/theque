@@ -145,6 +145,42 @@ export type Database = {
         };
         Relationships: [];
       };
+      recommendation_outcomes: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: string;
+          external_id: string | null;
+          title_norm: string;
+          outcome: string;
+          dismiss_reason: string | null;
+          shown_at: string;
+          acted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: string;
+          external_id?: string | null;
+          title_norm: string;
+          outcome: string;
+          dismiss_reason?: string | null;
+          shown_at?: string;
+          acted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: string;
+          external_id?: string | null;
+          title_norm?: string;
+          outcome?: string;
+          dismiss_reason?: string | null;
+          shown_at?: string;
+          acted_at?: string | null;
+        };
+        Relationships: [];
+      };
       capture_tokens: {
         Row: {
           id: string;

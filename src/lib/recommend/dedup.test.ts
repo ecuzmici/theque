@@ -6,6 +6,7 @@ import type { ResolvedRecommendation } from "@/lib/recommend/recommend-types";
 function makeCard(title: string): ResolvedRecommendation {
   return {
     id: `id-${title}`,
+    outcome_id: `outcome-${title}`,
     title,
     subtitle: "Author · 2020",
     description: "A description",

@@ -15,15 +15,10 @@ import {
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const SAMPLE_ITEMS = Array.from({ length: 5 }, (_, i) => ({
-  title: `Book ${i}`,
-  creator: `Author ${i}`,
-  year: 2000 + i,
-}));
-
 const SAMPLE_CARDS = [
   {
     id: "card-1",
+    outcome_id: "outcome-1",
     title: "Piranesi",
     subtitle: "Susanna Clarke · 2020",
     description: "A magical story",
@@ -37,7 +32,7 @@ const SAMPLE_CARDS = [
 
 // Capture state from hook for assertions
 let capturedState: RecommendState = { status: "idle" };
-let capturedFetch: (shelfId: "books" | "watch", items: typeof SAMPLE_ITEMS) => void = () => {};
+let capturedFetch: (shelfId: "books" | "watch") => void = () => {};
 let capturedReset: () => void = () => {};
 
 function TestHarness() {
@@ -95,7 +90,7 @@ describe("useRecommendations", () => {
     expect(capturedState.status).toBe("idle");
 
     await act(async () => {
-      capturedFetch("books", SAMPLE_ITEMS);
+      capturedFetch("books");
     });
 
     // Should be done after the await
@@ -118,7 +113,7 @@ describe("useRecommendations", () => {
     setup();
 
     await act(async () => {
-      capturedFetch("books", SAMPLE_ITEMS);
+      capturedFetch("books");
     });
 
     expect(capturedState.status).toBe("error");
@@ -136,7 +131,7 @@ describe("useRecommendations", () => {
     setup();
 
     await act(async () => {
-      capturedFetch("books", SAMPLE_ITEMS);
+      capturedFetch("books");
     });
 
     expect(capturedState.status).toBe("error");
@@ -157,7 +152,7 @@ describe("useRecommendations", () => {
     setup();
 
     await act(async () => {
-      capturedFetch("books", SAMPLE_ITEMS);
+      capturedFetch("books");
     });
 
     expect(capturedState.status).toBe("done");

@@ -7,98 +7,125 @@ import {
   buildRecommendPrompt,
   RECOMMEND_RESPONSE_SCHEMA,
 } from "@/lib/recommend/recommend-prompt";
-import type { RecommendInputItem } from "@/lib/recommend/recommend-types";
+import type { TasteProfile } from "@/lib/recommend/recommend-types";
 
-const sampleBooks: RecommendInputItem[] = [
-  { title: "Piranesi", creator: "Susanna Clarke", year: 2020 },
-  { title: "The Name of the Wind", creator: "Patrick Rothfuss", year: 2007 },
-  { title: "Jonathan Strange & Mr Norrell", creator: "Susanna Clarke", year: 2004 },
-];
+const lovedProfile: TasteProfile = {
+  loved: [
+    {
+      title: "Piranesi",
+      creator: "Susanna Clarke",
+      year: 2020,
+      verdictNote: "beautifully strange, unlike anything",
+    },
+  ],
+  disliked: [
+    {
+      title: "Wanderers",
+      creator: "Chuck Wendig",
+      year: 2019,
+      verdictNote: "too slow, I gave up",
+    },
+  ],
+  backlog: [
+    { title: "Hyperion", creator: "Dan Simmons", year: 1989 },
+    { title: "Seveneves", creator: "Neal Stephenson", year: null },
+  ],
+  never: ["A Drop of Corruption", "Recently Shown Pick"],
+};
 
 describe("buildRecommendPrompt", () => {
   describe("books shelf", () => {
-    it("includes the shelf label 'books'", () => {
-      const prompt = buildRecommendPrompt("books", sampleBooks);
-      expect(prompt).toContain("books");
+    it("includes LOVED section with verdict note", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile);
+      expect(prompt).toContain("LOVED (rated 4–5★):");
+      expect(prompt).toContain(
+        '- "Piranesi" by Susanna Clarke (2020) — "beautifully strange, unlike anything"',
+      );
     });
 
-    it("formats items correctly", () => {
-      const prompt = buildRecommendPrompt("books", sampleBooks);
-      expect(prompt).toContain('"Piranesi" by Susanna Clarke (2020)');
-      expect(prompt).toContain('"The Name of the Wind" by Patrick Rothfuss (2007)');
+    it("includes DISLIKED section with verdict note", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile);
+      expect(prompt).toContain("DISLIKED (rated 1–2★)");
+      expect(prompt).toContain('- "Wanderers" by Chuck Wendig (2019) — "too slow, I gave up"');
+    });
+
+    it("includes BACKLOG section without verdict notes", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile);
+      expect(prompt).toContain("BACKLOG (saved, not yet consumed");
+      expect(prompt).toContain('- "Hyperion" by Dan Simmons (1989)');
+      expect(prompt).not.toContain("Seveneves" + ' — "');
+    });
+
+    it("includes NEVER section", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile);
+      expect(prompt).toContain("NEVER suggest these titles:");
+      expect(prompt).toContain('- "A Drop of Corruption"');
+      expect(prompt).toContain('- "Recently Shown Pick"');
     });
 
     it("instructs to output author as creator", () => {
-      const prompt = buildRecommendPrompt("books", sampleBooks);
+      const prompt = buildRecommendPrompt("books", lovedProfile);
       expect(prompt).toContain("author");
       expect(prompt).toContain("creator");
     });
 
     it("explicitly forbids URLs", () => {
-      const prompt = buildRecommendPrompt("books", sampleBooks);
+      const prompt = buildRecommendPrompt("books", lovedProfile);
       expect(prompt).toContain("Do NOT output URLs");
-    });
-
-    it("asks for identity only", () => {
-      const prompt = buildRecommendPrompt("books", sampleBooks);
-      expect(prompt).toContain("identity only");
     });
   });
 
   describe("watch shelf", () => {
     it("includes the shelf label 'movies and TV shows'", () => {
-      const prompt = buildRecommendPrompt("watch", [
-        { title: "Inception", creator: "Christopher Nolan", year: 2010 },
-        { title: "The Godfather", creator: "Francis Ford Coppola", year: 1972 },
-        { title: "Parasite", creator: "Bong Joon-ho", year: 2019 },
-      ]);
+      const prompt = buildRecommendPrompt("watch", {
+        loved: [{ title: "Inception", creator: "Christopher Nolan", year: 2010 }],
+        disliked: [],
+        backlog: [],
+        never: [],
+      });
       expect(prompt).toContain("movies and TV shows");
     });
 
     it("instructs to output director as creator", () => {
-      const prompt = buildRecommendPrompt("watch", [
-        { title: "Inception", creator: "Christopher Nolan", year: 2010 },
-        { title: "The Godfather", creator: "Francis Ford Coppola", year: 1972 },
-        { title: "Parasite", creator: "Bong Joon-ho", year: 2019 },
-      ]);
+      const prompt = buildRecommendPrompt("watch", {
+        loved: [{ title: "Inception", creator: "Christopher Nolan", year: 2010 }],
+        disliked: [],
+        backlog: [],
+        never: [],
+      });
       expect(prompt).toContain("director");
     });
   });
 
-  describe("item handling", () => {
-    it("handles missing creator gracefully", () => {
-      const items: RecommendInputItem[] = [
-        { title: "Unknown Author Book", creator: null, year: 2020 },
-        { title: "Another Book", creator: "Some Author", year: 2021 },
-        { title: "Third Book", creator: null, year: 2019 },
-      ];
-      const prompt = buildRecommendPrompt("books", items);
-      expect(prompt).toContain('"Unknown Author Book"');
-      // Should not include "by null"
-      expect(prompt).not.toContain("by null");
+  describe("all-backlog fallback", () => {
+    it("omits LOVED/DISLIKED sections when there are zero verdicts", () => {
+      const profile: TasteProfile = {
+        loved: [],
+        disliked: [],
+        backlog: [
+          { title: "Book A", creator: "Author A", year: 2020 },
+          { title: "Book B", creator: "Author B", year: 2021 },
+        ],
+        never: ["Book A", "Book B"],
+      };
+      const prompt = buildRecommendPrompt("books", profile);
+      expect(prompt).not.toContain("LOVED (rated 4–5★):");
+      expect(prompt).not.toContain("DISLIKED (rated 1–2★)");
+      expect(prompt).toContain("BACKLOG");
     });
+  });
 
-    it("handles missing year gracefully", () => {
-      const items: RecommendInputItem[] = [
-        { title: "No Year Book", creator: "Some Author", year: null },
-        { title: "Another Book", creator: "Author Two", year: 2021 },
-        { title: "Third Book", creator: "Author Three", year: null },
-      ];
-      const prompt = buildRecommendPrompt("books", items);
-      expect(prompt).toContain('"No Year Book" by Some Author');
-      // Should not include "(null)"
-      expect(prompt).not.toContain("(null)");
-    });
-
-    it("caps items at RECOMMEND_MAX_INPUT_ITEMS", () => {
-      const manyItems: RecommendInputItem[] = Array.from({ length: 25 }, (_, i) => ({
-        title: `Book ${i}`,
-        creator: `Author ${i}`,
-        year: 2000 + i,
-      }));
-      const prompt = buildRecommendPrompt("books", manyItems);
-      // Should not contain Book 20 (index 20, which is item 21)
-      expect(prompt).not.toContain('"Book 20"');
+  describe("verdict note truncation", () => {
+    it("includes truncated verdict notes at ~200 chars", () => {
+      const longNote = "a".repeat(250);
+      const prompt = buildRecommendPrompt("books", {
+        loved: [{ title: "Rated Book", creator: "Author", year: 2020, verdictNote: longNote }],
+        disliked: [],
+        backlog: [],
+        never: [],
+      });
+      expect(prompt).toContain(`"${"a".repeat(199)}…"`);
+      expect(prompt).not.toContain(`"${"a".repeat(250)}"`);
     });
   });
 
