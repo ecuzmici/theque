@@ -256,18 +256,20 @@ describe("extension popup", () => {
     const values = Array.from(select.options).map((o) => o.value);
     // First option is always "Auto detect" (empty value)
     expect(values[0]).toBe("");
-    // All category hints are present
+    // Surviving category hints are present
     expect(values).toContain("books");
-    expect(values).toContain("music");
-    expect(values).toContain("videos");
-    expect(values).toContain("apps");
-    // gifts was removed in Workstream A — must not appear
+    expect(values).toContain("movies_and_tv");
+    expect(values).toContain("articles");
+    // gifts (Workstream A) and the retired music/videos/apps (ADR 0004) must not appear
     expect(values).not.toContain("gifts");
+    expect(values).not.toContain("music");
+    expect(values).not.toContain("videos");
+    expect(values).not.toContain("apps");
     // Labels match shelf names
     const watchOption = Array.from(select.options).find((o) => o.value === "movies_and_tv");
     expect(watchOption?.textContent).toBe("Watch");
-    const listenOption = Array.from(select.options).find((o) => o.value === "music");
-    expect(listenOption?.textContent).toBe("Listen");
+    const readOption = Array.from(select.options).find((o) => o.value === "articles");
+    expect(readOption?.textContent).toBe("Read");
   });
 
   it("shows saving state while capture fetch is pending, then restores label and aria", async () => {

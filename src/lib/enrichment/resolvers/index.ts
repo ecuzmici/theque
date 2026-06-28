@@ -3,8 +3,6 @@ import "server-only";
 import type { ItemCategory } from "@/lib/database.types";
 import type { CategoryResolver, ResolverInput, ResolverPatch } from "@/lib/enrichment/resolvers/types";
 import { resolveBooks } from "@/lib/enrichment/resolvers/google-books";
-import { resolveApp } from "@/lib/enrichment/resolvers/github";
-import { resolveMusic } from "@/lib/enrichment/resolvers/itunes";
 import { resolveMovie } from "@/lib/enrichment/resolvers/tmdb";
 import { resolveVideo } from "@/lib/enrichment/resolvers/youtube-oembed";
 
@@ -12,13 +10,12 @@ import { resolveVideo } from "@/lib/enrichment/resolvers/youtube-oembed";
  * Resolvers per category, tried in array order. Categories without a free
  * deterministic source (restaurants, travel, recipes, articles, products) are
  * intentionally absent — covered by deterministic parsing or phase-2 grounding.
+ * YouTube oEmbed is tried first under movies_and_tv so retargeted video
+ * captures enrich (title/channel/thumbnail) before the TMDB title search.
  */
 export const resolversByCategory: Partial<Record<ItemCategory, CategoryResolver[]>> = {
-  movies_and_tv: [resolveMovie],
+  movies_and_tv: [resolveVideo, resolveMovie],
   books: [resolveBooks],
-  music: [resolveMusic],
-  videos: [resolveVideo],
-  apps: [resolveApp],
 };
 
 /** Run resolvers in order; return the first non-null patch. Defensive against throws. */

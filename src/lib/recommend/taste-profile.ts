@@ -49,7 +49,7 @@ function extractCreatorAndYear(
       year: typeof py === "number" && Number.isFinite(py) ? py : null,
     };
   }
-  if (category === "movies_and_tv" || category === "videos") {
+  if (category === "movies_and_tv") {
     const directors = structured.directors as string[] | undefined;
     const year = structured.year as number | undefined;
     return {
@@ -83,7 +83,7 @@ export function outcomeCategoryForShelf(shelfId: RecommendShelfId): "books" | "m
 /** Return category filter(s) for a given shelf. */
 export function categoriesForShelf(shelfId: RecommendShelfId): ItemCategory[] {
   if (shelfId === "books") return ["books"];
-  return ["movies_and_tv", "videos"];
+  return ["movies_and_tv"];
 }
 
 /**

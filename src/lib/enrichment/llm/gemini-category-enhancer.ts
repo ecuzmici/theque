@@ -60,9 +60,6 @@ const itemCategoryValues: ItemCategory[] = [
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ];
 
 export function buildGeminiResponseJsonSchema(

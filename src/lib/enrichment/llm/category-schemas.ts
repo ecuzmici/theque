@@ -47,9 +47,6 @@ const allowedStructuredFields: Record<ItemCategory, Set<string>> = {
   travel: new Set(["destination", "travel_dates", "lodging_name"]),
   recipes: new Set(["author", "prep_time_minutes", "cook_time_minutes", "yield", "ingredients"]),
   articles: new Set(["author", "published_at", "reading_time_minutes", "publisher"]),
-  music: new Set(["artist", "album", "release_year", "genre", "track_count"]),
-  videos: new Set(["channel", "duration_seconds", "published_at"]),
-  apps: new Set(["developer", "platform", "version", "category_tag"]),
 };
 
 type JsonSchemaFragment = Record<string, unknown>;
@@ -115,24 +112,6 @@ const structuredFieldJsonSchemas: Record<ItemCategory, Record<string, JsonSchema
     reading_time_minutes: integerSchema,
     publisher: stringSchema,
   },
-  music: {
-    artist: stringSchema,
-    album: stringSchema,
-    release_year: integerSchema,
-    genre: stringSchema,
-    track_count: integerSchema,
-  },
-  videos: {
-    channel: stringSchema,
-    duration_seconds: integerSchema,
-    published_at: stringSchema,
-  },
-  apps: {
-    developer: stringSchema,
-    platform: stringSchema,
-    version: stringSchema,
-    category_tag: stringSchema,
-  },
 };
 
 /**
@@ -166,9 +145,6 @@ const allowedCategories = new Set<ItemCategory>([
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ]);
 
 type FieldValidator = (value: unknown) => boolean;
@@ -252,24 +228,6 @@ const fieldValidators: Record<ItemCategory, Record<string, FieldValidator>> = {
     published_at: isNonEmptyString,
     reading_time_minutes: isPositiveInteger,
     publisher: isNonEmptyString,
-  },
-  music: {
-    artist: isNonEmptyString,
-    album: isNonEmptyString,
-    release_year: isYear,
-    genre: isNonEmptyString,
-    track_count: isPositiveInteger,
-  },
-  videos: {
-    channel: isNonEmptyString,
-    duration_seconds: isPositiveInteger,
-    published_at: isNonEmptyString,
-  },
-  apps: {
-    developer: isNonEmptyString,
-    platform: isNonEmptyString,
-    version: isNonEmptyString,
-    category_tag: isNonEmptyString,
   },
 };
 

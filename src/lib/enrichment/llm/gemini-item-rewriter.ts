@@ -39,9 +39,6 @@ const itemCategoryValues: ItemCategory[] = [
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ];
 
 export function buildGeminiItemRewriteResponseJsonSchema(currentCategory?: ItemCategory | null) {

@@ -28,12 +28,6 @@ const categorySchemaDescriptions: Record<ItemCategory, string> = {
     "recipes → author: string, prep_time_minutes: positive integer, cook_time_minutes: positive integer, yield: string, ingredients: string[]",
   articles:
     "articles → author: string, published_at: string (ISO 8601), reading_time_minutes: positive integer, publisher: string",
-  music:
-    "music → artist: string, album: string, release_year: integer (1000–3000), genre: string, track_count: positive integer",
-  videos:
-    "videos → channel: string, duration_seconds: positive integer, published_at: string (ISO 8601)",
-  apps:
-    "apps → developer: string, platform: string, version: string, category_tag: string",
 };
 
 function formatCategorySchema(category: ItemCategory): string {
@@ -56,12 +50,6 @@ const categoryMeanings: Record<ItemCategory, string> = {
     "a specific recipe with ingredients/instructions (recipe blogs, schema.org Recipe)",
   articles:
     "news, blog post, essay, magazine article — this is the DEFAULT fallback",
-  music:
-    "a music track, album, artist, or podcast (Spotify, Apple Music, Bandcamp, SoundCloud)",
-  videos:
-    "a video, channel, or playlist (YouTube, Vimeo, and other video platforms)",
-  apps:
-    "a software app, tool, library, or developer resource (GitHub, Product Hunt, app stores)",
 };
 
 // ── Valid source labels ─────────────────────────────────────────
@@ -87,9 +75,6 @@ const allCategories: ItemCategory[] = [
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ];
 
 // ── Prompt builder ──────────────────────────────────────────────

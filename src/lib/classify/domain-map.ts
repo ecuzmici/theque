@@ -18,20 +18,20 @@ const AUTHORITATIVE: Array<{ suffix: string; category: ItemCategory }> = [
   { suffix: "airbnb.com", category: "travel" },
   { suffix: "booking.com", category: "travel" },
   { suffix: "lonelyplanet.com", category: "travel" },
-  { suffix: "spotify.com", category: "music" },
-  { suffix: "music.apple.com", category: "music" },
-  { suffix: "bandcamp.com", category: "music" },
-  { suffix: "soundcloud.com", category: "music" },
-  { suffix: "github.com", category: "apps" },
-  { suffix: "producthunt.com", category: "apps" },
+  { suffix: "spotify.com", category: "articles" },
+  { suffix: "music.apple.com", category: "articles" },
+  { suffix: "bandcamp.com", category: "articles" },
+  { suffix: "soundcloud.com", category: "articles" },
+  { suffix: "github.com", category: "products" },
+  { suffix: "producthunt.com", category: "products" },
 ];
 
 // Ambiguous domains: weaker signal (0.55), checked after schema.org.
 // amazon.* could be products, books, or media; yelp/tripadvisor pages vary.
 // youtube is a general video platform, not necessarily a film.
 const AMBIGUOUS: Array<{ suffix: string; category: ItemCategory }> = [
-  { suffix: "youtube.com", category: "videos" },
-  { suffix: "youtu.be", category: "videos" },
+  { suffix: "youtube.com", category: "movies_and_tv" },
+  { suffix: "youtu.be", category: "movies_and_tv" },
   { suffix: "amazon.com", category: "products" },
   { suffix: "amazon.co.uk", category: "products" },
   { suffix: "amazon.de", category: "products" },

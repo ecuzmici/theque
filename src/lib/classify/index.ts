@@ -35,7 +35,7 @@ function classifyFromJsonLd(jsonLdRoots: unknown[]): Pick<
     {
       match: (types) =>
         types.some((t) => t === "MusicRecording" || t === "MusicAlbum" || t === "MusicGroup" || t === "Podcast"),
-      category: "music",
+      category: "articles",
     },
     { match: (types) => types.includes("Book"), category: "books" },
     { match: (types) => types.includes("Recipe"), category: "recipes" },
@@ -44,7 +44,7 @@ function classifyFromJsonLd(jsonLdRoots: unknown[]): Pick<
         types.some((t) => t === "Restaurant" || t === "FoodEstablishment" || t === "LocalBusiness"),
       category: "restaurants",
     },
-    { match: (types) => types.includes("SoftwareApplication"), category: "apps" },
+    { match: (types) => types.includes("SoftwareApplication"), category: "products" },
     { match: (types) => types.includes("Product"), category: "products" },
     {
       match: (types) =>

@@ -126,9 +126,6 @@ const itemCategoryValues: ItemCategory[] = [
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ];
 
 const zeroScore: ResponseScore = {

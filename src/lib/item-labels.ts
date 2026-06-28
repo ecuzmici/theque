@@ -21,9 +21,6 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   travel: "Travel",
   recipes: "Recipes",
   articles: "Articles",
-  music: "Music & Audio",
-  videos: "Videos",
-  apps: "Apps & Tools",
 };
 
 export const CATEGORY_SOURCE_LABELS: Record<CategorySource, string> = {
@@ -103,9 +100,6 @@ export const DONE_VERBS: Record<ItemCategory, string> = {
   travel: "visited",
   recipes: "cooked",
   articles: "read",
-  music: "listened",
-  videos: "watched",
-  apps: "tried",
 };
 
 export function doneVerb(category: ItemCategory | null): string {

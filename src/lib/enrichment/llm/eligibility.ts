@@ -40,9 +40,6 @@ const importantFieldsByCategory: Record<ItemCategory, string[]> = {
   travel: ["destination", "lodging_name"],
   recipes: ["author", "ingredients"],
   articles: ["author", "publisher", "published_at"],
-  music: ["artist", "album"],
-  videos: ["channel"],
-  apps: ["developer"],
 };
 
 function hasUsefulValue(value: unknown): boolean {

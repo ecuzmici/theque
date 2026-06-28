@@ -10,14 +10,11 @@
 export const CATEGORY_HINT_OPTIONS = [
   { value: "books", label: "Books" },
   { value: "movies_and_tv", label: "Watch" },
-  { value: "videos", label: "Videos" },
-  { value: "music", label: "Listen" },
   { value: "restaurants", label: "Eat" },
   { value: "products", label: "Shop" },
   { value: "travel", label: "Travel" },
   { value: "articles", label: "Read" },
   { value: "recipes", label: "Cook" },
-  { value: "apps", label: "Tools" },
 ] as const;
 
 export type CategoryHintValue = (typeof CATEGORY_HINT_OPTIONS)[number]["value"];

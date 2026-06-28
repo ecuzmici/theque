@@ -13,10 +13,7 @@ export type ItemCategory =
   | "products"
   | "travel"
   | "recipes"
-  | "articles"
-  | "music"
-  | "videos"
-  | "apps";
+  | "articles";
 
 export type ItemStatus =
   | "inbox"

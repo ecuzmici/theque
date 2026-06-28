@@ -17,9 +17,6 @@ const CATEGORIES = new Set<ItemCategory>([
   "travel",
   "recipes",
   "articles",
-  "music",
-  "videos",
-  "apps",
 ]);
 
 const BLOCKED_JSON_KEYS = new Set(["__proto__", "constructor", "prototype"]);

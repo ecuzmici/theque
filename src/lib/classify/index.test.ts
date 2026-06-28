@@ -113,7 +113,7 @@ describe("classify", () => {
       pathname: "/watch?v=abc",
       jsonLd: [],
     });
-    expect(r.category).toBe("videos");
+    expect(r.category).toBe("movies_and_tv");
     expect(r.category_confidence).toBe(0.55);
     expect(r.category_source).toBe("domain");
   });
@@ -127,44 +127,102 @@ describe("classify", () => {
     expect(r.category).toBeNull();
   });
 
-  // A3: new categories
-  it("spotify maps to music (authoritative)", () => {
+  // Retired categories re-home to a surviving category (ADR 0004)
+  it("spotify re-homes to articles (authoritative)", () => {
     const r = classify({
       domain: "open.spotify.com",
       pathname: "/album/abc",
       jsonLd: [],
     });
-    expect(r.category).toBe("music");
+    expect(r.category).toBe("articles");
     expect(r.category_confidence).toBe(0.95);
   });
 
-  it("github maps to apps (authoritative)", () => {
+  it("apple music re-homes to articles (authoritative)", () => {
+    const r = classify({
+      domain: "music.apple.com",
+      pathname: "/us/album/abc",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("articles");
+  });
+
+  it("github re-homes to products (authoritative)", () => {
     const r = classify({
       domain: "github.com",
       pathname: "/owner/repo",
       jsonLd: [],
     });
-    expect(r.category).toBe("apps");
+    expect(r.category).toBe("products");
     expect(r.category_confidence).toBe(0.95);
   });
 
-  it("schema.org MusicAlbum maps to music", () => {
+  it("producthunt re-homes to products (authoritative)", () => {
+    const r = classify({
+      domain: "producthunt.com",
+      pathname: "/posts/thing",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("products");
+  });
+
+  it("schema.org MusicAlbum re-homes to articles", () => {
     const r = classify({
       domain: "example.org",
       pathname: "/album",
       jsonLd: [{ "@type": "MusicAlbum", name: "Test" }],
     });
-    expect(r.category).toBe("music");
+    expect(r.category).toBe("articles");
     expect(r.category_source).toBe("schema_org");
   });
 
-  it("schema.org SoftwareApplication maps to apps", () => {
+  it("schema.org MusicRecording re-homes to articles", () => {
+    const r = classify({
+      domain: "example.org",
+      pathname: "/track",
+      jsonLd: [{ "@type": "MusicRecording", name: "Test" }],
+    });
+    expect(r.category).toBe("articles");
+  });
+
+  it("schema.org Podcast re-homes to articles", () => {
+    const r = classify({
+      domain: "example.org",
+      pathname: "/podcast",
+      jsonLd: [{ "@type": "Podcast", name: "Test" }],
+    });
+    expect(r.category).toBe("articles");
+  });
+
+  it("schema.org SoftwareApplication re-homes to products", () => {
     const r = classify({
       domain: "example.org",
       pathname: "/app",
       jsonLd: [{ "@type": "SoftwareApplication", name: "Test" }],
     });
-    expect(r.category).toBe("apps");
+    expect(r.category).toBe("products");
     expect(r.category_source).toBe("schema_org");
+  });
+
+  it("never returns a retired category (music/apps/videos) for any signal", () => {
+    const retired = ["music", "apps", "videos"];
+    const inputs = [
+      { domain: "youtube.com", pathname: "/watch?v=abc", jsonLd: [] },
+      { domain: "youtu.be", pathname: "/abc", jsonLd: [] },
+      { domain: "open.spotify.com", pathname: "/album/abc", jsonLd: [] },
+      { domain: "music.apple.com", pathname: "/us/album/abc", jsonLd: [] },
+      { domain: "bandcamp.com", pathname: "/album/abc", jsonLd: [] },
+      { domain: "soundcloud.com", pathname: "/artist/track", jsonLd: [] },
+      { domain: "github.com", pathname: "/owner/repo", jsonLd: [] },
+      { domain: "producthunt.com", pathname: "/posts/thing", jsonLd: [] },
+      { domain: "example.org", pathname: "/x", jsonLd: [{ "@type": "MusicRecording", name: "T" }] },
+      { domain: "example.org", pathname: "/x", jsonLd: [{ "@type": "MusicGroup", name: "T" }] },
+      { domain: "example.org", pathname: "/x", jsonLd: [{ "@type": "Podcast", name: "T" }] },
+      { domain: "example.org", pathname: "/x", jsonLd: [{ "@type": "SoftwareApplication", name: "T" }] },
+    ];
+    for (const input of inputs) {
+      const r = classify(input);
+      expect(retired).not.toContain(r.category);
+    }
   });
 });

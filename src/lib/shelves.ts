@@ -4,13 +4,11 @@ export type ShelfId =
   | "all"
   | "books"
   | "watch"
-  | "listen"
   | "eat"
   | "shop"
   | "travel"
   | "read"
   | "cook"
-  | "tools"
   | "done"
   | "forgotten"
   | "inbox";
@@ -44,9 +42,8 @@ export const SHELVES: ShelfDefinition[] = [
   {
     id: "watch",
     label: "Watch",
-    filter: { category: ["movies_and_tv", "videos"], excludeDismissed: true, excludeDone: true },
+    filter: { category: "movies_and_tv", excludeDismissed: true, excludeDone: true },
   },
-  { id: "listen", label: "Listen", filter: { category: "music", excludeDismissed: true, excludeDone: true } },
   { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true, excludeDone: true } },
   { id: "shop", label: "Shop", filter: { category: "products", excludeDismissed: true, excludeDone: true } },
   { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true, excludeDone: true } },
@@ -56,7 +53,6 @@ export const SHELVES: ShelfDefinition[] = [
     filter: { category: "articles", excludeDismissed: true, excludeInbox: true, excludeDone: true },
   },
   { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true, excludeDone: true } },
-  { id: "tools", label: "Tools", filter: { category: "apps", excludeDismissed: true, excludeDone: true } },
   { id: "done", label: "Done", filter: { status: "done" } },
   {
     id: "forgotten",

@@ -3,14 +3,11 @@ import type { ItemCategory, Json } from "@/lib/database.types";
 export const EXTENSION_CATEGORY_HINTS = [
   "books",
   "movies_and_tv",
-  "videos",
-  "music",
   "restaurants",
   "products",
   "travel",
   "articles",
   "recipes",
-  "apps",
 ] as const satisfies readonly ItemCategory[];
 
 export type ExtensionCategoryHint = (typeof EXTENSION_CATEGORY_HINTS)[number];

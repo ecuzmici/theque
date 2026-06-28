@@ -25,14 +25,11 @@ export function getDisplayImageUrl(
 const DEFAULT_ASPECT_BY_CATEGORY: Record<ItemCategory, string> = {
   books: "2/3",
   movies_and_tv: "2/3",
-  videos: "16/9",
-  music: "1/1",
   restaurants: "16/9",
   products: "1/1",
   travel: "16/9",
   recipes: "16/9",
   articles: "16/9",
-  apps: "1/1",
 };
 
 export function defaultCardAspectForCategory(category: ItemCategory): string {
