@@ -3,21 +3,28 @@
 import { useMemo, useState } from "react";
 import { SparklesIcon } from "lucide-react";
 
-import { RecommendDrawer } from "@/components/recommend/RecommendDrawer";
+import { RecommendDeck } from "@/components/recommend/RecommendDeck";
 import { useRecommendations } from "@/components/recommend/useRecommendations";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { RECOMMEND_MIN_ITEMS } from "@/lib/recommend/recommend-config";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 type RecommendButtonProps = {
   shelfId: RecommendShelfId;
-  /** Library items currently loaded for this shelf. */
+  /** Library items currently loaded for this shelf (used only for enablement). */
   shelfItems: LibraryItemRow[];
 };
 
 export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [deckOpen, setDeckOpen] = useState(false);
   const { state, fetch, reset } = useRecommendations();
 
   const titledCount = useMemo(
@@ -29,7 +36,7 @@ export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
 
   function handleClick() {
     if (!enabled) return;
-    setDrawerOpen(true);
+    setDeckOpen(true);
     if (state.status === "idle" || state.status === "error") {
       void fetch(shelfId);
     }
@@ -40,7 +47,7 @@ export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
   }
 
   function handleOpenChange(open: boolean) {
-    setDrawerOpen(open);
+    setDeckOpen(open);
     if (!open) reset();
   }
 
@@ -63,13 +70,19 @@ export function RecommendButton({ shelfId, shelfItems }: RecommendButtonProps) {
         Recommend
       </Button>
 
-      <RecommendDrawer
-        open={drawerOpen}
-        onOpenChange={handleOpenChange}
-        shelfId={shelfId}
-        state={state}
-        onRetry={handleRetry}
-      />
+      <Sheet open={deckOpen} onOpenChange={handleOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="flex h-[min(100dvh,100%)] max-h-[100dvh] flex-col gap-0 rounded-t-2xl p-0 sm:mx-auto sm:max-w-lg"
+          showCloseButton
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Recommendations</SheetTitle>
+            <SheetDescription>AI-generated picks for your shelf</SheetDescription>
+          </SheetHeader>
+          <RecommendDeck shelfId={shelfId} state={state} onRetry={handleRetry} />
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

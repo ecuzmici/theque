@@ -224,6 +224,10 @@ export async function POST(req: Request) {
         source: isWatch ? "tmdb" : "open_library",
         external_id: resolved.external_id,
         title_norm: normalizeTitle(candidate.title),
+        source_rating: resolved.source_rating ?? null,
+        rating_count: resolved.rating_count ?? null,
+        length: resolved.length ?? null,
+        genres: resolved.genres,
       };
       return card;
     }),

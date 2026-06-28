@@ -20,6 +20,10 @@ export type ResolvedMovie = {
    * so the displayed creator falls back to the LLM candidate. Present for a
    * uniform shape with ResolvedBook. */
   verified_author: string | null;
+  source_rating?: number | null;
+  rating_count?: string | null;
+  length?: string | null;
+  genres?: string[];
 };
 
 type TmdbResult = {
@@ -30,6 +34,8 @@ type TmdbResult = {
   release_date?: string;  // movie: YYYY-MM-DD
   first_air_date?: string; // tv: YYYY-MM-DD
   poster_path?: string | null;
+  vote_average?: number;
+  vote_count?: number;
 };
 
 type TmdbSearchResponse = {
@@ -94,11 +100,19 @@ export async function resolveMovieWithTmdb(
   const yearStr = best.release_date ?? best.first_air_date ?? null;
   const confirmedYear = yearStr ? Number.parseInt(yearStr.slice(0, 4), 10) : null;
 
+  const voteAverage = best.vote_average;
+  const sourceRating =
+    voteAverage !== undefined ? Math.round((voteAverage / 2) * 10) / 10 : null;
+
   return {
     canonical_url: `https://www.themoviedb.org/${best.media_type}/${best.id}`,
     cover_url: best.poster_path ? `${TMDB_IMAGE_BASE}${best.poster_path}` : null,
     confirmed_year: Number.isFinite(confirmedYear) ? (confirmedYear as number) : null,
     external_id: String(best.id),
     verified_author: null,
+    source_rating: sourceRating,
+    rating_count:
+      best.vote_count !== undefined ? String(best.vote_count) : null,
+    length: best.media_type === "tv" ? "TV series" : "Film",
   };
 }

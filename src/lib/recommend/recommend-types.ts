@@ -45,6 +45,13 @@ export type ResolvedRecommendation = {
   cover_url: string | null;
   search_query: string;
   source: "open_library" | "tmdb";
+  /** Source rating (e.g. Open Library / TMDB), 0–10 scale normalized to 0–5 for display. */
+  source_rating?: number | null;
+  /** Human-readable rating count (e.g. "1.1M"). */
+  rating_count?: string | null;
+  /** Human-readable length (e.g. "245 pages", "Film"). */
+  length?: string | null;
+  genres?: string[];
 };
 
 /** POST /api/recommend request body. */

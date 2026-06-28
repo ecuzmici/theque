@@ -23,6 +23,10 @@ export type ResolvedBook = {
    * author instead of the LLM's (which can be hallucinated). Null when the
    * matched doc has no author_name. */
   verified_author: string | null;
+  source_rating?: number | null;
+  rating_count?: string | null;
+  length?: string | null;
+  genres?: string[];
 };
 
 type OpenLibraryDoc = {
@@ -31,6 +35,10 @@ type OpenLibraryDoc = {
   author_name?: string[];
   first_publish_year?: number;
   cover_i?: number;
+  ratings_average?: number;
+  ratings_count?: number;
+  number_of_pages_median?: number;
+  subject?: string[];
 };
 
 type OpenLibrarySearchResponse = {
@@ -93,11 +101,20 @@ function authorsOverlap(candidateCreator: string, docAuthors: string[]): boolean
   return false;
 }
 
+function formatRatingCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (count >= 1_000) return `${Math.round(count / 1_000)}k`;
+  return String(count);
+}
+
 /**
  * Build a resolved book from an Open Library doc.
  */
 function toResolvedBook(doc: OpenLibraryDoc): ResolvedBook {
   const workId = doc.key.replace(/^\/works\//, "");
+  const genres = (doc.subject ?? [])
+    .filter((s) => !s.startsWith("place:") && !s.startsWith("time:"))
+    .slice(0, 3);
   return {
     canonical_url: `https://openlibrary.org${doc.key}`,
     cover_url: doc.cover_i
@@ -106,6 +123,13 @@ function toResolvedBook(doc: OpenLibraryDoc): ResolvedBook {
     confirmed_year: doc.first_publish_year ?? null,
     external_id: workId,
     verified_author: doc.author_name?.length ? doc.author_name.join(", ") : null,
+    source_rating: doc.ratings_average ?? null,
+    rating_count:
+      doc.ratings_count !== undefined ? formatRatingCount(doc.ratings_count) : null,
+    length: doc.number_of_pages_median
+      ? `${doc.number_of_pages_median} pages`
+      : null,
+    genres: genres.length > 0 ? genres : undefined,
   };
 }
 
@@ -128,7 +152,8 @@ export async function resolveBookWithOpenLibrary(
     // foreign-language edition of the same work.
     language: "eng",
     limit: "5",
-    fields: "key,title,author_name,first_publish_year,cover_i",
+    fields:
+      "key,title,author_name,first_publish_year,cover_i,ratings_average,ratings_count,number_of_pages_median,subject",
   });
   if (candidate.creator) {
     params.set("author", candidate.creator);
