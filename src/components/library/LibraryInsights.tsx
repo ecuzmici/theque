@@ -13,7 +13,7 @@ type InsightCounts = {
 };
 
 // Shelves to show per-shelf counts for (skip "all" and "inbox" since those are separate)
-const INSIGHT_SHELVES: ShelfId[] = ["books", "watch", "read", "cook", "eat", "shop", "travel"];
+const INSIGHT_SHELVES: ShelfId[] = ["books", "watch", "read", "other"];
 
 export function LibraryInsights() {
   const [counts, setCounts] = useState<InsightCounts | null>(null);

@@ -16,7 +16,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
-import { SHELVES, parseShelfParam, type ShelfId } from "@/lib/shelves";
+import {
+  SHELVES,
+  getShelf,
+  parseShelfParam,
+  resolveActiveShelf,
+  visibleShelves,
+  type ShelfId,
+} from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
@@ -54,7 +61,8 @@ export function LibraryPageClient({
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
-  const activeShelf = pendingShelf ?? urlShelf;
+  const visibleShelfIds = visibleShelves({});
+  const activeShelf = resolveActiveShelf(pendingShelf ?? urlShelf, visibleShelfIds);
 
   const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
@@ -188,7 +196,7 @@ export function LibraryPageClient({
           role="tablist"
           aria-label="Shelves"
           onKeyDown={(e) => {
-            const tabs = SHELVES.map((s) => s.id);
+            const tabs = visibleShelfIds;
             const currentIndex = tabs.indexOf(activeShelf);
             let nextIndex = currentIndex;
             if (e.key === "ArrowRight") {
@@ -217,7 +225,8 @@ export function LibraryPageClient({
             }
           }}
         >
-          {SHELVES.map((s) => {
+          {visibleShelfIds.map((id) => {
+            const s = getShelf(id);
             const selected = s.id === activeShelf;
             return (
               <button

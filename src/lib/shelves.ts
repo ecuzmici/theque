@@ -4,11 +4,8 @@ export type ShelfId =
   | "all"
   | "books"
   | "watch"
-  | "eat"
-  | "shop"
-  | "travel"
   | "read"
-  | "cook"
+  | "other"
   | "done"
   | "forgotten"
   | "inbox";
@@ -44,15 +41,20 @@ export const SHELVES: ShelfDefinition[] = [
     label: "Watch",
     filter: { category: "movies_and_tv", excludeDismissed: true, excludeDone: true },
   },
-  { id: "eat", label: "Eat", filter: { category: "restaurants", excludeDismissed: true, excludeDone: true } },
-  { id: "shop", label: "Shop", filter: { category: "products", excludeDismissed: true, excludeDone: true } },
-  { id: "travel", label: "Travel", filter: { category: "travel", excludeDismissed: true, excludeDone: true } },
   {
     id: "read",
-    label: "Read",
+    label: "Articles",
     filter: { category: "articles", excludeDismissed: true, excludeInbox: true, excludeDone: true },
   },
-  { id: "cook", label: "Cook", filter: { category: "recipes", excludeDismissed: true, excludeDone: true } },
+  {
+    id: "other",
+    label: "Other",
+    filter: {
+      category: ["restaurants", "products", "travel", "recipes"],
+      excludeDismissed: true,
+      excludeDone: true,
+    },
+  },
   { id: "done", label: "Done", filter: { status: "done" } },
   {
     id: "forgotten",
@@ -68,10 +70,26 @@ export function getShelf(id: ShelfId): ShelfDefinition {
   return shelf;
 }
 
-/** Resolves `?shelf=` (or missing) to a shelf id for the library route. */
+/** Resolves `?shelf=` (or missing/unknown) to a shelf id for the library route. */
 export function parseShelfParam(param: string | null | undefined): ShelfId {
   if (param && SHELVES.some((s) => s.id === param)) {
     return param as ShelfId;
   }
   return "all";
+}
+
+/**
+ * The shelves the tab strip should render, in order. Pass-through for now
+ * (returns every shelf, ignoring counts); a later slice hides empty shelves.
+ */
+export function visibleShelves(_counts: Partial<Record<ShelfId, number>>): ShelfId[] {
+  return SHELVES.map((s) => s.id);
+}
+
+/**
+ * The shelf the library should treat as active. Pass-through for now (returns
+ * the requested shelf); a later slice falls back to "all" when it is hidden.
+ */
+export function resolveActiveShelf(requested: ShelfId, _visible: ShelfId[]): ShelfId {
+  return requested;
 }

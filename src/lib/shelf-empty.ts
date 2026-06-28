@@ -16,25 +16,13 @@ export const SHELF_EMPTY: Record<
     title: "Nothing to watch",
     description: "Share a film or series from IMDb, Letterboxd, or streaming sites.",
   },
-  eat: {
-    title: "No restaurants saved",
-    description: "Capture a Maps or Yelp link when you find a place to try.",
-  },
-  shop: {
-    title: "No products saved",
-    description: "Save wishlist items from Amazon, Etsy, and other shops.",
-  },
-  travel: {
-    title: "No travel ideas",
-    description: "Bookmark stays, flights, and destinations for your next trip.",
-  },
   read: {
-    title: "Nothing to read",
+    title: "No articles yet",
     description: "Save articles and essays. They show up here once we've sorted them.",
   },
-  cook: {
-    title: "No recipes yet",
-    description: "Save recipe blogs and cooking pages. We'll pull in the ingredients and steps.",
+  other: {
+    title: "Nothing here yet",
+    description: "Restaurants, products, travel, and recipes you save land together on this shelf.",
   },
   forgotten: {
     title: "Nothing forgotten",

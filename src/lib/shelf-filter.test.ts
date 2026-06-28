@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 
+import { parseShelfParam } from "./shelves";
+
 import { itemMatchesShelf } from "./shelf-filter";
 
 function item(
@@ -32,6 +34,22 @@ describe("itemMatchesShelf", () => {
       true,
     );
     expect(itemMatchesShelf(item({ status: "want", category: "books" }), "books")).toBe(true);
+    expect(itemMatchesShelf(item({ status: "want", category: "articles" }), "read")).toBe(true);
+  });
+
+  it("groups the long tail onto the Other shelf", () => {
+    for (const category of ["restaurants", "products", "travel", "recipes"] as const) {
+      expect(itemMatchesShelf(item({ status: "want", category }), "other")).toBe(true);
+    }
+  });
+
+  it("excludes non-grouped categories and done items from Other", () => {
+    expect(itemMatchesShelf(item({ status: "want", category: "books" }), "other")).toBe(false);
+    expect(itemMatchesShelf(item({ status: "want", category: "movies_and_tv" }), "other")).toBe(
+      false,
+    );
+    expect(itemMatchesShelf(item({ status: "want", category: "articles" }), "other")).toBe(false);
+    expect(itemMatchesShelf(item({ status: "done", category: "restaurants" }), "other")).toBe(false);
   });
 
   it("includes only done items on the Done shelf", () => {
@@ -63,5 +81,19 @@ describe("itemMatchesShelf", () => {
     expect(itemMatchesShelf(old, "forgotten")).toBe(true);
     expect(itemMatchesShelf(recent, "forgotten")).toBe(false);
     expect(itemMatchesShelf({ ...old, status: "done" }, "forgotten")).toBe(false);
+  });
+});
+
+describe("parseShelfParam", () => {
+  it("falls back to All for removed or unknown shelf ids", () => {
+    expect(parseShelfParam("cook")).toBe("all");
+    expect(parseShelfParam("tools")).toBe("all");
+    expect(parseShelfParam("nonsense")).toBe("all");
+    expect(parseShelfParam(null)).toBe("all");
+  });
+
+  it("resolves known shelf ids", () => {
+    expect(parseShelfParam("read")).toBe("read");
+    expect(parseShelfParam("other")).toBe("other");
   });
 });
