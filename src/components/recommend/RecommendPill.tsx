@@ -2,19 +2,12 @@
 
 import { AlertTriangle, RotateCw, Sparkles, X } from "lucide-react";
 
-import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 import { cn } from "@/lib/utils";
-
-const SHELF_LABELS: Record<RecommendShelfId, string> = {
-  books: "Books",
-  watch: "Watch",
-};
 
 /** The pill mirrors the run lifecycle minus "empty" (it only shows when minimized). */
 export type PillStatus = "loading" | "ready" | "error";
 
 type RecommendPillProps = {
-  shelf: RecommendShelfId;
   status: PillStatus;
   onReopen: () => void;
   onRetry: () => void;
@@ -28,25 +21,22 @@ type RecommendPillProps = {
  * the mobile bottom nav via `--ks-nav-height` + `env(safe-area-inset-bottom)`.
  */
 export function RecommendPill({
-  shelf,
   status,
   onReopen,
   onRetry,
   onDismiss,
 }: RecommendPillProps) {
-  const label = SHELF_LABELS[shelf];
-
   const text =
     status === "loading"
-      ? `Finding ${label} picks…`
+      ? "Searching…"
       : status === "ready"
-        ? `${label} picks ready`
-        : `Couldn't load ${label} picks`;
+        ? "Ready"
+        : "Couldn't load";
 
   return (
     <div
       className={cn(
-        "fixed right-4 z-40 flex items-center gap-1 rounded-full border shadow-lg backdrop-blur",
+        "fixed right-4 z-40 flex items-center gap-1 rounded-full border px-3 shadow-lg backdrop-blur",
         "bottom-[calc(var(--ks-nav-height)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 lg:right-6",
         "animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
         status === "ready" && "border-amber-500/40 bg-amber-500/10 ring-2 ring-amber-500/30",
@@ -59,7 +49,7 @@ export function RecommendPill({
       <button
         type="button"
         onClick={status === "error" ? onRetry : onReopen}
-        className="ks-pointer-coarse-min-hit flex min-h-11 items-center gap-2 rounded-full py-2 pl-4 pr-2 text-sm font-medium text-foreground"
+        className="ks-pointer-coarse-min-hit flex min-h-11 items-center gap-2 rounded-full py-2 text-sm font-medium text-foreground"
       >
         {status === "loading" ? (
           <span
@@ -80,7 +70,7 @@ export function RecommendPill({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss recommendations"
-        className="ks-pointer-coarse-min-hit mr-1 inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        className="ks-pointer-coarse-min-hit inline-flex size-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
       >
         <X className="size-4" aria-hidden />
       </button>
