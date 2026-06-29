@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, SkipForward, Star, X } from "lucide-react";
+import { Bookmark, ChevronDown, SkipForward, Star, X } from "lucide-react";
 
 import { CoverImage } from "@/components/recommend/CoverImage";
 import { LOADING_STATUS_LINES } from "@/components/recommend/recommend-deck-utils";
@@ -177,9 +177,25 @@ export function RecommendDeck({ run }: RecommendDeckProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <h2 className="font-serif text-lg text-foreground">Recommendations for you</h2>
-        <p className="text-xs text-muted-foreground">{shelfLabel} · AI-generated picks</p>
+      <div className="flex items-start justify-between gap-2 border-b border-border py-3 pl-4 pr-14">
+        <div>
+          <h2 className="font-serif text-lg text-foreground">Recommendations for you</h2>
+          <p className="text-xs text-muted-foreground">{shelfLabel} · AI-generated picks</p>
+        </div>
+        {/* Explicit minimize — the only way to minimize on mobile, where the
+            full-screen deck leaves no backdrop to click. Sits left of the
+            Sheet's floating × (top-3 right-3). */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={run.minimize}
+          aria-label="Minimize to keep browsing"
+          title="Minimize"
+          className="ks-pointer-coarse-min-hit shrink-0"
+        >
+          <ChevronDown className="size-4" aria-hidden />
+        </Button>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
