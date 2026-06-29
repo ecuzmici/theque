@@ -87,7 +87,7 @@ export default function SearchPage() {
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Category</Label>
           <Select value={category} onValueChange={(v) => setCategory(v ?? ANY)}>
-            <SelectTrigger className="h-11 w-full">
+            <SelectTrigger className="h-11 w-full min-h-11">
               <SelectValue>
                 {category === ANY ? "Any category" : formatCategory(category as ItemCategory)}
               </SelectValue>
@@ -105,7 +105,7 @@ export default function SearchPage() {
         <div className="grid gap-1.5">
           <Label className="text-xs text-muted-foreground">Status</Label>
           <Select value={status} onValueChange={(v) => setStatus(v ?? ANY)}>
-            <SelectTrigger className="h-11 w-full">
+            <SelectTrigger className="h-11 w-full min-h-11">
               <SelectValue>
                 {status === ANY ? "Any status" : formatStatus(status as ItemStatus)}
               </SelectValue>

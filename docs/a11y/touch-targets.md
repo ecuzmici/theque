@@ -86,11 +86,15 @@ Three measurements came in under 44 px; none is an AA failure:
 
 These are **consistency / comfort** notes, not compliance gaps:
 
-1. **Form inputs now floor to 44 px on touch via the primitives.** `Input` and
-   `SelectTrigger` carry the `pointer-coarse` floor in their base class, so settings /
-   search fields that previously measured 32 px on a coarse pointer now reach the 44 px
-   comfort target without per-call-site `min-h-11`. Desktop (fine-pointer) heights are
-   unchanged.
+1. **Form controls now floor to 44 px on touch via the primitives.** `Input` and
+   `SelectTrigger` carry the `pointer-coarse` floor in their base class, so default-size
+   fields that previously measured 32 px on a coarse pointer now reach the 44 px comfort
+   target without a per-call-site floor. The floor is **coarse-pointer-only**, so a
+   control that is also meant to be 44 px on a *fine* pointer (the search and edit-sheet
+   Select triggers, deliberately sized up) still needs its explicit `min-h-11` for the
+   desktop height — note `data-[size=default]:h-8` out-specifies a sibling `h-11`, so the
+   `min-height` (not `height`) is what actually holds those at 44 px. Desktop
+   (fine-pointer) heights are unchanged.
 2. **The coarse floor is height-only for text buttons** (icon buttons also get
    `min-w`). In practice every text button clears 24 px wide via its label + padding,
    so there is no real failure — but a hypothetical 1–2-character text button would be

@@ -145,17 +145,18 @@ async function openRecommendDeck(
     .first()
     .waitFor({ state: "visible", timeout: 15_000 });
 
-  const signals: Record<string, string> = {
-    ready: 'role=button[name="Save"]',
-    error: 'role=button[name="Try again"]',
-    empty: 'text=/No new recommendations/i',
-    done: "text=/all caught up/i",
-  };
+  // Exact-match the verdict buttons so "Save" can't resolve against "Saved" / "Save
+  // for later" on the library still rendered behind the deck overlay (a false "ready").
+  const signals: { state: string; locator: ReturnType<Page["locator"]> }[] = [
+    { state: "ready", locator: page.getByRole("button", { name: "Save", exact: true }) },
+    { state: "error", locator: page.getByRole("button", { name: "Try again", exact: true }) },
+    { state: "empty", locator: page.locator("text=/No new recommendations/i") },
+    { state: "done", locator: page.locator("text=/all caught up/i") },
+  ];
   const TIMEOUT = 45_000;
   const raced = await Promise.race(
-    Object.entries(signals).map(([state, sel]) =>
-      page
-        .locator(sel)
+    signals.map(({ state, locator }) =>
+      locator
         .first()
         .waitFor({ state: "visible", timeout: TIMEOUT })
         .then(() => state)

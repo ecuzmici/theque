@@ -234,4 +234,15 @@ export async function authenticate(page: Page, baseUrl: string, secret: string):
   await page.waitForURL("**/library", { timeout: 30_000 }).catch(() => {
     /* some setups land directly; the cookie is set regardless */
   });
+  // Definitively confirm we are signed in. If the route ever fails by redirecting
+  // with a 2xx/3xx (instead of a 4xx) the checks above pass silently and the whole
+  // authed walk would measure the login page under authed labels — a vacuous PASS.
+  // Hit a guarded route and require we are NOT bounced to /login.
+  await page.goto(`${baseUrl.replace(/\/+$/, "")}/library`, { waitUntil: "domcontentloaded" });
+  if (/\/login(\?|$)/.test(page.url())) {
+    throw new Error(
+      `QA auth did not establish a session — landed on ${page.url()} instead of /library. ` +
+        `Check QA_DEV_EMAIL points at a real Supabase auth user and the service-role key is set.`,
+    );
+  }
 }
