@@ -14,7 +14,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 
-import { chromium, devices, type Browser, type BrowserContext } from "playwright";
+import { chromium, devices, type Browser, type BrowserContext, type Page } from "playwright";
 
 import {
   authenticate,
@@ -95,6 +95,76 @@ async function newMobileContext(browser: Browser): Promise<BrowserContext> {
   return ctx;
 }
 
+/**
+ * Open the first card's item-actions dropdown on /library and wait for the menu
+ * rows to render, so a following `auditSurface` measures the trigger + every
+ * `role="menuitem"` row. Returns the number of menu rows that became visible.
+ * Returns null (caller logs a SKIP) if no card / trigger is present.
+ */
+async function openItemActionsMenu(page: Page): Promise<number | null> {
+  const trigger = page.locator('[aria-label="Item actions"]').first();
+  if ((await trigger.count()) === 0) return null;
+  await trigger.click();
+  // Real DOM signal: the menu and at least one row are visible — no fixed sleep.
+  const menu = page.locator('[role="menu"]').first();
+  await menu.waitFor({ state: "visible", timeout: 10_000 });
+  await page.locator('[role="menuitem"]').first().waitFor({ state: "visible", timeout: 10_000 });
+  return page.locator('[role="menuitem"]').count();
+}
+
+/**
+ * Find a shelf whose Recommend control is rendered AND enabled (gateway
+ * configured + enough titled items). Tries the two gated shelves; returns the
+ * shelf id, or null so the caller can log a clear SKIP.
+ */
+async function findEnabledRecommendShelf(page: Page, baseUrl: string): Promise<string | null> {
+  for (const shelf of ["books", "watch"]) {
+    await page.goto(`${baseUrl}/library?shelf=${shelf}`, { waitUntil: "networkidle" });
+    const btn = page.getByRole("button", { name: "Recommend" }).first();
+    if ((await btn.count()) === 0) continue;
+    if (!(await btn.isDisabled())) return shelf;
+  }
+  return null;
+}
+
+/**
+ * Open the recommend deck and resolve which run state it reached, keyed on real
+ * DOM signals (auto-waiting locators, never a fixed sleep). The deck run hits an
+ * AI endpoint that may or may not complete locally, so we race the terminal
+ * signals and fall back to "loading" if none arrives in time. The Minimize /
+ * Close controls render in every state, so whatever we measure must still pass.
+ */
+async function openRecommendDeck(
+  page: Page,
+  shelf: string,
+): Promise<"ready" | "empty" | "done" | "error" | "loading"> {
+  await page.getByRole("button", { name: "Recommend" }).first().click();
+  // Overlay present: the always-rendered Minimize control is visible.
+  await page
+    .locator('[aria-label="Minimize to keep browsing"]')
+    .first()
+    .waitFor({ state: "visible", timeout: 15_000 });
+
+  const signals: Record<string, string> = {
+    ready: 'role=button[name="Save"]',
+    error: 'role=button[name="Try again"]',
+    empty: 'text=/No new recommendations/i',
+    done: "text=/all caught up/i",
+  };
+  const TIMEOUT = 45_000;
+  const raced = await Promise.race(
+    Object.entries(signals).map(([state, sel]) =>
+      page
+        .locator(sel)
+        .first()
+        .waitFor({ state: "visible", timeout: TIMEOUT })
+        .then(() => state)
+        .catch(() => null),
+    ),
+  );
+  return (raced as "ready" | "empty" | "done" | "error" | null) ?? "loading";
+}
+
 async function main(): Promise<void> {
   const env = { ...process.env, ...readEnvLocal() };
   const secret = env.QA_DEV_SESSION_SECRET;
@@ -163,6 +233,30 @@ async function main(): Promise<void> {
       audits.push(await auditSurface(page, `/item (${itemHref})`));
     } else {
       console.log("\n— /item/[id]: SKIPPED (library has no items to open). Other surfaces still walked.");
+    }
+
+    // --- Overlay state: per-card item-actions dropdown menu (issue #35). ---
+    await page.goto(`${baseUrl}/library`, { waitUntil: "networkidle" });
+    const menuRows = await openItemActionsMenu(page);
+    if (menuRows != null) {
+      console.log(`\n[e2e] item-actions menu opened — ${menuRows} menu row(s) visible.`);
+      audits.push(await auditSurface(page, "/library — item-actions menu"));
+      await page.keyboard.press("Escape"); // close before the deck walk
+    } else {
+      console.log("\n— /library — item-actions menu: SKIPPED (no cards on the library shelf).");
+    }
+
+    // --- Overlay state: recommendation run deck (issue #35). ---
+    const recShelf = await findEnabledRecommendShelf(page, baseUrl);
+    if (recShelf) {
+      const state = await openRecommendDeck(page, recShelf);
+      console.log(`\n[e2e] recommend deck opened on "${recShelf}" — runStatus reached: ${state}.`);
+      audits.push(await auditSurface(page, `/library — recommend deck (${recShelf}, ${state})`));
+    } else {
+      console.log(
+        "\n— /library — recommend deck: SKIPPED (Recommend not enabled on books/watch: " +
+          "gateway unconfigured or too few titled items in the QA data).",
+      );
     }
 
     await ctx.close();

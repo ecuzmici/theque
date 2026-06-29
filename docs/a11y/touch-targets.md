@@ -124,3 +124,20 @@ invariant can't silently rot:
 - It is **not** wired into `npm test` (Vitest excludes `e2e/**`) — boot a dev server first,
   then run `npm run test:e2e` (or `E2E_BASE_URL=http://localhost:3000 npm run test:e2e` to
   reuse a running one).
+
+The guard also walks the two dense **overlay states** the static surface walk can't
+reach (issue #35), reusing the same contract — it opens the overlay, then calls the
+same `auditSurface` so the overlay's controls are measured against the identical 24 px
+AA bar and exceptions:
+
+- **`/library` — item-actions dropdown menu.** Opens the first card's "Item actions"
+  trigger, waits for the menu rows (`role="menuitem"`) to render, then measures the
+  trigger + every row.
+- **`/library` — recommend deck.** Navigates to a shelf where Recommend is enabled
+  (books/watch), opens the deck Sheet, and waits on real DOM signals (auto-waiting
+  locators, no fixed sleeps) for the run to reach a terminal state — `ready` (card
+  verdict buttons Save / Skip / Not for me), `error` (Try again), or the empty/done
+  copy — before measuring; if the AI run is still loading at the timeout it measures
+  the always-present Minimize / Close controls and logs the state reached. If Recommend
+  is gated off (gateway unconfigured or too few titled items) it logs a clear SKIP. The
+  deck reached `ready` and passed (88 targets, 0 fails) on the last local run.
