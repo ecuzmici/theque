@@ -143,6 +143,48 @@ An item you triaged away — a non-destructive "no" that hides it from shelves b
 keeps the row (so dedup and history survive).
 _Avoid_: deleted, archived (dismissed items are kept, not removed)
 
+## Accessibility
+
+See `docs/adr/0006-touch-target-policy-wcag-258-aa.md` and the audit in
+`docs/a11y/touch-targets.md`.
+
+**Touch target**:
+The hit area of an interactive control — the region a finger can land on, which may be
+larger than the visible control. The thing WCAG 2.5.8 sizes. The conformance bar is
+**AA (24 px)**; the app aims at the 44 px _comfort target_.
+_Avoid_: button size, click area (it is the *hit* area, and not only for buttons)
+
+**Coarse pointer**:
+A touch (finger) input, detected via `@media (pointer: coarse)`. The app's touch
+accommodations are gated on this so desktop (fine pointer) stays compact.
+_Avoid_: mobile, touchscreen (the signal is the *pointer*, not the device or width)
+
+**Tap-target floor**:
+The minimum size controls are bumped to on a _coarse pointer_ — **44 px**
+(`--tap-target-min`). Height-only on text buttons, height + width on icon buttons.
+Delivered three ways that all resolve to 44 px: `<Button>`'s built-in floor, explicit
+`min-h-11`, and the `.ks-pointer-coarse-min-hit` utility for plain links.
+_Avoid_: min-height (that's one mechanism, not the concept), padding
+
+**Comfort target**:
+The 44 px size (WCAG 2.5.5 AAA) the app defaults to even though only **24 px** (AA) is
+required — finger-friendly with margin to spare. "Compliant" means 24 px; "comfortable"
+means 44 px.
+_Avoid_: minimum size (44 px is the comfortable size, 24 px is the minimum)
+
+**Spacing exception**:
+The 2.5.8 rule that lets an under-24 px target still pass AA if a 24 px-diameter
+_undisturbed circle_ centred on it does not overlap another target's circle — i.e.
+neighbours are far enough apart. The audit found the app never relies on it (every real
+target is ≥44 px).
+_Avoid_: padding rule, gap rule
+
+**Undisturbed circle**:
+The 24 px-diameter circle centred on a target used to test the _spacing exception_:
+two targets are adequately spaced when their circles don't intersect (centre-to-centre
+≥ 24 px).
+_Avoid_: bounding box, hit radius
+
 ## Plan & subscription (proposed, not built)
 
 > Speculative vocabulary from the "Theque Pro" thought experiment. **Nothing here is
