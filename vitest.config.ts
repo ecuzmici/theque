@@ -6,8 +6,9 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    // Ignore git worktrees living under `./.worktrees/` (nested node_modules/tests).
-    exclude: [...configDefaults.exclude, "**/.worktrees/**"],
+    // Ignore git worktrees living under `./.worktrees/` (nested node_modules/tests)
+    // and the Playwright e2e runner (standalone tsx script, run via `npm run test:e2e`).
+    exclude: [...configDefaults.exclude, "**/.worktrees/**", "e2e/**"],
   },
   resolve: {
     alias: {

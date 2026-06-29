@@ -65,7 +65,6 @@ export function RecommendationProvider({ children }: { children: React.ReactNode
 
       {minimized && run.shelf && run.runStatus !== "empty" ? (
         <RecommendPill
-          shelf={run.shelf}
           status={run.runStatus}
           onReopen={run.reopen}
           onRetry={run.retry}
