@@ -1,8 +1,10 @@
 "use client";
 
 import { createContext, useContext } from "react";
+import type { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 
 import { RecommendDeck } from "@/components/recommend/RecommendDeck";
+import { RecommendPill } from "@/components/recommend/RecommendPill";
 import {
   useRecommendationRun,
   type RecommendationRunApi,
@@ -25,12 +27,22 @@ const RecommendationContext = createContext<RecommendationRunApi | null>(null);
 export function RecommendationProvider({ children }: { children: React.ReactNode }) {
   const run = useRecommendationRun();
 
-  // The deck is open whenever there is an active run. The minimize/dismiss split
-  // (backdrop vs ×) lands in #28; for now both exits dismiss the run.
-  const deckOpen = run.runStatus !== "empty";
+  const hasRun = run.runStatus !== "empty";
+  const deckOpen = hasRun && run.view === "open";
+  const minimized = hasRun && run.view === "minimized";
 
-  function handleOpenChange(open: boolean) {
-    if (!open) run.dismiss();
+  // Backdrop click / escape minimize (keep the run alive); the deck's × is a
+  // deliberate dismiss. base-ui reports the close reason on the event details.
+  function handleOpenChange(
+    open: boolean,
+    eventDetails: SheetPrimitive.Root.ChangeEventDetails,
+  ) {
+    if (open) return;
+    if (eventDetails.reason === "close-press") {
+      run.dismiss();
+    } else {
+      run.minimize();
+    }
   }
 
   return (
@@ -50,6 +62,15 @@ export function RecommendationProvider({ children }: { children: React.ReactNode
           {run.shelf ? <RecommendDeck run={run} /> : null}
         </SheetContent>
       </Sheet>
+
+      {minimized && run.shelf ? (
+        <RecommendPill
+          shelf={run.shelf}
+          loading={run.runStatus === "loading"}
+          onReopen={run.reopen}
+          onDismiss={run.dismiss}
+        />
+      ) : null}
     </RecommendationContext.Provider>
   );
 }

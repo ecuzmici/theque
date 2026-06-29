@@ -31,7 +31,32 @@ const SAMPLE_CARDS = [
     search_query: "Piranesi Susanna Clarke book",
     source: "open_library" as const,
   },
+  {
+    id: "card-2",
+    outcome_id: "outcome-2",
+    title: "The Buried Giant",
+    subtitle: "Kazuo Ishiguro · 2015",
+    description: "A misty quest",
+    reason: "Dreamlike prose",
+    canonical_url: "https://openlibrary.org/works/OL67890W",
+    cover_url: null,
+    search_query: "The Buried Giant Ishiguro book",
+    source: "open_library" as const,
+  },
 ];
+
+/** A fetch stub whose single response is resolved manually, to control timing. */
+function deferredFetch(cards = SAMPLE_CARDS) {
+  let resolveResponse!: () => void;
+  const gate = new Promise<void>((r) => {
+    resolveResponse = r;
+  });
+  const fetchMock = vi.fn().mockImplementation(async () => {
+    await gate;
+    return { ok: true, json: async () => ({ cards }) };
+  });
+  return { fetchMock, resolveResponse };
+}
 
 // Latest hook value captured for assertions.
 let api: RecommendationRunApi;
@@ -163,5 +188,111 @@ describe("useRecommendationRun", () => {
     for (const call of fetchMock.mock.calls) {
       expect(JSON.parse(call[1].body)).toEqual({ shelfId: "watch" });
     }
+  });
+
+  // ---- #28: minimize / reopen / same-shelf reopen ----
+
+  it("starts a run in the open view", async () => {
+    vi.stubGlobal("fetch", okFetch());
+    setup();
+
+    await act(async () => {
+      api.start("books");
+    });
+
+    expect(api.view).toBe("open");
+  });
+
+  it("minimize keeps run status and flips the view; reopen flips it back", async () => {
+    vi.stubGlobal("fetch", okFetch());
+    setup();
+
+    await act(async () => {
+      api.start("books");
+    });
+    expect(api.runStatus).toBe("ready");
+
+    act(() => {
+      api.minimize();
+    });
+    expect(api.view).toBe("minimized");
+    expect(api.runStatus).toBe("ready"); // unchanged
+
+    act(() => {
+      api.reopen();
+    });
+    expect(api.view).toBe("open");
+    expect(api.runStatus).toBe("ready");
+  });
+
+  it("minimize keeps a still-loading run loading", async () => {
+    const { fetchMock, resolveResponse } = deferredFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    act(() => {
+      api.start("books");
+    });
+    expect(api.runStatus).toBe("loading");
+
+    act(() => {
+      api.minimize();
+    });
+    expect(api.view).toBe("minimized");
+    expect(api.runStatus).toBe("loading");
+
+    await act(async () => {
+      resolveResponse();
+      await Promise.resolve();
+    });
+    // Becomes ready while still minimized — no auto-reopen.
+    expect(api.runStatus).toBe("ready");
+    expect(api.view).toBe("minimized");
+  });
+
+  it("re-triggering the same shelf reopens without a second fetch", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books");
+    });
+    act(() => {
+      api.minimize();
+    });
+    expect(api.view).toBe("minimized");
+
+    act(() => {
+      api.start("books");
+    });
+
+    expect(api.view).toBe("open");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deck cursor survives a minimize → reopen cycle", async () => {
+    vi.stubGlobal("fetch", okFetch());
+    setup();
+
+    await act(async () => {
+      api.start("books");
+    });
+
+    act(() => {
+      api.saveCard();
+    });
+    expect(api.cursor.index).toBe(1);
+    expect(api.cursor.outcomes).toEqual({ "outcome-1": "saved" });
+
+    act(() => {
+      api.minimize();
+    });
+    act(() => {
+      api.reopen();
+    });
+
+    expect(api.cursor.index).toBe(1);
+    expect(api.cursor.outcomes).toEqual({ "outcome-1": "saved" });
   });
 });

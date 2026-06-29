@@ -35,8 +35,15 @@ export type DeckCursor = {
 
 const EMPTY_CURSOR: DeckCursor = { index: 0, outcomes: {}, askReason: false };
 
+/**
+ * Whether the deck is showing or stashed to the floating pill. Orthogonal to
+ * `runStatus` and only meaningful while a run exists (`runStatus !== "empty"`).
+ */
+export type RunView = "open" | "minimized";
+
 export type RecommendationRunState = {
   runStatus: RunStatus;
+  view: RunView;
   shelf: RecommendShelfId | null;
   cards: ResolvedRecommendation[];
   errorMessage: string | null;
@@ -45,6 +52,7 @@ export type RecommendationRunState = {
 
 const INITIAL_STATE: RecommendationRunState = {
   runStatus: "empty",
+  view: "open",
   shelf: null,
   cards: [],
   errorMessage: null,
@@ -97,6 +105,7 @@ export function useRecommendationRun() {
 
       update({
         runStatus: "loading",
+        view: "open",
         shelf,
         cards: [],
         errorMessage: null,
@@ -147,13 +156,34 @@ export function useRecommendationRun() {
     [update],
   );
 
-  /** Start a run for a shelf (always a fresh run in this slice). */
+  /**
+   * Trigger a run for a shelf. Re-triggering the *same* shelf while a run is
+   * active just reopens the deck (no second request); any other case starts a
+   * fresh run.
+   */
   const start = useCallback(
     (shelf: RecommendShelfId) => {
+      const current = stateRef.current;
+      if (current.runStatus !== "empty" && current.shelf === shelf) {
+        update((prev) => ({ ...prev, view: "open" }));
+        return;
+      }
       void runFetch(shelf);
     },
-    [runFetch],
+    [runFetch, update],
   );
+
+  /** Stash the open deck to the floating pill; the run keeps going. */
+  const minimize = useCallback(() => {
+    if (stateRef.current.runStatus === "empty") return;
+    update((prev) => ({ ...prev, view: "minimized" }));
+  }, [update]);
+
+  /** Reopen the stashed deck. */
+  const reopen = useCallback(() => {
+    if (stateRef.current.runStatus === "empty") return;
+    update((prev) => ({ ...prev, view: "open" }));
+  }, [update]);
 
   /** Re-run the current shelf (deck "Try again"). */
   const retry = useCallback(() => {
@@ -220,6 +250,8 @@ export function useRecommendationRun() {
   return {
     ...state,
     start,
+    minimize,
+    reopen,
     retry,
     dismiss,
     setAskReason,
