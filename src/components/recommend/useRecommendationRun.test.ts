@@ -389,4 +389,52 @@ describe("useRecommendationRun", () => {
     expect(api.shelf).toBeNull();
     expect(api.cards).toEqual([]);
   });
+
+  // ---- #30: error & retry from the minimized pill ----
+
+  it("errors while minimized, and retry returns to loading without reopening", async () => {
+    let call = 0;
+    let resolveRetry!: () => void;
+    const fetchMock = vi.fn().mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: "boom" }),
+        });
+      }
+      return new Promise((resolve) => {
+        resolveRetry = () => resolve({ ok: true, json: async () => ({ cards: SAMPLE_CARDS }) });
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books");
+    });
+    expect(api.runStatus).toBe("error");
+
+    act(() => {
+      api.minimize();
+    });
+    expect(api.view).toBe("minimized");
+    expect(api.runStatus).toBe("error");
+
+    act(() => {
+      api.retry();
+    });
+    // Back to loading, still minimized (no auto-reopen of the deck).
+    expect(api.runStatus).toBe("loading");
+    expect(api.view).toBe("minimized");
+    expect(api.shelf).toBe("books");
+
+    await act(async () => {
+      resolveRetry();
+      await flush();
+    });
+    expect(api.runStatus).toBe("ready");
+    expect(api.view).toBe("minimized");
+  });
 });

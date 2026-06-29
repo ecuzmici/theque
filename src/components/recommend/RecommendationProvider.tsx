@@ -63,11 +63,12 @@ export function RecommendationProvider({ children }: { children: React.ReactNode
         </SheetContent>
       </Sheet>
 
-      {minimized && run.shelf ? (
+      {minimized && run.shelf && run.runStatus !== "empty" ? (
         <RecommendPill
           shelf={run.shelf}
-          loading={run.runStatus === "loading"}
+          status={run.runStatus}
           onReopen={run.reopen}
+          onRetry={run.retry}
           onDismiss={run.dismiss}
         />
       ) : null}

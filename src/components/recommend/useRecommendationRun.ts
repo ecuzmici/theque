@@ -103,7 +103,7 @@ export function useRecommendationRun() {
   const runIdRef = useRef(0);
 
   const runFetch = useCallback(
-    async (shelf: RecommendShelfId) => {
+    async (shelf: RecommendShelfId, view: RunView = "open") => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -112,7 +112,7 @@ export function useRecommendationRun() {
 
       update({
         runStatus: "loading",
-        view: "open",
+        view,
         shelf,
         cards: [],
         errorMessage: null,
@@ -193,10 +193,14 @@ export function useRecommendationRun() {
     update((prev) => ({ ...prev, view: "open" }));
   }, [update]);
 
-  /** Re-run the current shelf (deck "Try again"). */
+  /**
+   * Re-run the current shelf, preserving the current view — retrying from the
+   * deck's "Try again" stays open; retrying from the minimized pill stays
+   * minimized (and re-announces when ready) rather than yanking the deck open.
+   */
   const retry = useCallback(() => {
-    const shelf = stateRef.current.shelf;
-    if (shelf) void runFetch(shelf);
+    const { shelf, view } = stateRef.current;
+    if (shelf) void runFetch(shelf, view);
   }, [runFetch]);
 
   /** End the active run and free the slot. */
