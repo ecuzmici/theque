@@ -5,7 +5,7 @@ This is the finalized copy + asset spec for the Web Store listing. The **store o
 Published listing: https://chromewebstore.google.com/detail/blahodpkabcnliljldelkoggeemfgdak
 Extension version (manifest): `1.0.0` (packaged as `theque-extension-v1.0.0.zip` at the repo root)
 
-> **Taxonomy note:** copy below reflects the *current* shelves: **Books, Watch, Listen, Eat, Shop, Travel, Read, Cook, Tools**. There is no "gifts" shelf anymore. Do not reintroduce old shelf names or removed features like tags or collections.
+> **Taxonomy note:** copy below reflects the *current* shelves: **Books, Watch, Articles, Other** (plus **All** and **Done**). The long-tail categories — restaurants, products, travel, recipes — are grouped under **Other**. There is no Listen/Eat/Shop/Cook/Tools shelf and no "gifts" shelf anymore. Do not reintroduce old shelf names or removed features like tags or collections.
 
 ---
 
@@ -37,14 +37,9 @@ Click the thèque button on any page and it's saved. Behind the scenes, thèque 
 
 Your saves sort themselves onto shelves:
 • Books: Goodreads, Open Library, your next read
-• Watch: films, TV, and videos (IMDb, Letterboxd, YouTube)
-• Listen: albums, songs, and podcasts
-• Eat: restaurants and places
-• Shop: products and things you want
-• Travel: stays and destinations
-• Read: articles to come back to
-• Cook: recipes
-• Tools: apps and software
+• Watch: films and TV (IMDb, Letterboxd, YouTube)
+• Articles: pieces to come back to
+• Other: restaurants, products, travel, and recipes — the rest of your taste, in one place
 
 As you mark what you finish with a quick verdict, thèque learns your taste and starts suggesting new books and films to add next, drawn from your ratings instead of a trending feed.
 

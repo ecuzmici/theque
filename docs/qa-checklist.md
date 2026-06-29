@@ -70,8 +70,8 @@ Record failures as GitHub issues with: URL used, capture client, response status
 
 | URL | Category | Expected |
 |-----|----------|----------|
-| Bare youtube.com/watch URL | videos | `channel` + thumbnail filled from oEmbed; no LLM call needed |
-| github.com/owner/repo | apps | `developer` + `category_tag` (language) + description; `raw_metadata.resolver.source = "github"` |
-| Apple Music / album page | music | `artist`, `album`, `release_year`, `genre` from iTunes |
+| Bare youtube.com/watch URL | movies_and_tv (Watch) | Re-homes to `movies_and_tv`; `channel` + thumbnail filled from the retargeted oEmbed resolver; no LLM call needed |
+| github.com/owner/repo | products (Other) | Re-homes to `products`; title/description/image via the generic path (the GitHub resolver was dropped with `apps`) |
+| Apple Music / Spotify album page | articles (Articles) | Re-homes to `articles` (music retired); title/image via the generic path (the iTunes resolver was dropped) |
 | Book page that isn't an Open Library work | books | `authors`/`published_year` from Google Books |
 | IMDb/TMDb movie with sparse OG (needs TMDB_API_KEY) | movies_and_tv | `year` + poster from TMDB |

@@ -5,12 +5,15 @@ Postgres on Supabase. All user tables in `public` with **RLS enabled**. Use `aut
 ## Enums
 
 ```sql
+-- Seven live categories. `gifts`, `music`, `apps`, and `videos` are retired from
+-- the documented taxonomy (see docs/adr/0004-fewer-shelves-retired-categories.md).
+-- Per ADR 0004, retired values may remain dormant in the Postgres enum (nothing
+-- writes them once the classifier rules are gone); the live taxonomy is these seven.
 create type item_category as enum (
   'books',
   'movies_and_tv',
   'restaurants',
   'products',
-  'gifts',
   'travel',
   'recipes',
   'articles'

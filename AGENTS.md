@@ -50,7 +50,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/app/share/[token]` | Public read-only collection page (unguessable `share_token`) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
-| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, … Forgotten, Inbox) |
+| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Done, Inbox) |
 | `src/components/items/` | `ItemCard`, `ItemDetail`, `StructuredFields` |
 | `extension/` | MV3 popup + background; storage keys `theque_capture_token`, `theque_api_base_url` |
 | `supabase/migrations/` | Schema + RLS + `claim_pending_enrichment` RPC |
@@ -58,17 +58,19 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 
 ## Categories & integrations
 
-`ItemCategory` enum: `books`, `movies_and_tv`, `restaurants`, `products`, `gifts`, `travel`, `recipes`, `articles`.
+`ItemCategory` enum (seven categories): `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `recipes`, `articles`. `music`, `apps`, and `videos` were retired (see `docs/adr/0004-fewer-shelves-retired-categories.md`); their URLs re-home to a survivor (video → `movies_and_tv`, music → `articles`, apps → `products`).
+
+The steady-state shelf strip is **All · Books · Watch · Articles · Done**. The long-tail categories (`restaurants`, `products`, `travel`, `recipes`) share one grouped **Other** shelf; **Other** and **Inbox** are shown only when non-empty.
 
 | Category | Shelf tab | Parser / domain hints | Unit fixtures |
 |----------|-----------|----------------------|---------------|
 | `movies_and_tv` | Watch | `parsers/imdb.ts`, imdb/tmdb/letterboxd domains | `fixtures/imdb-movie.html` |
 | `books` | Books | `parsers/goodreads.ts`, goodreads domains | `fixtures/goodreads-book.html` |
-| `articles` | Read | `parsers/generic.ts` (OG + JSON-LD) | `fixtures/generic-blog.html` |
-| `products` / `gifts` | Shop | generic + amazon/etsy domains | live URLs in QA doc |
-| `restaurants` | Eat | generic (often sparse) | Maps/Yelp URLs in QA doc |
-| `travel` | Travel | domain map | booking/airbnb URLs |
-| `recipes` | Cook | schema.org Recipe via generic | recipe blog URLs |
+| `articles` | Articles | `parsers/generic.ts` (OG + JSON-LD) | `fixtures/generic-blog.html` |
+| `products` | Other | generic + amazon/etsy domains | live URLs in QA doc |
+| `restaurants` | Other | generic (often sparse) | Maps/Yelp URLs in QA doc |
+| `travel` | Other | domain map | booking/airbnb URLs |
+| `recipes` | Other | schema.org Recipe via generic | recipe blog URLs |
 | (low confidence) | Inbox | `status = inbox` | obscure homepage URLs |
 
 Structured field display: `src/components/items/StructuredFields.tsx` + `docs/category-schemas.md`.
@@ -118,7 +120,7 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - Run `npm test` before claiming parser/classify changes are done.
 - For auth/login changes, update `src/app/login/login-utils.test.ts` when redirect or OTP validation behavior changes.
 - Touch UX uses Tailwind custom variants in `src/app/globals.css`: `pointer-coarse`, `lg-fine`, `--tap-target-min`, and `.ks-pointer-coarse-min-hit`. Prefer `<Button />` for controls so coarse-pointer hit targets stay at roughly 44px without making desktop layouts bulky.
-- Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages. The Forgotten shelf is age-based (`olderThanDays`).
+- Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages. Forgotten is no longer a tab — it is an age-based (`olderThanDays`) nudge surfaced as an "N forgotten" insights chip plus the weekly digest.
 - Taste loop: marking an item done goes through the category-aware verb (`doneVerb`) and stores `rating_personal` / `verdict` / `done_at`; enrichment extracts `dominant_color` / `dominant_hue` (sharp) for palette sort and placeholder tinting.
 - Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.

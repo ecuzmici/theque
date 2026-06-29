@@ -28,13 +28,13 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 | **Item** | One saved thing with metadata and lifecycle | IMDb title for *Inception* |
 | **Category** | What kind of thing it is (system-guessed, user-overridable) | `movies_and_tv` |
 | **Status** | Lifecycle in your library | `inbox` → `want` → `done` |
-| **Shelf** (UI) | Fixed smart view over items | “Watch” = movies + videos, non-dismissed |
+| **Shelf** (UI) | Fixed smart view over items | “Watch” = `movies_and_tv`, non-dismissed |
 | **Collection** | Why/where you saved it (user-created) | “Japan 2026”, “Birthday gifts” |
 | **Tag** | Freeform label | `sci-fi`, `for-mom` |
 
 **Important:** Shelves are **not** database entities in PoC (Option A). Collections are **not** categories.
 
-> **Note on “Gifts”:** `gifts` was removed from the `ItemCategory` enum. Gift intent is a *context* (why you're saving something), not a kind of thing — it belongs as a **collection** (e.g. “Birthday gifts”, “Wishlist”) or a tag, not a shelf filter. Save products to the Shop shelf and organise them into gift collections as needed.
+> **Note on “Gifts”:** `gifts` was removed from the `ItemCategory` enum. Gift intent is a *context* (why you're saving something), not a kind of thing — it belongs as a **collection** (e.g. “Birthday gifts”, “Wishlist”) or a tag, not a shelf filter. Save products to the Other shelf and organise them into gift collections as needed.
 
 ## PoC success criteria
 

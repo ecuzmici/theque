@@ -73,7 +73,7 @@ comment. Best ~8–10am ET weekday. Reply to everyone; don't get defensive.
 
 - **Title:** `Show HN: thèque, a private visual library for the things you save`
 - **First comment:**
-  > I got tired of bookmarks I never reopened, so I built a personal "taste library." You click once on any page and it becomes a visual card (cover, author/director, rating, price) filed on a shelf (Books, Watch, Listen, Eat, Shop, Read, Cook, Tools…). It's single-purpose and private: no feed, no social graph, no ads.
+  > I got tired of bookmarks I never reopened, so I built a personal "taste library." You click once on any page and it becomes a visual card (cover, author/director, rating, price) filed on a shelf (Books, Watch, Articles, and an Other shelf for restaurants, products, travel, and recipes). It's single-purpose and private: no feed, no social graph, no ads.
   >
   > Stack: Next.js 16 + Supabase (Postgres/RLS) on Vercel; a Chrome MV3 extension for capture. Classification is deterministic first (a domain map + schema.org + heuristics + free resolvers like Open Library and TMDB), and only falls back to an LLM (Gemini) to fill sparse fields, gated behind env flags. The server-side fetcher has SSRF guards (IP/redirect validation, body caps) since it fetches arbitrary user URLs.
   >
@@ -98,7 +98,7 @@ enrichment decision and the PoC→public hardening (rate limits, quotas, SSRF) a
 ### X / Twitter launch thread (5 tweets)
 1. Hook + GIF: "Your bookmarks are a graveyard. I built a library instead. → [20s GIF of capture → shelf]"
 2. "One click on any page → thèque reads it and builds a card: cover, author, rating, price. No copy-paste."
-3. "It sorts itself onto shelves: Books, Watch, Listen, Eat, Shop, Read, Cook. Rate what you finish and it starts finding you more."
+3. "It sorts itself onto shelves: Books, Watch, Articles, and an Other shelf for the rest. Rate what you finish and it starts finding you more."
 4. "Private by design. No feed, no likes, no ads, nothing built to keep you scrolling. It's *your* library."
 5. "Free while it grows. Try it: theque.app · Chrome: [store link]. RTs appreciated 🙏"
 

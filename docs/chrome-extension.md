@@ -51,7 +51,7 @@ Content-Type: application/json
 }
 ```
 
-`category_hint` is optional. The popup shows shelf-style labels (`Books`, `Watch`, `Eat`, `Shop`, `Travel`, `Read`, `Cook`) and sends the matching category only when the user chooses a value other than `Auto`. The hint is enrichment input, not a manual override, and does not override stronger classification from domain map or schema.org signals when those apply.
+`category_hint` is optional. The popup offers one option per surviving category — `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, `recipes` — and sends the matching category only when the user chooses a value other than `Auto`. The retired `music`/`apps`/`videos` categories (and the old `gifts`) are not offered. The hint is enrichment input, not a manual override, and does not override stronger classification from domain map or schema.org signals when those apply.
 
 Restricted URLs (`chrome://`, extension pages, etc.) cannot be read by extensions and will show an error.
 

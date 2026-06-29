@@ -17,13 +17,14 @@ Each shelf maps to a query over `items`:
 | `all` | All | `status != dismissed` |
 | `books` | Books | `category = books` AND `status != dismissed` |
 | `watch` | Watch | `category = movies_and_tv` AND `status != dismissed` |
-| `eat` | Eat | `category = restaurants` AND `status != dismissed` |
-| `shop` | Shop | `category IN (products, gifts)` AND `status != dismissed` |
-| `travel` | Travel | `category = travel` AND `status != dismissed` |
-| `read` | Read | `category = articles` AND `status != dismissed` AND `status != inbox` |
-| `cook` | Cook | `category = recipes` AND `status != dismissed` |
-| `forgotten` | Forgotten | `status = want` AND `created_at < now() - 180 days` |
+| `articles` | Articles | `category = articles` AND `status != dismissed` AND `status != inbox` |
+| `other` | Other | `category IN (restaurants, products, travel, recipes)` AND `status != dismissed` |
+| `done` | Done | `status = done` |
 | `inbox` | Inbox | `status = inbox` |
+
+The steady-state strip is **All · Books · Watch · Articles · Done**. **Other** groups the long-tail categories (`restaurants`, `products`, `travel`, `recipes`) into one tab; the old per-category Listen/Eat/Shop/Travel/Cook/Tools tabs are gone, and **Read** is now labelled **Articles**. **Other** and **Inbox** are *dynamic* — shown only when they hold at least one item; if the shelf you are viewing empties out, you fall back to **All**.
+
+**Forgotten** is no longer a tab: `want` items older than 180 days surface as an "N forgotten" chip in the library insights plus the weekly "saved and forgot" digest.
 
 **Badge:** Inbox tab shows count of `status = inbox`.
 

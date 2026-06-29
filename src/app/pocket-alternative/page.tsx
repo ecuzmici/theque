@@ -47,7 +47,7 @@ const FAQ = [
   },
   {
     q: "How is it different from a read-later app?",
-    a: "Read-later apps store a URL and a title. thèque reads the page and builds a card with cover, author, rating, and price, then files it on a shelf (Books, Watch, Listen, Eat, Shop, Read, Cook, Tools). It's a library you browse, not a queue you forget.",
+    a: "Read-later apps store a URL and a title. thèque reads the page and builds a card with cover, author, rating, and price, then files it on a shelf (Books, Watch, Articles, and an Other shelf for restaurants, products, travel, and recipes). It's a library you browse, not a queue you forget.",
   },
 ] as const;
 

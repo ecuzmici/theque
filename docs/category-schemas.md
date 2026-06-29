@@ -77,17 +77,6 @@ PoC: often sparse without Places API.
 }
 ```
 
-## `gifts`
-
-Usually classified as `products` with tag `gift`. Use category `gifts` only when domain/heuristic indicates gift guides (`gift`, `wishlist` in path).
-
-```json
-{
-  "recipient_hint": "mom",
-  "occasion": "birthday"
-}
-```
-
 ## `travel`
 
 **Domain hints:** booking, airbnb, travel blogs with `TravelAction` schema
@@ -151,7 +140,6 @@ Separate from `structured` — user or system UI preferences:
 | recipes | 16/9 |
 | articles | 16/9 |
 | travel | 16/9 |
-| gifts | 1/1 |
 
 ## Classifier output
 
