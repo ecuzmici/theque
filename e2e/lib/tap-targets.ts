@@ -3,8 +3,8 @@
  *
  * WCAG 2.5.8 Target Size (Minimum), Level AA — 24x24 CSS px, applying the
  * spec's exceptions (spacing / undisturbed-circle, inline link, user-agent
- * default control). See `docs/a11y/touch-targets.md` and the audit prototype
- * `wcag-258-prototype.html`.
+ * default control). See `docs/a11y/touch-targets.md` and ADR 0006
+ * (`docs/adr/0006-touch-target-policy-wcag-258-aa.md`).
  *
  * The measurement contract lives in EXACTLY ONE place (`measureTapTargetsInPage`)
  * so issue #35 can extend coverage to overlay states (item-actions menu,

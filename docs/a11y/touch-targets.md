@@ -109,8 +109,8 @@ These are **consistency / comfort** notes, not compliance gaps:
 
 Dev server on `:3000`, then authenticate without email via
 `npm run qa:session-url`. The measurement harness (Playwright, iPhone 13 context,
-nearest-centre geometry per 2.5.8) was a throwaway script; the approach is documented
-above so it can be rebuilt for a regression check.
+nearest-centre geometry per 2.5.8) started as a throwaway script and is now the
+committed `npm run test:e2e` guard described below.
 
 ## Regression guard (committed)
 
