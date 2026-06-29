@@ -96,12 +96,19 @@ export function useRecommendationRun() {
 
   // The controller for the in-flight request, so dismiss/replace can abort it.
   const abortRef = useRef<AbortController | null>(null);
+  // A monotonic id for the active run. Every response is checked against it and
+  // ignored if stale, so a late reply from a replaced/dismissed run can never
+  // clobber the current slot — independent of (and belt-and-suspenders with) the
+  // AbortController, per ADR 0005.
+  const runIdRef = useRef(0);
 
   const runFetch = useCallback(
     async (shelf: RecommendShelfId) => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      const myRunId = ++runIdRef.current;
+      const isStale = () => runIdRef.current !== myRunId;
 
       update({
         runStatus: "loading",
@@ -120,7 +127,7 @@ export function useRecommendationRun() {
           signal: controller.signal,
         });
 
-        if (controller.signal.aborted) return;
+        if (isStale()) return;
 
         if (!res.ok) {
           let message = "Could not load recommendations";
@@ -130,13 +137,13 @@ export function useRecommendationRun() {
           } catch {
             // ignore parse errors
           }
-          if (controller.signal.aborted) return;
+          if (isStale()) return;
           update((prev) => ({ ...prev, runStatus: "error", errorMessage: message }));
           return;
         }
 
         const data = (await res.json()) as RecommendResponse;
-        if (controller.signal.aborted) return;
+        if (isStale()) return;
         update((prev) => ({
           ...prev,
           runStatus: "ready",
@@ -145,7 +152,8 @@ export function useRecommendationRun() {
           cursor: EMPTY_CURSOR,
         }));
       } catch {
-        if (controller.signal.aborted) return;
+        // A replace/dismiss bumps runIdRef and aborts; that rejection is stale.
+        if (isStale()) return;
         update((prev) => ({
           ...prev,
           runStatus: "error",
@@ -195,6 +203,8 @@ export function useRecommendationRun() {
   const dismiss = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    // Invalidate any in-flight run so a late response can't repopulate the slot.
+    runIdRef.current++;
     update(INITIAL_STATE);
   }, [update]);
 

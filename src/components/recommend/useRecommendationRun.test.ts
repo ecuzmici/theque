@@ -58,6 +58,36 @@ function deferredFetch(cards = SAMPLE_CARDS) {
   return { fetchMock, resolveResponse };
 }
 
+const STALE_CARDS = [
+  {
+    ...SAMPLE_CARDS[0],
+    id: "stale-1",
+    outcome_id: "stale-outcome-1",
+    title: "Stale pick from a replaced run",
+  },
+];
+
+/** A fetch stub that queues every call so each can be resolved independently. */
+function queuedFetch() {
+  const calls: { shelfId: string; resolve: (cards: typeof SAMPLE_CARDS) => void }[] =
+    [];
+  const fetchMock = vi.fn().mockImplementation((_url: string, opts: RequestInit) => {
+    const shelfId = JSON.parse(opts.body as string).shelfId as string;
+    return new Promise((resolve) => {
+      calls.push({
+        shelfId,
+        resolve: (cards) => resolve({ ok: true, json: async () => ({ cards }) }),
+      });
+    });
+  });
+  return { fetchMock, calls };
+}
+
+/** Flush pending microtasks (fetch resolve + res.json()). */
+function flush() {
+  return new Promise((r) => setTimeout(r, 0));
+}
+
 // Latest hook value captured for assertions.
 let api: RecommendationRunApi;
 
@@ -294,5 +324,69 @@ describe("useRecommendationRun", () => {
 
     expect(api.cursor.index).toBe(1);
     expect(api.cursor.outcomes).toEqual({ "outcome-1": "saved" });
+  });
+
+  // ---- #29: single-slot replace across shelves + stale-response guard ----
+
+  it("starting the other shelf replaces the run and reflects the new shelf", async () => {
+    const { fetchMock, calls } = queuedFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    act(() => {
+      api.start("books");
+    });
+    expect(api.shelf).toBe("books");
+    expect(api.runStatus).toBe("loading");
+
+    act(() => {
+      api.start("watch");
+    });
+    expect(api.shelf).toBe("watch");
+    expect(api.runStatus).toBe("loading");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // The replaced (books) run resolves late — it must be ignored entirely.
+    await act(async () => {
+      calls[0].resolve(STALE_CARDS);
+      await flush();
+    });
+    expect(api.shelf).toBe("watch");
+    expect(api.runStatus).toBe("loading");
+    expect(api.cards).toEqual([]);
+
+    // The current (watch) run resolves — it wins the slot.
+    await act(async () => {
+      calls[1].resolve(SAMPLE_CARDS);
+      await flush();
+    });
+    expect(api.runStatus).toBe("ready");
+    expect(api.shelf).toBe("watch");
+    expect(api.cards).toEqual(SAMPLE_CARDS);
+  });
+
+  it("ignores a response that resolves after the run was dismissed", async () => {
+    const { fetchMock, calls } = queuedFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    act(() => {
+      api.start("books");
+    });
+    expect(api.runStatus).toBe("loading");
+
+    act(() => {
+      api.dismiss();
+    });
+    expect(api.runStatus).toBe("empty");
+
+    await act(async () => {
+      calls[0].resolve(STALE_CARDS);
+      await flush();
+    });
+    // The late response never repopulates the empty slot.
+    expect(api.runStatus).toBe("empty");
+    expect(api.shelf).toBeNull();
+    expect(api.cards).toEqual([]);
   });
 });
