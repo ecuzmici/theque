@@ -107,3 +107,20 @@ Dev server on `:3000`, then authenticate without email via
 `npm run qa:session-url`. The measurement harness (Playwright, iPhone 13 context,
 nearest-centre geometry per 2.5.8) was a throwaway script; the approach is documented
 above so it can be rebuilt for a regression check.
+
+## Regression guard (committed)
+
+The throwaway harness is now codified as a committed Playwright e2e so the AA
+invariant can't silently rot:
+
+- `npm run test:e2e` boots/reuses a `next dev` server (the QA auth route is dev-only),
+  signs in without email, and walks the core surfaces (`/login`, `/library`, `/add`,
+  `/search`, `/settings`, `/item/[id]`) at the iPhone 13 coarse-pointer viewport.
+- The contract lives in one place (`e2e/lib/tap-targets.ts`): `minDim >= 24`, with the
+  inline-link, user-agent-default and spacing (24 px undisturbed-circle) exceptions. It
+  asserts `pointer: coarse` is active on every surface before measuring, so it can't pass
+  vacuously. It enforces the **AA 24 px** bar (green on `master` today); the 44 px comfort
+  target is reported but not enforced.
+- It is **not** wired into `npm test` (Vitest excludes `e2e/**`) — boot a dev server first,
+  then run `npm run test:e2e` (or `E2E_BASE_URL=http://localhost:3000 npm run test:e2e` to
+  reuse a running one).
