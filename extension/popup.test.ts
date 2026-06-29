@@ -4,19 +4,36 @@ function setPopupHtml() {
   // Mirrors popup.html — options are populated at runtime by popup.ts from category-hints.ts
   document.body.innerHTML = `
     <main class="ks-popup">
-      <header class="ks-header">
-        <h1>thèque</h1>
-        <button type="button" id="ks-open-theque" class="ks-link-btn">Open library</button>
-      </header>
-      <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
-      <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary" hidden>Connect your account</button>
-      <label class="ks-label" for="ks-category">Shelf hint <span class="ks-optional">(optional)</span></label>
-      <select id="ks-category" class="ks-input ks-select">
-        <option value="">Auto detect</option>
-      </select>
-      <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
-      <textarea id="ks-note" class="ks-input ks-textarea"></textarea>
-      <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save to thèque</button>
+      <section id="ks-capture-view" class="ks-capture" hidden>
+        <header class="ks-header">
+          <h1 class="ks-brand">thèque</h1>
+          <button type="button" id="ks-open-theque" class="ks-link-btn">Open library</button>
+        </header>
+        <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
+        <div id="ks-page-card" class="ks-page-card" hidden>
+          <div id="ks-page-favicon" class="ks-page-favicon" aria-hidden="true"></div>
+          <div class="ks-page-meta">
+            <div id="ks-page-title" class="ks-page-title"></div>
+            <div id="ks-page-domain" class="ks-page-domain"></div>
+          </div>
+        </div>
+        <div class="ks-field-group">
+          <label class="ks-label" for="ks-category">Shelf hint <span class="ks-optional">(optional)</span></label>
+          <select id="ks-category" class="ks-input ks-select">
+            <option value="">Auto detect</option>
+          </select>
+        </div>
+        <div class="ks-field-group">
+          <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
+          <textarea id="ks-note" class="ks-input ks-textarea"></textarea>
+        </div>
+        <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save to thèque</button>
+      </section>
+      <section id="ks-connect-view" class="ks-connect" hidden>
+        <h1 class="ks-brand ks-brand--lg">thèque</h1>
+        <p class="ks-connect-copy">Your visual taste library. Connect your account to start saving pages from anywhere.</p>
+        <button type="button" id="ks-connect-session" class="ks-btn ks-btn-primary">Connect your account</button>
+      </section>
     </main>
   `;
 }
@@ -124,18 +141,33 @@ describe("extension popup", () => {
     });
   });
 
-  it("renders the simplified production copy without the current-tab card or settings", async () => {
+  it("renders the capture view with a populated page-context card", async () => {
     await loadPopup();
 
     expect(document.getElementById("ks-open-theque")?.textContent).toBe("Open library");
-    expect(document.querySelector(".ks-tagline")).toBeNull();
-    expect(document.querySelector(".ks-capture-card")).toBeNull();
+    expect((document.getElementById("ks-capture-view") as HTMLElement).hidden).toBe(false);
+    expect((document.getElementById("ks-connect-view") as HTMLElement).hidden).toBe(true);
     expect(document.querySelector(".ks-settings")).toBeNull();
+
+    // Page-context card shows what's about to be saved, not generic "Current tab" copy.
+    const card = document.getElementById("ks-page-card") as HTMLElement;
+    expect(card.hidden).toBe(false);
+    expect(document.getElementById("ks-page-title")?.textContent).toBe("Example Story");
+    expect(document.getElementById("ks-page-domain")?.textContent).toBe("example.com");
     expect(document.body.textContent).not.toContain("Current tab");
+
     expect(document.querySelector("label[for='ks-category']")?.textContent).toContain("Shelf hint");
     expect((document.querySelector("#ks-category option") as HTMLOptionElement).textContent).toBe(
       "Auto detect",
     );
+  });
+
+  it("shows the connect view and hides the capture view on first run", async () => {
+    storageGet.mockResolvedValue({});
+    await loadPopup();
+
+    expect((document.getElementById("ks-connect-view") as HTMLElement).hidden).toBe(false);
+    expect((document.getElementById("ks-capture-view") as HTMLElement).hidden).toBe(true);
   });
 
   it("hides the connect action while connected", async () => {
@@ -184,18 +216,15 @@ describe("extension popup", () => {
     expect(document.getElementById("ks-status")?.textContent).toBe("This page cannot be captured.");
   });
 
-  it("sets restricted URL error when saving on a restricted page", async () => {
+  it("disables saving on a restricted page", async () => {
     tabsQuery.mockResolvedValue([{ url: "chrome://newtab/", title: "New Tab" }]);
     await loadPopup();
 
-    document.getElementById("ks-save")?.click();
-
-    await vi.waitFor(() => {
-      expect(fetchMock).not.toHaveBeenCalled();
-      expect(document.getElementById("ks-status")?.textContent).toBe(
-        "This page cannot be captured (restricted URL).",
-      );
-    });
+    const saveBtn = document.getElementById("ks-save") as HTMLButtonElement;
+    expect(saveBtn.disabled).toBe(true);
+    // A disabled control never fires its click handler, so no capture is attempted.
+    saveBtn.click();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("uses stored baseUrl for capture when set (enables localhost dev capture)", async () => {

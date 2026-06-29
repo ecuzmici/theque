@@ -8,34 +8,59 @@
   </head>
   <body>
     <main class="ks-popup">
-      <header class="ks-header">
-        <h1>thèque</h1>
-        <button type="button" id="ks-open-theque" class="ks-link-btn">Open library</button>
-      </header>
+      <!-- Capture view: shown once the extension is connected. -->
+      <section id="ks-capture-view" class="ks-capture" hidden>
+        <header class="ks-header">
+          <h1 class="ks-brand">thèque</h1>
+          <button type="button" id="ks-open-theque" class="ks-link-btn">Open library</button>
+        </header>
 
-      <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
-      <button type="button" id="ks-connect-session" class="ks-btn ks-btn-secondary" hidden>
-        Connect your account
-      </button>
+        <p id="ks-status" class="ks-status ks-status--muted" role="status"></p>
 
-      <label class="ks-label" for="ks-category">
-        Shelf hint <span class="ks-optional">(optional)</span>
-      </label>
-      <!-- Options are populated at runtime by popup.js from category-hints.ts -->
-      <select id="ks-category" class="ks-input ks-select">
-        <option value="">Auto detect</option>
-      </select>
+        <!-- Page-context card: favicon + title + domain of the tab being saved.
+             Populated at runtime by popup.ts; hidden until there is a tab to show. -->
+        <div id="ks-page-card" class="ks-page-card" hidden>
+          <div id="ks-page-favicon" class="ks-page-favicon" aria-hidden="true"></div>
+          <div class="ks-page-meta">
+            <div id="ks-page-title" class="ks-page-title"></div>
+            <div id="ks-page-domain" class="ks-page-domain"></div>
+          </div>
+        </div>
 
-      <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
-      <textarea
-        id="ks-note"
-        class="ks-input ks-textarea"
-        rows="3"
-        maxlength="2000"
-        placeholder="Add a note for future you"
-      ></textarea>
+        <div class="ks-field-group">
+          <label class="ks-label" for="ks-category">
+            Shelf hint <span class="ks-optional">(optional)</span>
+          </label>
+          <!-- Options are populated at runtime by popup.js from category-hints.ts -->
+          <select id="ks-category" class="ks-input ks-select">
+            <option value="">Auto detect</option>
+          </select>
+        </div>
 
-      <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save to thèque</button>
+        <div class="ks-field-group">
+          <label class="ks-label" for="ks-note">Note <span class="ks-optional">(optional)</span></label>
+          <textarea
+            id="ks-note"
+            class="ks-input ks-textarea"
+            rows="3"
+            maxlength="2000"
+            placeholder="Add a note for future you"
+          ></textarea>
+        </div>
+
+        <button type="button" id="ks-save" class="ks-btn ks-btn-primary">Save to thèque</button>
+      </section>
+
+      <!-- Connect view: focused first-run prompt, shown until connected. -->
+      <section id="ks-connect-view" class="ks-connect" hidden>
+        <h1 class="ks-brand ks-brand--lg">thèque</h1>
+        <p class="ks-connect-copy">
+          Your visual taste library. Connect your account to start saving pages from anywhere.
+        </p>
+        <button type="button" id="ks-connect-session" class="ks-btn ks-btn-primary">
+          Connect your account
+        </button>
+      </section>
     </main>
 
     <script src="popup.js" type="module"></script>

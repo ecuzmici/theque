@@ -11,6 +11,16 @@ const STORAGE_KEYS = {
 const THEQUE_APP_URL = "https://theque.app";
 const SAVE_BUTTON_LABEL_DEFAULT = "Save to thèque";
 
+type ActiveTab = {
+  id: number | undefined;
+  url: string;
+  title: string;
+  domain: string;
+  favIconUrl: string;
+  /** false for chrome:// and extension pages we can't capture. */
+  capturable: boolean;
+};
+
 function $(id: string): HTMLElement {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing #${id}`);
@@ -41,13 +51,59 @@ async function loadSettings(): Promise<{ token: string; baseUrl: string; email: 
   return { token, baseUrl, email };
 }
 
-async function getActiveTab(): Promise<{ id: number | undefined; url: string; title: string } | null> {
+async function getActiveTab(): Promise<ActiveTab | null> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const url = tab?.url;
-  if (!url || url.startsWith("chrome://") || url.startsWith("chrome-extension://")) {
-    return null;
+  if (!url) return null;
+  let domain = "";
+  try {
+    domain = new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    domain = "";
   }
-  return { id: tab.id, url, title: tab.title?.trim() || "Current tab" };
+  const capturable = !url.startsWith("chrome://") && !url.startsWith("chrome-extension://");
+  return {
+    id: tab.id,
+    url,
+    title: tab.title?.trim() || domain || "Untitled",
+    domain: domain || url,
+    favIconUrl: typeof tab.favIconUrl === "string" ? tab.favIconUrl : "",
+    capturable,
+  };
+}
+
+function monogram(tab: ActiveTab): string {
+  return (tab.domain || tab.title || "?").charAt(0).toUpperCase();
+}
+
+/** Fill the page-context card (favicon + title + domain) for the tab being saved. */
+function renderPageCard(tab: ActiveTab | null) {
+  const card = $("ks-page-card");
+  if (!tab) {
+    card.hidden = true;
+    return;
+  }
+  card.hidden = false;
+  card.classList.toggle("ks-page-card--disabled", !tab.capturable);
+  $("ks-page-title").textContent = tab.title;
+  $("ks-page-domain").textContent = tab.domain;
+
+  const fav = $("ks-page-favicon");
+  fav.innerHTML = "";
+  if (tab.capturable && tab.favIconUrl) {
+    const img = document.createElement("img");
+    img.src = tab.favIconUrl;
+    img.alt = "";
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "cover";
+    img.addEventListener("error", () => {
+      fav.textContent = monogram(tab);
+    });
+    fav.appendChild(img);
+  } else {
+    fav.textContent = tab.capturable ? monogram(tab) : "—";
+  }
 }
 
 async function openConnectPage() {
@@ -61,6 +117,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const noteEl = $("ks-note") as HTMLTextAreaElement;
   const categoryEl = $("ks-category") as HTMLSelectElement;
   const connectBtn = $("ks-connect-session") as HTMLButtonElement;
+  const captureView = $("ks-capture-view");
+  const connectView = $("ks-connect-view");
+  const saveBtn = $("ks-save") as HTMLButtonElement;
 
   // Populate shelf-hint dropdown from the shared CATEGORY_HINT_OPTIONS constant
   // so the list here always matches what the capture API validates against.
@@ -76,8 +135,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const { token, email } = await loadSettings();
   const isConnected = token.startsWith("bmly_");
+
+  // Connected → capture view; first run → focused connect prompt.
   connectBtn.hidden = isConnected;
-  if (!activeTab) {
+  captureView.hidden = !isConnected;
+  connectView.hidden = isConnected;
+
+  renderPageCard(activeTab);
+  if (activeTab && !activeTab.capturable) {
+    saveBtn.disabled = true;
+  }
+
+  if (!activeTab || !activeTab.capturable) {
     setStatus("This page cannot be captured.", "err");
   } else {
     setStatus(isConnected ? `Connected${email ? ` as ${email}` : ""}.` : "Not connected yet.", "muted");
@@ -105,8 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  $("ks-save").addEventListener("click", async () => {
-    const saveBtn = $("ks-save") as HTMLButtonElement;
+  saveBtn.addEventListener("click", async () => {
     saveBtn.disabled = true;
     saveBtn.textContent = "Saving…";
     saveBtn.setAttribute("aria-busy", "true");
@@ -118,7 +186,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       const tab = await getActiveTab();
-      if (!tab) {
+      if (!tab || !tab.capturable) {
         setStatus("This page cannot be captured (restricted URL).", "err");
         return;
       }

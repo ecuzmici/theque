@@ -1,3 +1,48 @@
+/* thèque popup — frosted, edge-to-edge, adaptive light/dark.
+   See docs/adr/0008-extension-frosted-redesign-unified-amber.md. */
+
+:root {
+  /* brand amber (anchor) + neutrals */
+  --ks-amber: #b45309;
+  --ks-amber-hover: #92400e;
+  --ks-amber-text: #b45309; /* amber used as link/accent text */
+  --ks-on-amber: #fffefb; /* text on amber fills */
+  --ks-ink: #1c1917;
+  --ks-ink-muted: #57534e;
+  --ks-ink-faint: #8a8276;
+  /* simulated frosted material (warm cream) */
+  --ks-material: radial-gradient(120% 100% at 50% 0%, #f6efe3 0%, #ece2d1 60%, #e4d8c4 100%);
+  --ks-panel: rgba(255, 254, 251, 0.66);
+  --ks-panel-strong: rgba(255, 254, 251, 0.82);
+  --ks-border: rgba(28, 25, 23, 0.1);
+  --ks-hairline: rgba(255, 255, 255, 0.7);
+  --ks-shadow-sm: 0 3px 10px rgba(28, 25, 23, 0.1), 0 1px 2px rgba(28, 25, 23, 0.06);
+  --ks-ring: rgba(180, 83, 9, 0.4);
+  --ks-ok: #16a34a;
+  --ks-err: #b91c1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ks-amber: #d97706;
+    --ks-amber-hover: #ea8a1f;
+    --ks-amber-text: #e8923a;
+    --ks-on-amber: #1c1917;
+    --ks-ink: #fafaf9;
+    --ks-ink-muted: #a8a29e;
+    --ks-ink-faint: #78716c;
+    --ks-material: radial-gradient(120% 100% at 50% 0%, #211c18 0%, #131110 55%, #0b0a09 100%);
+    --ks-panel: rgba(54, 48, 43, 0.55);
+    --ks-panel-strong: rgba(60, 54, 48, 0.72);
+    --ks-border: rgba(255, 255, 255, 0.09);
+    --ks-hairline: rgba(255, 255, 255, 0.1);
+    --ks-shadow-sm: 0 3px 12px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --ks-ring: rgba(217, 119, 6, 0.5);
+    --ks-ok: #4ade80;
+    --ks-err: #f87171;
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -14,140 +59,286 @@ body {
     Roboto,
     sans-serif;
   font-size: 13px;
-  color: #1c1917;
-  background: #faf8f5;
-  width: 340px;
+  color: var(--ks-ink);
+  background: var(--ks-material);
+  width: 360px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ks-popup > * {
+    animation: ks-rise 130ms ease-out both;
+  }
+  @keyframes ks-rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px) scale(0.99);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 .ks-popup {
-  display: grid;
-  gap: 12px;
   padding: 14px;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- header ---------- */
 .ks-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 11px;
 }
 
-.ks-header h1 {
+.ks-brand {
   margin: 0;
   font-family: ui-serif, Georgia, "Times New Roman", serif;
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: lowercase;
 }
 
 .ks-link-btn {
-  border: 1px solid rgba(28, 25, 23, 0.09);
+  border: 1px solid var(--ks-border);
   border-radius: 999px;
-  background: #fffefb;
-  color: #92400e;
+  background: var(--ks-panel-strong);
+  color: var(--ks-amber-text);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 9px;
+  padding: 6px 11px;
+  box-shadow: inset 0 1px 0 var(--ks-hairline);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background 120ms ease;
 }
 
 .ks-link-btn:hover {
-  background: #f5f0e8;
+  background: var(--ks-panel);
 }
 
+/* ---------- status ---------- */
 .ks-status {
-  margin: 0;
+  margin: 0 0 11px;
   min-height: 1.35em;
   line-height: 1.35;
-  font-size: 12px;
+  font-size: 11.5px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: color 150ms ease;
+}
+
+.ks-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .ks-status--muted {
-  color: #78716c;
+  color: var(--ks-ink-muted);
 }
 
 .ks-status--ok {
-  color: #166534;
+  color: var(--ks-ok);
+  font-weight: 600;
 }
 
 .ks-status--err {
-  color: #b91c1c;
+  color: var(--ks-err);
 }
 
+/* ---------- page-context card ---------- */
+.ks-page-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--ks-panel);
+  border: 1px solid var(--ks-border);
+  border-radius: 13px;
+  padding: 10px 12px;
+  margin-bottom: 11px;
+  box-shadow: var(--ks-shadow-sm), inset 0 1px 0 var(--ks-hairline);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+}
+
+.ks-page-card--disabled {
+  opacity: 0.6;
+}
+
+.ks-page-favicon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--ks-ink-faint);
+  background: var(--ks-panel-strong);
+  border: 1px solid var(--ks-border);
+  box-shadow: var(--ks-shadow-sm);
+  overflow: hidden;
+}
+
+.ks-page-meta {
+  min-width: 0;
+}
+
+.ks-page-title {
+  font-weight: 600;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ks-page-domain {
+  font-size: 11px;
+  color: var(--ks-ink-muted);
+}
+
+/* ---------- form ---------- */
 .ks-label {
   display: block;
-  margin-top: 10px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   font-weight: 600;
-  font-size: 11px;
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #44403c;
+  letter-spacing: 0.06em;
+  color: var(--ks-ink-muted);
+}
+
+.ks-field-group {
+  margin-bottom: 11px;
 }
 
 .ks-optional {
   font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
-  color: #78716c;
+  color: var(--ks-ink-faint);
 }
 
 .ks-input {
   width: 100%;
-  padding: 8px 10px;
-  border: 1px solid rgba(28, 25, 23, 0.15);
-  border-radius: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--ks-border);
+  border-radius: 11px;
   font: inherit;
-  background: #fffefb;
+  color: var(--ks-ink);
+  background: var(--ks-panel);
+  box-shadow: var(--ks-shadow-sm), inset 0 1px 0 var(--ks-hairline);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.ks-input::placeholder {
+  color: var(--ks-ink-faint);
 }
 
 .ks-input:focus {
-  outline: 2px solid rgba(180, 83, 9, 0.35);
+  outline: 2px solid var(--ks-ring);
   outline-offset: 1px;
 }
 
 .ks-select {
-  appearance: auto;
+  appearance: none;
   min-height: 38px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ks-ink-muted) 50%),
+    linear-gradient(135deg, var(--ks-ink-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 17px,
+    calc(100% - 12px) 17px;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
 }
 
 .ks-textarea {
-  resize: vertical;
-  min-height: 4.5rem;
+  resize: none;
+  min-height: 54px;
 }
 
+/* ---------- buttons ---------- */
 .ks-btn {
   width: 100%;
-  margin-top: 0;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    transform 80ms ease,
+    filter 120ms ease;
+}
+
+.ks-btn:active:not(:disabled) {
+  transform: scale(0.985);
 }
 
 .ks-btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
 .ks-btn-primary {
-  background: #b45309;
-  color: #fffefb;
+  color: var(--ks-on-amber);
+  background: linear-gradient(180deg, var(--ks-amber), var(--ks-amber-hover));
+  box-shadow: var(--ks-shadow-sm), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .ks-btn-primary:hover:not(:disabled) {
-  background: #92400e;
+  filter: brightness(1.05);
 }
 
 .ks-btn-secondary {
-  background: #e7e5e4;
-  color: #1c1917;
+  color: var(--ks-ink);
+  background: var(--ks-panel-strong);
+  border: 1px solid var(--ks-border);
+  box-shadow: inset 0 1px 0 var(--ks-hairline);
 }
 
-.ks-btn-secondary:hover:not(:disabled) {
-  background: #d6d3d1;
+/* ---------- connect view (first run) ---------- */
+.ks-connect {
+  display: grid;
+  gap: 13px;
+  justify-items: center;
+  text-align: center;
+  padding: 16px 12px 18px;
+}
+
+.ks-brand--lg {
+  font-size: 1.5rem;
+}
+
+.ks-connect-copy {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ks-ink-muted);
+  line-height: 1.45;
+  max-width: 240px;
+}
+
+.ks-connect .ks-btn {
+  margin-top: 2px;
 }
