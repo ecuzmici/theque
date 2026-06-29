@@ -100,7 +100,7 @@ function ItemEditForm({
           <div className="grid gap-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => v && setStatus(v as ItemStatus)}>
-              <SelectTrigger className="h-11 w-full min-h-11">
+              <SelectTrigger className="h-11 w-full">
                 <SelectValue>{formatStatus(status)}</SelectValue>
               </SelectTrigger>
               <SelectContent>
@@ -115,7 +115,7 @@ function ItemEditForm({
           <div className="grid gap-2">
             <Label>Category</Label>
             <Select value={categoryValue} onValueChange={(v) => v && setCategoryValue(v)}>
-              <SelectTrigger className="h-11 w-full min-h-11">
+              <SelectTrigger className="h-11 w-full">
                 <SelectValue>
                   {categoryValue === UNCATEGORIZED
                     ? "Uncategorized"
