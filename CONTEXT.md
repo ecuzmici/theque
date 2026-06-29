@@ -83,6 +83,30 @@ or **dismissed** — keyed on the resolver's external id. Powers "never show thi
 again" and the negative signal from rejections.
 _Avoid_: history, cache, impressions
 
+**Recommendation run**:
+One invocation of the recommender for a single shelf, from request through the deck
+of picks it produces. Has a lifecycle — *loading* → *ready* (or *error*) — and is
+tagged with the shelf it was started for.
+_Avoid_: request, job, session
+
+**Active run**:
+The **one** recommendation run the profile can have going at a time. Theque holds a
+single global slot: starting a run for another shelf **replaces** the current one
+(cancelling it). There is no parallel "Books and Watch at once."
+_Avoid_: queue, parallel runs
+
+**Minimize**:
+Stashing the open recommendation deck without ending its run — the run keeps loading
+or keeps its place in the deck, and a floating indicator stands in for it. The user
+can roam the app and is told when it is ready. Triggered by clicking outside the deck.
+_Avoid_: close, hide (minimize *keeps* the run; close/dismiss ends it)
+
+**Dismiss**:
+Ending the active run and discarding it — cancelling an in-flight load or throwing
+away a loaded deck, leaving the slot empty. Triggered by the deck's close (×) control
+or the indicator's own ×.
+_Avoid_: minimize, cancel-the-app (dismiss is the deliberate "I'm done with this")
+
 ## Categories
 
 There are **seven** categories: `books`, `movies_and_tv`, `restaurants`, `products`,

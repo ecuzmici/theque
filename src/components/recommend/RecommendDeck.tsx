@@ -4,13 +4,9 @@ import { useEffect, useState } from "react";
 import { Bookmark, SkipForward, Star, X } from "lucide-react";
 
 import { CoverImage } from "@/components/recommend/CoverImage";
-import {
-  captureRecommendationUrl,
-  LOADING_STATUS_LINES,
-  logRecommendOutcome,
-} from "@/components/recommend/recommend-deck-utils";
+import { LOADING_STATUS_LINES } from "@/components/recommend/recommend-deck-utils";
 import { ReasonChips } from "@/components/recommend/ReasonChips";
-import type { RecommendState } from "@/components/recommend/useRecommendations";
+import type { RecommendationRunApi } from "@/components/recommend/useRecommendationRun";
 import { Button } from "@/components/ui/button";
 import type {
   RecommendDismissReason,
@@ -24,8 +20,6 @@ const SHELF_LABELS: Record<RecommendShelfId, string> = {
 };
 
 const STATUS_ROTATE_MS = 2000;
-
-type DeckOutcome = "saved" | "skipped" | "dismissed";
 
 function LoadingStatus() {
   const [lineIndex, setLineIndex] = useState(0);
@@ -166,63 +160,17 @@ function RecommendCard({
 }
 
 type RecommendDeckProps = {
-  shelfId: RecommendShelfId;
-  state: RecommendState;
-  onRetry: () => void;
+  run: RecommendationRunApi;
 };
 
-export function RecommendDeck({ shelfId, state, onRetry }: RecommendDeckProps) {
-  const [index, setIndex] = useState(0);
-  const [outcomes, setOutcomes] = useState<Record<string, DeckOutcome>>({});
-  const [askReason, setAskReason] = useState(false);
+export function RecommendDeck({ run }: RecommendDeckProps) {
+  const { runStatus, cards, errorMessage, cursor } = run;
+  const { index, outcomes, askReason } = cursor;
+  const shelfId = run.shelf ?? "books";
 
-  const cards = state.status === "done" ? state.cards : [];
   const total = cards.length;
-  const done = state.status === "done" && total > 0 && index >= total;
-  const card = state.status === "done" && !done ? cards[index] : null;
-
-  const cardsKey =
-    state.status === "done" ? state.cards.map((c) => c.outcome_id).join(",") : "";
-
-  useEffect(() => {
-    if (state.status === "loading" || state.status === "idle") {
-      setIndex(0);
-      setOutcomes({});
-      setAskReason(false);
-      return;
-    }
-    if (state.status === "done") {
-      setIndex(0);
-      setOutcomes({});
-      setAskReason(false);
-    }
-  }, [state.status, cardsKey]);
-
-  function advance() {
-    setAskReason(false);
-    setIndex((i) => i + 1);
-  }
-
-  function handleSave() {
-    if (!card) return;
-    logRecommendOutcome(card.outcome_id, "saved");
-    captureRecommendationUrl(card.canonical_url);
-    setOutcomes((prev) => ({ ...prev, [card.outcome_id]: "saved" }));
-    advance();
-  }
-
-  function handleSkip() {
-    if (!card) return;
-    setOutcomes((prev) => ({ ...prev, [card.outcome_id]: "skipped" }));
-    advance();
-  }
-
-  function handleDismiss(reason: RecommendDismissReason) {
-    if (!card) return;
-    logRecommendOutcome(card.outcome_id, "dismissed", reason);
-    setOutcomes((prev) => ({ ...prev, [card.outcome_id]: "dismissed" }));
-    advance();
-  }
+  const done = runStatus === "ready" && total > 0 && index >= total;
+  const card = runStatus === "ready" && !done ? cards[index] : null;
 
   const shelfLabel = SHELF_LABELS[shelfId];
   const savedCount = Object.values(outcomes).filter((o) => o === "saved").length;
@@ -235,22 +183,22 @@ export function RecommendDeck({ shelfId, state, onRetry }: RecommendDeckProps) {
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {state.status === "loading" ? (
+        {runStatus === "loading" ? (
           <LoadingStatus />
-        ) : state.status === "error" ? (
+        ) : runStatus === "error" ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
-            <p className="text-sm text-muted-foreground">{state.message}</p>
-            <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+            <Button type="button" variant="outline" size="sm" onClick={run.retry}>
               Try again
             </Button>
           </div>
-        ) : state.status === "done" && total === 0 ? (
+        ) : runStatus === "ready" && total === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
             <p className="text-sm text-muted-foreground">
               No new recommendations right now. Try again later.
             </p>
           </div>
-        ) : state.status === "done" && done ? (
+        ) : runStatus === "ready" && done ? (
           <div className="mx-auto flex max-w-md animate-in fade-in-0 zoom-in-95 flex-col items-center gap-4 px-4 py-16 text-center duration-300">
             <h2 className="font-serif text-2xl text-foreground">You&rsquo;re all caught up</h2>
             <p className="text-sm text-muted-foreground">
@@ -278,18 +226,18 @@ export function RecommendDeck({ shelfId, state, onRetry }: RecommendDeckProps) {
 
             <RecommendCard
               card={card}
-              onSave={handleSave}
-              onSkip={handleSkip}
-              onDismissStart={() => setAskReason(true)}
+              onSave={run.saveCard}
+              onSkip={run.skipCard}
+              onDismissStart={() => run.setAskReason(true)}
               askReason={askReason}
-              onDismissReason={handleDismiss}
-              onDismissCancel={() => setAskReason(false)}
+              onDismissReason={run.dismissCard}
+              onDismissCancel={() => run.setAskReason(false)}
             />
           </div>
         ) : null}
       </div>
 
-      {(state.status === "done" || state.status === "loading") && (
+      {(runStatus === "ready" || runStatus === "loading") && (
         <div className="border-t border-border px-4 py-3">
           <p className="text-[11px] text-muted-foreground">
             AI picks, checked against {shelfId === "books" ? "Open Library" : "TMDB"}. A few may
