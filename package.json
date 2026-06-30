@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "npm run build:extension && next build",
     "build:extension": "tsc -p extension/tsconfig.json",
+    "package:extension": "npm run build:extension && node scripts/package-extension.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",

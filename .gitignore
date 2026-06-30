@@ -54,6 +54,9 @@ extension/popup.js
 extension/background.js
 extension/category-hints.js
 
+# packaged extension upload artifact (run npm run package:extension)
+theque-extension-v*.zip
+
 # QA agent screenshots (local only)
 qa-screenshots/
 
