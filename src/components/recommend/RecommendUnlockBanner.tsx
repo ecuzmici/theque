@@ -21,6 +21,10 @@ import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Clapperboard, Sparkles, Star } from "lucide-react";
 
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
+import {
+  UnlockCelebration,
+  type CelebrationCategory,
+} from "@/components/recommend/UnlockCelebration";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,8 +40,11 @@ import { RECOMMEND_MIN_ITEMS } from "@/lib/recommend/recommend-config";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 import {
   effectiveUnlocked,
+  persistCelebrated,
   persistUnlocked,
+  readCelebrated,
   readUnlocked,
+  shouldCelebrateUnlock,
 } from "@/lib/recommend/unlock-storage";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -86,14 +93,20 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
   // `null` while the counts are still loading, so the banner doesn't flash a
   // locked state for an already-unlocked library.
   const [progress, setProgress] = useState<CategoryProgress[] | null>(null);
+  // Set once, when a category crosses the unlock threshold for the first time on
+  // this device — drives the one-time celebration toast.
+  const [celebrating, setCelebrating] = useState<CelebrationCategory | null>(null);
 
   useEffect(() => {
     if (enabled.length === 0) return;
     let cancelled = false;
     const supabase = createClient();
     void (async () => {
-      const rows = await Promise.all(
+      const results = await Promise.all(
         enabled.map(async (c) => {
+          // Read the sticky flag *before* this load persists the unlock, so a
+          // library already unlocked on a prior visit is never celebrated again.
+          const wasStored = readUnlocked(c.shelfId);
           const { count } = await supabase
             .from("items")
             .select("id", { count: "exact", head: true })
@@ -105,14 +118,31 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
           // Persist the moment a category crosses the gate, then read it back so
           // the displayed state reflects the sticky flag consistently.
           if (saved >= SAVE_TARGET) persistUnlocked(c.shelfId);
-          return {
-            ...c,
-            saved,
-            unlocked: effectiveUnlocked(saved, readUnlocked(c.shelfId), SAVE_TARGET),
-          };
+          const unlocked = effectiveUnlocked(saved, readUnlocked(c.shelfId), SAVE_TARGET);
+          const fresh = shouldCelebrateUnlock({
+            nowUnlocked: unlocked,
+            wasStored,
+            celebrated: readCelebrated(c.shelfId),
+          });
+          return { row: { ...c, saved, unlocked }, fresh };
         }),
       );
-      if (!cancelled) setProgress(rows);
+      if (cancelled) return;
+      setProgress(results.map((r) => r.row));
+      // Celebrate at most one category per load (the nearest-to-goal fresh one);
+      // any other fresh category will celebrate on a later visit.
+      const fresh = results.filter((r) => r.fresh).map((r) => r.row);
+      const toCelebrate =
+        fresh.length > 0 ? [...fresh].sort((a, b) => b.saved - a.saved)[0] : null;
+      if (toCelebrate) {
+        // Mark celebrated at show-time so dismiss/unmount never re-fires it.
+        persistCelebrated(toCelebrate.shelfId);
+        setCelebrating({
+          shelfId: toCelebrate.shelfId,
+          label: toCelebrate.label,
+          Icon: toCelebrate.Icon,
+        });
+      }
     })();
     return () => {
       cancelled = true;
@@ -133,17 +163,29 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
 
   const featured = featuredOf(progress);
 
+  const celebration = celebrating ? (
+    <UnlockCelebration
+      category={celebrating}
+      onStart={start}
+      onDismiss={() => setCelebrating(null)}
+    />
+  ) : null;
+
   if (featured.unlocked) {
     return (
-      <div className={SHELL}>
-        <ActiveBanner rows={progress.map(toRow)} start={start} thumbs={thumbs} />
-      </div>
+      <>
+        <div className={SHELL}>
+          <ActiveBanner rows={progress.map(toRow)} start={start} thumbs={thumbs} />
+        </div>
+        {celebration}
+      </>
     );
   }
 
   const a = achieve(featured);
   return (
-    <div className={SHELL}>
+    <>
+      <div className={SHELL}>
       <div className="flex items-center gap-4">
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -166,7 +208,9 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
 
         <StackedCovers thumbs={thumbs} />
       </div>
-    </div>
+      </div>
+      {celebration}
+    </>
   );
 }
 

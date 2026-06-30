@@ -15,9 +15,14 @@
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
 
 const STORAGE_PREFIX = "theque_recommend_unlocked_";
+const CELEBRATED_PREFIX = "theque_recommend_celebrated_";
 
 function storageKey(shelfId: RecommendShelfId): string {
   return `${STORAGE_PREFIX}${shelfId}`;
+}
+
+function celebratedKey(shelfId: RecommendShelfId): string {
+  return `${CELEBRATED_PREFIX}${shelfId}`;
 }
 
 /**
@@ -49,5 +54,42 @@ export function persistUnlocked(shelfId: RecommendShelfId): void {
     window.localStorage.setItem(storageKey(shelfId), "1");
   } catch {
     // Storage unavailable (private mode / quota) — the unlock just isn't sticky.
+  }
+}
+
+/**
+ * Whether the one-time unlock celebration should fire for a category.
+ *
+ * `wasStored` is the sticky flag read *before* this load persisted the unlock,
+ * so a library that was already unlocked on a previous visit reads `true` and is
+ * never celebrated retroactively. A fresh celebration is therefore only the true
+ * locked → unlocked transition observed on this device, and only if it has not
+ * already been celebrated. Pure; the caller owns the storage reads.
+ */
+export function shouldCelebrateUnlock(args: {
+  nowUnlocked: boolean;
+  wasStored: boolean;
+  celebrated: boolean;
+}): boolean {
+  return args.nowUnlocked && !args.wasStored && !args.celebrated;
+}
+
+/** Read whether a category's unlock has already been celebrated (false on server). */
+export function readCelebrated(shelfId: RecommendShelfId): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(celebratedKey(shelfId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** Persist that a category's unlock celebration has been shown. Idempotent. */
+export function persistCelebrated(shelfId: RecommendShelfId): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(celebratedKey(shelfId), "1");
+  } catch {
+    // Storage unavailable — worst case the celebration may re-show once.
   }
 }

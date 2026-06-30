@@ -1,6 +1,6 @@
 # Overnight idea: one-time "Made for you" unlock celebration
 
-**Status:** in-progress (stub commit)
+**Status:** complete
 **Branch:** `overnight/unlock-celebration`
 
 Deferred follow-up #1 from the recommend-unlock-banner work: fire a calm,
