@@ -41,18 +41,91 @@ function hueFromRgb(r: number, g: number, b: number): number {
   return Math.round(((h * 60) % 360 + 360) % 360);
 }
 
-/** Best-effort dominant color via sharp's histogram; never throws. */
+function toHex(r: number, g: number, b: number): string {
+  return `#${[r, g, b]
+    .map((c) => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+const HUE_BUCKETS = 36;
+
+/**
+ * Picks the most prominent *vivid* color from raw RGB(A) pixels. Near-black,
+ * near-white and washed-out pixels are dropped (so dark backgrounds and black
+ * borders don't win), the rest are bucketed by hue and weighted by saturation
+ * (favoring mid lightness), and the heaviest bucket's weighted-average color
+ * wins. Returns null when nothing colorful remains (e.g. a grayscale cover) so
+ * the caller can fall back.
+ */
+function pickVividColor(
+  data: Uint8Array | Buffer,
+  channels: number,
+): { color: string; hue: number } | null {
+  const weight = new Array(HUE_BUCKETS).fill(0);
+  const accR = new Array(HUE_BUCKETS).fill(0);
+  const accG = new Array(HUE_BUCKETS).fill(0);
+  const accB = new Array(HUE_BUCKETS).fill(0);
+  let total = 0;
+
+  for (let i = 0; i + 2 < data.length; i += channels) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const max = Math.max(r, g, b) / 255;
+    const min = Math.min(r, g, b) / 255;
+    const l = (max + min) / 2;
+    if (l < 0.12 || l > 0.92) continue; // near-black / near-white
+    const d = max - min;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    if (s < 0.18) continue; // washed-out
+    const w = s * Math.max(0.15, 1 - Math.abs(l - 0.5) * 1.1); // favor saturated mid-tones
+    const k = Math.min(HUE_BUCKETS - 1, Math.floor(hueFromRgb(r, g, b) / (360 / HUE_BUCKETS)));
+    weight[k] += w;
+    accR[k] += r * w;
+    accG[k] += g * w;
+    accB[k] += b * w;
+    total += w;
+  }
+
+  if (total <= 0) return null;
+  let best = 0;
+  for (let k = 1; k < HUE_BUCKETS; k += 1) {
+    if (weight[k] > weight[best]) best = k;
+  }
+  const w = weight[best];
+  const r = accR[best] / w;
+  const g = accG[best] / w;
+  const b = accB[best] / w;
+  return { color: toHex(r, g, b), hue: hueFromRgb(Math.round(r), Math.round(g), Math.round(b)) };
+}
+
+/**
+ * Best-effort dominant cover color; never throws. Prefers a vivid, representative
+ * color so dark backgrounds don't flood the palette, falling back to sharp's
+ * most-common histogram bin only for genuinely dull/grayscale covers.
+ */
 async function extractDominantColor(
   buffer: Uint8Array,
 ): Promise<{ color: string; hue: number } | null> {
   try {
     const { default: sharp } = await import("sharp");
+    const { data, info } = await sharp(buffer)
+      .resize(64, 64, { fit: "inside", withoutEnlargement: false })
+      .toColourspace("srgb")
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const vivid = (info.channels ?? 3) >= 3 ? pickVividColor(data, info.channels) : null;
+    if (vivid) return vivid;
+
+    // Dull/grayscale cover: fall back to the most-common color bin.
     const { dominant } = await sharp(buffer).stats();
     if (!dominant) return null;
-    const hex = `#${[dominant.r, dominant.g, dominant.b]
-      .map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0"))
-      .join("")}`;
-    return { color: hex, hue: hueFromRgb(dominant.r, dominant.g, dominant.b) };
+    return {
+      color: toHex(dominant.r, dominant.g, dominant.b),
+      hue: hueFromRgb(dominant.r, dominant.g, dominant.b),
+    };
   } catch (err) {
     // This failure is otherwise invisible: callers treat a null color as
     // "best effort, skip" rather than an error worth surfacing.

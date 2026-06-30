@@ -3,7 +3,10 @@
  * that have an image_url but are missing either.
  *
  * Usage:
- *   npm run backfill:images -- [--dry-run] [--limit N]
+ *   npm run backfill:images -- [--dry-run] [--limit N] [--recolor]
+ *
+ *   --recolor re-extracts dominant_color for EVERY imaged item (even ones that
+ *   already have a color) — use it to re-apply an improved extraction algorithm.
  *
  * (The npm script passes --conditions=react-server so the "server-only"
  * guard in the imported modules resolves to its no-op build under tsx.)
@@ -20,6 +23,7 @@ loadEnvConfig(process.cwd());
 
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const recolor = args.includes("--recolor");
 const limitArg = args.find((a) => a.startsWith("--limit=") || a === "--limit");
 const limitIdx = args.indexOf("--limit");
 const limit = limitArg?.includes("=")
@@ -31,12 +35,17 @@ const limit = limitArg?.includes("=")
 async function run() {
   const admin = createAdminClient();
 
-  const { data: rows, error } = await admin
+  let query = admin
     .from("items")
     .select("id, user_id, image_url, image_storage_path, dominant_color")
     .not("image_url", "is", null)
-    .or("image_storage_path.is.null,dominant_color.is.null")
-    .eq("processing_status", "ready")
+    .eq("processing_status", "ready");
+  // Default: only items missing a cached cover or a color. --recolor re-extracts
+  // every imaged item so an improved extraction algorithm can be re-applied.
+  if (!recolor) {
+    query = query.or("image_storage_path.is.null,dominant_color.is.null");
+  }
+  const { data: rows, error } = await query
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -52,8 +61,9 @@ async function run() {
   let skipped = 0;
 
   for (const row of candidates) {
-    // Already cached, just missing color — retry extraction only, no re-upload.
-    const colorOnly = Boolean(row.image_storage_path) && !row.dominant_color;
+    // Cached cover already present → re-extract color only (no re-upload). In
+    // --recolor mode this overwrites an existing color with the new algorithm.
+    const colorOnly = Boolean(row.image_storage_path);
 
     if (dryRun) {
       console.log(`  [dry-run] Would ${colorOnly ? "re-extract color for" : "cache"}: ${row.id} → ${row.image_url}`);
