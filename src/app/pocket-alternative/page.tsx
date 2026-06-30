@@ -3,9 +3,8 @@ import Link from "next/link";
 import { Check, Puzzle, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CHROME_STORE_URL } from "@/lib/extension-identity";
 
-const CHROME_STORE_URL =
-  "https://chromewebstore.google.com/detail/blahodpkabcnliljldelkoggeemfgdak";
 const SUPPORT_EMAIL = "ecuzmici@gmail.com";
 
 export const metadata: Metadata = {

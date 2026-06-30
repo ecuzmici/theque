@@ -14,6 +14,14 @@ type ExtensionConnectMessage = {
   email: string;
 };
 
+function isPingMessage(message: unknown): boolean {
+  return Boolean(
+    message &&
+      typeof message === "object" &&
+      (message as { type?: unknown }).type === "theque.ping",
+  );
+}
+
 function isValidConnectMessage(
   message: unknown,
   sender: chrome.runtime.MessageSender,
@@ -41,6 +49,21 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  // Finish-setup nudge liveness probe. Reports whether a bmly_ capture token is
+  // stored — no secret leaves the extension, only the boolean connect state.
+  // externally_connectable already restricts which origins can reach us.
+  if (isPingMessage(message)) {
+    void chrome.storage.local.get(CONNECT_STORAGE_KEYS.token).then(
+      (stored) => {
+        const token = stored?.[CONNECT_STORAGE_KEYS.token];
+        const connected = typeof token === "string" && token.startsWith("bmly_");
+        sendResponse({ ok: true, type: "theque.pong", connected });
+      },
+      () => sendResponse({ ok: true, type: "theque.pong", connected: false }),
+    );
+    return true;
+  }
+
   if (!isValidConnectMessage(message, sender)) {
     sendResponse({ ok: false, code: "invalid_message" });
     return false;

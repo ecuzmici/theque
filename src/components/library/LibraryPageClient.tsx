@@ -7,6 +7,7 @@ import { Images, Layers } from "lucide-react";
 
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { ExtensionNudge } from "@/components/library/ExtensionNudge";
 import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
@@ -204,6 +205,8 @@ export function LibraryPageClient({
         title="Library"
         description="Browse your taste by shelf."
       />
+
+      <ExtensionNudge />
 
       <LibraryInsights />
 

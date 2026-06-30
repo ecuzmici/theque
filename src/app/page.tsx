@@ -10,12 +10,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CHROME_STORE_URL } from "@/lib/extension-identity";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const CHROME_STORE_URL =
-  "https://chromewebstore.google.com/detail/blahodpkabcnliljldelkoggeemfgdak";
 const SUPPORT_EMAIL = "ecuzmici@gmail.com";
 
 const STEPS = [

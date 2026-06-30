@@ -9,11 +9,13 @@ type ExternalListener = (
 describe("extension connect messages", () => {
   let externalListener: ExternalListener | null;
   let storageSet: ReturnType<typeof vi.fn>;
+  let storageGet: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.resetModules();
     externalListener = null;
     storageSet = vi.fn().mockResolvedValue(undefined);
+    storageGet = vi.fn().mockResolvedValue({});
 
     vi.stubGlobal("chrome", {
       runtime: {
@@ -27,6 +29,7 @@ describe("extension connect messages", () => {
       storage: {
         local: {
           set: storageSet,
+          get: storageGet,
         },
       },
     });
@@ -78,6 +81,48 @@ describe("extension connect messages", () => {
       theque_api_base_url: "https://theque.vercel.app",
       theque_connected_email: "user@example.com",
     });
+  });
+
+  it("answers theque.ping with connected:true when a bmly_ token is stored", async () => {
+    storageGet.mockResolvedValue({ theque_capture_token: "bmly_stored_secret" });
+
+    const sendResponse = vi.fn();
+    const keepChannelOpen = externalListener?.(
+      { type: "theque.ping" },
+      { url: "https://theque.app/library" },
+      sendResponse,
+    );
+
+    expect(keepChannelOpen).toBe(true);
+    expect(storageGet).toHaveBeenCalledWith("theque_capture_token");
+    await vi.waitFor(() =>
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        type: "theque.pong",
+        connected: true,
+      }),
+    );
+  });
+
+  it("answers theque.ping with connected:false when no token is stored", async () => {
+    storageGet.mockResolvedValue({});
+
+    const sendResponse = vi.fn();
+    const keepChannelOpen = externalListener?.(
+      { type: "theque.ping" },
+      { url: "https://theque.app/library" },
+      sendResponse,
+    );
+
+    expect(keepChannelOpen).toBe(true);
+    await vi.waitFor(() =>
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        type: "theque.pong",
+        connected: false,
+      }),
+    );
+    expect(storageSet).not.toHaveBeenCalled();
   });
 
   it("rejects a base URL that does not match the sender origin", () => {
