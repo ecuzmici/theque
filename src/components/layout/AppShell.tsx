@@ -7,6 +7,7 @@ import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
+import { ExtensionNudge } from "@/components/layout/ExtensionNudge";
 import { cn } from "@/lib/utils";
 
 const LIBRARY = {
@@ -122,6 +123,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="mt-auto pt-8">
+          <ExtensionNudge />
           <Link
             href="/add"
             onClick={() => markPending("/add")}

@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * Finish-setup nudge (ADR 0009). A self-clearing banner at the top of the
- * Library that walks the user through the two-stage funnel:
+ * Finish-setup nudge (ADR 0009). A self-clearing info box in the desktop
+ * sidebar, above "Add link", that walks the user through the two-stage funnel:
  *   absent    → "Add to Chrome" (install)
  *   installed → "Connect" (mint + link a capture token, in place)
  *   connected → nothing
  *
- * Detection is a live client-side ping to the known published extension ids,
- * re-run on focus / visibility change so the banner clears the instant the user
- * returns from installing or connecting — no reload. Only Chromium-family
+ * Lives in AppShell's desktop-only sidebar (`hidden lg:flex`), so it never
+ * renders at mobile widths — the capture extension only works on desktop Chrome
+ * anyway. Detection is a live client-side ping to the known published extension
+ * ids, re-run on focus / visibility change so the box clears the instant the
+ * user returns from installing or connecting — no reload. Only Chromium-family
  * desktop browsers see it; dismissing snoozes it for ~14 days.
  */
 
@@ -162,57 +164,58 @@ export function ExtensionNudge() {
   const connecting = connectStatus === "connecting";
 
   return (
-    <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
-      <div className="flex items-center gap-3">
-        <Puzzle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-        <div className="text-sm text-foreground">
-          {state === "installed" ? (
-            <p>
-              <span className="font-semibold">Almost there</span> — connect the extension to
-              start capturing.
-            </p>
-          ) : (
-            <p>
-              <span className="font-semibold">Finish setting up thèque.</span> One click on any
-              tab files it on the right shelf — your library fills itself.
-            </p>
-          )}
-          {connectStatus === "error" && connectError ? (
-            <p className="mt-1 text-destructive" role="status">
-              {connectError}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
+    <div className="relative mb-3 rounded-lg border border-border bg-accent/50 px-3 py-3">
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        aria-label="Dismiss"
+        onClick={handleDismiss}
+        className="absolute right-1 top-1 size-6 p-0"
+      >
+        <X className="size-3.5" aria-hidden />
+      </Button>
+
+      <Puzzle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
+      <div className="mt-1.5 pr-5 text-xs text-foreground">
         {state === "installed" ? (
-          <Button
-            type="button"
-            size="sm"
-            disabled={connecting}
-            onClick={() => void handleConnect()}
-          >
-            {connecting ? "Connecting…" : connectStatus === "error" ? "Retry" : "Connect"}
-          </Button>
+          <p>
+            <span className="font-semibold">Almost there</span> — connect the extension to start
+            capturing.
+          </p>
         ) : (
-          <Button
-            nativeButton={false}
-            size="sm"
-            render={<Link href={CHROME_STORE_URL} target="_blank" rel="noreferrer" />}
-          >
-            Add to Chrome
-          </Button>
+          <p>
+            <span className="font-semibold">Finish setting up thèque.</span> Capture any tab in
+            one click.
+          </p>
         )}
+        {connectStatus === "error" && connectError ? (
+          <p className="mt-1 text-destructive" role="status">
+            {connectError}
+          </p>
+        ) : null}
+      </div>
+
+      {state === "installed" ? (
         <Button
           type="button"
           size="sm"
-          variant="ghost"
-          aria-label="Dismiss"
-          onClick={handleDismiss}
+          disabled={connecting}
+          onClick={() => void handleConnect()}
+          className="mt-2 w-full"
         >
-          <X className="size-4" aria-hidden />
+          {connecting ? "Connecting…" : connectStatus === "error" ? "Retry" : "Connect"}
         </Button>
-      </div>
+      ) : (
+        <Button
+          nativeButton={false}
+          size="sm"
+          className="mt-2 w-full"
+          render={<Link href={CHROME_STORE_URL} target="_blank" rel="noreferrer" />}
+        >
+          Add to Chrome
+        </Button>
+      )}
     </div>
   );
 }
