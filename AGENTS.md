@@ -4,10 +4,10 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 
 ## Product constraints (PoC)
 
-- **Single user**, private; no multi-tenant or social features.
+- **Multi-user, open registration**, but **no social/sharing features** — each Profile is a private, RLS-isolated library (see `docs/adr/0010-login-code-otp-oauth-open-registration.md` and `docs/adr/0001-personal-taste-loop-no-grouping-no-sharing.md`). "Single-user" survives only as the per-Profile *feeling*, not a cap on accounts.
 - **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. **Collections** are user-created in Postgres.
 - **Classification/enrichment**: deterministic domain map + schema.org + heuristics first; optional gated Gemini enrichment can fill sparse metadata and, when allowed, set `category_source = llm`.
-- **Web auth**: email OTP is primary; magic-link callback remains as fallback. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
+- **Web auth**: a hybrid login — **GitHub** / **Google** OAuth plus an **email code** (OTP) fallback. There is **no magic link** (see ADR 0010). Bot sign-ups are held off by Cloudflare Turnstile on the email-code request. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
 - **iOS Shortcut** is documented but lower priority than Chrome + web QA.
 
 ## Environments
@@ -42,7 +42,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | Path | Purpose |
 |------|---------|
 | `src/app/(app)/` | Authenticated UI: library, item detail, add, search, settings |
-| `src/app/login` + `src/app/auth/callback` | Email OTP login and magic-link fallback callback |
+| `src/app/login` + `src/app/auth/callback` | Hybrid login (GitHub/Google OAuth + email code); `/auth/callback` is the OAuth code-exchange route |
 | `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
@@ -77,8 +77,8 @@ Structured field display: `src/components/items/StructuredFields.tsx` + `docs/ca
 
 ## Auth flows
 
-- **Web**: `/login` is a two-step Supabase email OTP flow. `signInWithOtp` sends the email; `verifyOtp({ type: "email" })` signs in with the copied code. `src/app/login/login-utils.ts` normalizes 6-10 digit tokens and keeps `next` redirects local.
-- **Magic-link fallback**: `supabase/templates/magic_link.html` shows `{{ .Token }}` prominently and keeps `{{ .ConfirmationURL }}` as the secondary "Open Theque instead" path. `/auth/callback` exchanges clicked-link codes and sets cookies on the redirect response.
+- **Web**: `/login` is a hybrid screen. **OAuth** (`signInWithOAuth({ provider })` for `github`/`google`) redirects to the provider and back to `/auth/callback`, which calls `exchangeCodeForSession` and sets cookies on the redirect. **Email code** is the fallback: `signInWithOtp` sends the code (no `emailRedirectTo`, so no clickable link); `verifyOtp({ type: "email" })` signs in with the copied code, verified client-side. `src/app/login/login-utils.ts` normalizes 6-10 digit tokens and keeps `next` redirects local. The email-code send is gated by Turnstile when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set; OAuth is not captcha-gated.
+- **Identity linking** is automatic by verified email, so GitHub / Google / email-code for one person resolve to one Profile (`supabase/templates/magic_link.html` is the code-only email). There is no magic link and no `/auth/confirm` interstitial — both were removed in ADR 0010.
 - **Middleware**: `src/middleware.ts` protects `/library`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
 - **Capture API**: `Authorization: Bearer <capture_token>`; create tokens in **Settings → Capture tokens** (shown once).
 

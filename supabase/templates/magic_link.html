@@ -8,6 +8,8 @@
     <!--
       Supabase Auth → Magic link (Dashboard → Authentication → Email Templates).
       Suggested subject: Your thèque sign-in code
+      Code-only: there is no clickable sign-in link — see
+      docs/adr/0010-login-code-otp-oauth-open-registration.md.
       Docs: https://supabase.com/docs/guides/auth/auth-email-templates
     -->
   </head>
@@ -129,7 +131,7 @@
                     color: #57534e;
                   "
                 >
-                  Copy this code into thèque. For your security, it expires soon and works only once.
+                  Enter this code in the thèque tab you opened. For your security, it expires soon and works only once.
                 </p>
 
                 <div
@@ -187,66 +189,9 @@
                   </p>
                 </div>
 
-                <!-- CTA -->
-                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                  <tr>
-                    <td align="left">
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                        <tr>
-                          <td style="border-radius: 999px; background-color: #b45309">
-                            <a
-                              href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email"
-                              style="
-                                display: inline-block;
-                                padding: 15px 36px;
-                                font-family:
-                                  ui-sans-serif,
-                                  system-ui,
-                                  -apple-system,
-                                  Segoe UI,
-                                  Roboto,
-                                  Helvetica,
-                                  Arial,
-                                  sans-serif;
-                                font-size: 15px;
-                                font-weight: 600;
-                                color: #fffefb !important;
-                                text-decoration: none;
-                                border-radius: 999px;
-                                line-height: 1;
-                              "
-                              >Open thèque instead</a
-                            >
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-
                 <p
                   style="
-                    margin: 16px 0 0 0;
-                    font-family:
-                      ui-sans-serif,
-                      system-ui,
-                      -apple-system,
-                      Segoe UI,
-                      Roboto,
-                      Helvetica,
-                      Arial,
-                      sans-serif;
-                    font-size: 13px;
-                    line-height: 1.55;
-                    color: #78716c;
-                  "
-                >
-                  If copying the code is inconvenient, this button opens thèque and signs you in directly.
-                </p>
-
-                <p
-                  style="
-                    margin: 32px 0 0 0;
+                    margin: 0;
                     font-family:
                       ui-sans-serif,
                       system-ui,
@@ -262,29 +207,6 @@
                   "
                 >
                   Didn’t request this? You can ignore this email. Nothing will change on your account.
-                </p>
-
-                <p
-                  style="
-                    margin: 24px 0 0 0;
-                    padding-top: 24px;
-                    border-top: 1px solid rgba(28, 25, 23, 0.08);
-                    font-family:
-                      ui-sans-serif,
-                      system-ui,
-                      -apple-system,
-                      Segoe UI,
-                      Roboto,
-                      Helvetica,
-                      Arial,
-                      sans-serif;
-                    font-size: 12px;
-                    line-height: 1.55;
-                    color: #78716c;
-                  "
-                >
-                  Trouble with the button?
-                  <a href="{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email" style="color: #b45309; text-decoration: underline; font-weight: 600">Open thèque instead</a>
                 </p>
                   </div>
                   <div style="padding: 0 36px 28px 36px">

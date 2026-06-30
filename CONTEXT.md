@@ -64,6 +64,43 @@ The single archive of consumed items across all categories, each showing its
 Verdict. The browsable record of taste. Answers "what did I think?"
 _Avoid_: history, completed, archive (the shelf is named Done)
 
+## Sign-in
+
+> See `docs/adr/0010-login-code-otp-oauth-open-registration.md`. Sign-in is how a person
+> reaches their **Profile** on the web; it is distinct from the extension's
+> _Connected_ state (a capture token), which links a browser to an already-existing
+> Profile.
+
+**Sign-in method**:
+One of the three ways a person authenticates to the web app: **Continue with GitHub**,
+**Continue with Google**, or an **email code**. All three resolve to the same Profile
+(see _Identity linking_). There is no password.
+_Avoid_: login provider (the email code is not a "provider"), SSO
+
+**Email code**:
+The 6–10 digit one-time code emailed on request and verified in the same browser. The
+universal fallback under the social buttons. There is **no magic link** — the email
+carries only the code.
+_Avoid_: magic link, OTP link, verification link (the link was removed)
+
+**Social sign-in**:
+The one-click GitHub / Google path — a redirect to the provider and back to
+`/auth/callback`. Not gated by CAPTCHA (the redirect is bot-resistant on its own).
+_Avoid_: OAuth login (say which provider), social login button
+
+**Identity linking**:
+Supabase folding multiple sign-in methods for one person into a single Profile by
+matching their **verified** email. Why using GitHub once and the email code another
+time does not create two libraries.
+_Avoid_: account merging, account linking flow (it is automatic, not a user action)
+
+**Open registration**:
+Anyone may create a Profile by signing in — the launch posture, replacing the earlier
+"private" (closed) one. It opens *sign-up*, not a social surface: profiles stay
+RLS-isolated, so ADR 0001's "no sharing/social" still holds. Bot sign-ups are held off
+by **Turnstile** on the _Email code_ request.
+_Avoid_: multi-tenant, going public (it is open *registration*, the data model already held many profiles)
+
 ## Recommendations
 
 **Recommendation**:
