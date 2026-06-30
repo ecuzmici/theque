@@ -10,6 +10,8 @@ import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
+import { EmptyLibraryOnboarding } from "@/components/onboarding/EmptyLibraryOnboarding";
+import { FirstRunChecklist } from "@/components/onboarding/FirstRunChecklist";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBanner";
@@ -40,6 +42,9 @@ type LibraryPageClientProps = {
   /** Passed from the server page to avoid exposing secret env vars to the client. */
   recommendBooksEnabled?: boolean;
   recommendWatchEnabled?: boolean;
+  /** RLS-scoped counts from the server, so cold-start vs. normal is decided without a flash. */
+  initialTotalCount?: number;
+  initialDoneCount?: number;
 };
 
 function LibraryGridSkeleton() {
@@ -58,11 +63,21 @@ export function LibraryPageClient({
   userId,
   recommendBooksEnabled = false,
   recommendWatchEnabled = false,
+  initialTotalCount = 0,
+  initialDoneCount = 0,
 }: LibraryPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
+
+  // Whole-library counts (for cold-start onboarding + first-run checklist). Seed
+  // from the server props; re-query only after we change the data (seeding).
+  const [libraryCount, setLibraryCount] = useState({
+    total: initialTotalCount,
+    done: initialDoneCount,
+  });
+  const [dataVersion, setDataVersion] = useState(0);
 
   const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
@@ -146,7 +161,37 @@ export function LibraryPageClient({
     return () => {
       cancelled = true;
     };
-  }, [activeShelf]);
+  }, [activeShelf, dataVersion]);
+
+  // Refresh whole-library counts after a data change (e.g. seeding starter
+  // picks). The first render uses the server props, so skip version 0.
+  useEffect(() => {
+    if (dataVersion === 0) return;
+    let cancelled = false;
+    const supabase = createClient();
+    void (async () => {
+      const [{ count: total }, { count: done }] = await Promise.all([
+        supabase.from("items").select("id", { count: "exact", head: true }),
+        supabase.from("items").select("id", { count: "exact", head: true }).eq("status", "done"),
+      ]);
+      if (cancelled) return;
+      setLibraryCount({ total: total ?? 0, done: done ?? 0 });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dataVersion]);
+
+  // Drop the All-shelf cache and bump the data version so the grid + counts
+  // refetch in place after the onboarding seeds the first cards.
+  const bumpData = useCallback(() => {
+    setItemsCache((prev) => {
+      const next = { ...prev };
+      delete next.all;
+      return next;
+    });
+    setDataVersion((v) => v + 1);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -199,6 +244,17 @@ export function LibraryPageClient({
     [activeShelf],
   );
 
+  // Brand-new, empty library: replace the whole shelf UI with a cold-start
+  // funnel (the empty grid + tab strip have nothing to offer yet).
+  if (activeShelf === "all" && libraryCount.total === 0) {
+    return (
+      <div>
+        <PageHeader title="Library" />
+        <EmptyLibraryOnboarding onSeeded={bumpData} />
+      </div>
+    );
+  }
+
   return (
     <div>
       <PageHeader title="Library" />
@@ -207,6 +263,7 @@ export function LibraryPageClient({
           landing shelf only, same gate as the "Made for you" banner below it. */}
       {activeShelf === "all" ? (
         <>
+          <FirstRunChecklist totalCount={libraryCount.total} doneCount={libraryCount.done} />
           <LibrarySpineBand />
           <RecommendUnlockBanner
             booksEnabled={recommendBooksEnabled}

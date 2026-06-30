@@ -38,12 +38,21 @@ export default async function LibraryPage() {
     redirect("/login");
   }
 
+  // Cheap head counts (RLS-scoped to this user) so the client can decide between
+  // the cold-start onboarding and the normal library without a flash or a wait.
+  const [{ count: totalCount }, { count: doneCount }] = await Promise.all([
+    supabase.from("items").select("id", { count: "exact", head: true }),
+    supabase.from("items").select("id", { count: "exact", head: true }).eq("status", "done"),
+  ]);
+
   return (
     <Suspense fallback={<LibrarySuspenseFallback />}>
       <LibraryPageClient
         userId={user.id}
         recommendBooksEnabled={isRecommendEnabled()}
         recommendWatchEnabled={isWatchRecommendEnabled()}
+        initialTotalCount={totalCount ?? 0}
+        initialDoneCount={doneCount ?? 0}
       />
     </Suspense>
   );
