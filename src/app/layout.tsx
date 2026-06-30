@@ -4,10 +4,14 @@ import { Analytics } from "@vercel/analytics/next";
 
 import Script from "next/script";
 
+import { BindingProvider } from "@/components/theme/BindingProvider";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 import "./globals.css";
 
+// Applies light/dark AND the accent "binding" before first paint to avoid FOUC.
+// The binding allow-list mirrors BINDINGS in src/components/theme/binding.ts
+// (the default "amber" intentionally sets no attribute).
 const themeInitScript = `
 (function () {
   try {
@@ -17,6 +21,10 @@ const themeInitScript = `
       stored === "dark" ||
       (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.classList.toggle("dark", dark);
+    var binding = localStorage.getItem("theque-binding");
+    if (binding && /^(leather|claret|forest|midnight|plum)$/.test(binding)) {
+      document.documentElement.setAttribute("data-binding", binding);
+    }
   } catch (_) {}
 })();
 `;
@@ -91,7 +99,9 @@ export default function RootLayout({
         <Script id="theque-theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <BindingProvider>{children}</BindingProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
