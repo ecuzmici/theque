@@ -137,6 +137,7 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - `docs/qa-checklist.md` — URL matrix and pass criteria  
 - `docs/ui-shelves.md` — shelf tabs and card grid  
 - `docs/chrome-extension.md` — MV3 setup  
+- `docs/possible-features.md` — undetailed brainstormed ideas, append-only (`/note-idea`)  
 
 ## QA handoff
 
