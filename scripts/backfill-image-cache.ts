@@ -14,7 +14,7 @@
 import { loadEnvConfig } from "@next/env";
 
 import { createAdminClient } from "../src/lib/supabase/admin";
-import { cacheItemImage } from "../src/lib/enrichment/image-cache";
+import { cacheItemImage, extractDominantColorForUrl } from "../src/lib/enrichment/image-cache";
 
 loadEnvConfig(process.cwd());
 
@@ -33,7 +33,7 @@ async function run() {
 
   const { data: rows, error } = await admin
     .from("items")
-    .select("id, user_id, image_url")
+    .select("id, user_id, image_url, image_storage_path, dominant_color")
     .not("image_url", "is", null)
     .or("image_storage_path.is.null,dominant_color.is.null")
     .eq("processing_status", "ready")
@@ -52,30 +52,37 @@ async function run() {
   let skipped = 0;
 
   for (const row of candidates) {
+    // Already cached, just missing color — retry extraction only, no re-upload.
+    const colorOnly = Boolean(row.image_storage_path) && !row.dominant_color;
+
     if (dryRun) {
-      console.log(`  [dry-run] Would cache: ${row.id} → ${row.image_url}`);
+      console.log(`  [dry-run] Would ${colorOnly ? "re-extract color for" : "cache"}: ${row.id} → ${row.image_url}`);
       continue;
     }
 
-    const cachedImage = await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
-    if (cachedImage.storagePath) {
+    const result = colorOnly
+      ? await extractDominantColorForUrl(row.image_url!)
+      : await cacheItemImage(admin, row.user_id, row.id, row.image_url!);
+
+    const nextStoragePath = colorOnly ? row.image_storage_path : result.storagePath;
+    if (colorOnly ? result.dominantColor : result.storagePath) {
       const { error: updateErr } = await admin
         .from("items")
         .update({
-          image_storage_path: cachedImage.storagePath,
-          dominant_color: cachedImage.dominantColor,
-          dominant_hue: cachedImage.dominantHue,
+          image_storage_path: nextStoragePath,
+          dominant_color: result.dominantColor,
+          dominant_hue: result.dominantHue,
         })
         .eq("id", row.id);
       if (updateErr) {
         console.warn(`  Failed to update ${row.id}:`, updateErr.message);
         skipped++;
       } else {
-        console.log(`  Cached ${row.id} → ${cachedImage.storagePath}`);
+        console.log(`  ${colorOnly ? "Colored" : "Cached"} ${row.id} → ${nextStoragePath ?? result.dominantColor}`);
         cached++;
       }
     } else {
-      console.log(`  Skipped (fetch/upload failed): ${row.id}`);
+      console.log(`  Skipped (fetch/upload/extraction failed): ${row.id}`);
       skipped++;
     }
   }

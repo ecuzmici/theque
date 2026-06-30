@@ -7,8 +7,8 @@ import { Images, Layers } from "lucide-react";
 
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
-import { LibraryInsights } from "@/components/library/LibraryInsights";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
+import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
@@ -201,37 +201,19 @@ export function LibraryPageClient({
 
   return (
     <div>
-      <PageHeader
-        title="Library"
-        description="Browse your taste by shelf."
-      />
+      <PageHeader title="Library" />
 
-      <LibraryInsights />
-
-      {/* "Made for you" unlockable recommendation banner — landing shelf only. */}
+      {/* Spine band (band + counts caption) is a whole-library identity element —
+          landing shelf only, same gate as the "Made for you" banner below it. */}
       {activeShelf === "all" ? (
-        <RecommendUnlockBanner
-          booksEnabled={recommendBooksEnabled}
-          watchEnabled={recommendWatchEnabled}
-          items={cachedItems ?? []}
-        />
-      ) : null}
-
-      {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
-          <p className="text-sm text-foreground">
-            <span className="font-semibold">{inboxCount}</span>{" "}
-            {inboxCount === 1 ? "item needs" : "items need"} triage in Inbox
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => selectShelf("inbox")}
-          >
-            Open Inbox
-          </Button>
-        </div>
+        <>
+          <LibrarySpineBand />
+          <RecommendUnlockBanner
+            booksEnabled={recommendBooksEnabled}
+            watchEnabled={recommendWatchEnabled}
+            items={cachedItems ?? []}
+          />
+        </>
       ) : null}
 
       <ScrollArea className="w-full pb-4">

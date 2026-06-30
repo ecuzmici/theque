@@ -53,12 +53,64 @@ async function extractDominantColor(
       .map((c) => Math.max(0, Math.min(255, c)).toString(16).padStart(2, "0"))
       .join("")}`;
     return { color: hex, hue: hueFromRgb(dominant.r, dominant.g, dominant.b) };
-  } catch {
+  } catch (err) {
+    // This failure is otherwise invisible: callers treat a null color as
+    // "best effort, skip" rather than an error worth surfacing.
+    console.error(
+      "[image-cache] dominant color extraction failed:",
+      err instanceof Error ? err.message : err,
+    );
     return null;
   }
 }
 
 const NO_IMAGE: CachedImage = { storagePath: null, dominantColor: null, dominantHue: null };
+
+async function fetchValidatedImageBuffer(
+  imageUrl: string,
+): Promise<{ buffer: Uint8Array; contentType: string } | null> {
+  const url = new URL(imageUrl);
+  await assertSafeFetchUrl(url);
+
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(10000),
+    redirect: "follow",
+    headers: { Accept: "image/*" },
+  });
+
+  if (!res.ok) return null;
+
+  const contentType = res.headers.get("content-type");
+  if (!contentType?.startsWith("image/")) return null;
+
+  const contentLength = res.headers.get("content-length");
+  if (contentLength && Number.parseInt(contentLength, 10) > MAX_IMAGE_BYTES) return null;
+
+  const buffer = await (async () => {
+    if (!res.body) return null;
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > MAX_IMAGE_BYTES) return null;
+      chunks.push(value);
+    }
+    const merged = new Uint8Array(received);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return merged;
+  })();
+
+  if (!buffer) return null;
+
+  return { buffer, contentType: contentType.split(";")[0].trim() };
+}
 
 export async function cacheItemImage(
   admin: SupabaseClient,
@@ -67,55 +119,16 @@ export async function cacheItemImage(
   imageUrl: string,
 ): Promise<CachedImage> {
   try {
-    const url = new URL(imageUrl);
-    await assertSafeFetchUrl(url);
-
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(10000),
-      redirect: "follow",
-      headers: { Accept: "image/*" },
-    });
-
-    if (!res.ok) return NO_IMAGE;
-
-    const contentType = res.headers.get("content-type");
-    if (!contentType?.startsWith("image/")) return NO_IMAGE;
-
-    const contentLength = res.headers.get("content-length");
-    if (contentLength && Number.parseInt(contentLength, 10) > MAX_IMAGE_BYTES) return NO_IMAGE;
-
-    const buffer = await (async () => {
-      if (!res.body) return null;
-      const reader = res.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let received = 0;
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        received += value.byteLength;
-        if (received > MAX_IMAGE_BYTES) return null;
-        chunks.push(value);
-      }
-      const merged = new Uint8Array(received);
-      let offset = 0;
-      for (const chunk of chunks) {
-        merged.set(chunk, offset);
-        offset += chunk.byteLength;
-      }
-      return merged;
-    })();
-
-    if (!buffer) return NO_IMAGE;
+    const fetched = await fetchValidatedImageBuffer(imageUrl);
+    if (!fetched) return NO_IMAGE;
+    const { buffer, contentType } = fetched;
 
     const ext = extFromContentType(contentType);
     const storagePath = `${userId}/${itemId}/cover.${ext}`;
 
     const { error } = await admin.storage
       .from("item-images")
-      .upload(storagePath, buffer, {
-        contentType: contentType.split(";")[0].trim(),
-        upsert: true,
-      });
+      .upload(storagePath, buffer, { contentType, upsert: true });
 
     const dominant = await extractDominantColor(buffer);
     return {
@@ -123,6 +136,23 @@ export async function cacheItemImage(
       dominantColor: dominant?.color ?? null,
       dominantHue: dominant?.hue ?? null,
     };
+  } catch {
+    return NO_IMAGE;
+  }
+}
+
+/**
+ * Re-extract dominant color for an item whose image is already cached in
+ * storage. Skips the upload — only re-fetches the source image and runs
+ * extraction, so a null color (e.g. a past sharp failure) can be retried on
+ * a later enrichment pass without re-caching.
+ */
+export async function extractDominantColorForUrl(imageUrl: string): Promise<CachedImage> {
+  try {
+    const fetched = await fetchValidatedImageBuffer(imageUrl);
+    if (!fetched) return NO_IMAGE;
+    const dominant = await extractDominantColor(fetched.buffer);
+    return { storagePath: null, dominantColor: dominant?.color ?? null, dominantHue: dominant?.hue ?? null };
   } catch {
     return NO_IMAGE;
   }

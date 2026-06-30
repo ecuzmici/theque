@@ -6,7 +6,7 @@ Shelves are **fixed smart views** defined in code — not database tables. Users
 
 **Primary:** Library (default) · Collections · Search · Add link · Settings
 
-**Library header:** Horizontal shelf tabs (scroll on mobile), then a toolbar: "Tonight's pick" shuffle (random still-wanted item from the shelf), sort (Recent / By color / A–Z), and a covers-only **wall mode** toggle. On the Inbox shelf the shuffle slot becomes **Swipe to triage** (card stack: right = keep, left = dismiss, folder = categorize, undo).
+**Library header:** Title only (no description line); on the All shelf it's followed by the **Spine Band** — a thin strip woven from the library's own `dominant_color` values (saved items seen edge-on, like book spines), with a quiet caption beneath (`N spines · M new this week`, plus amber `N to sort` / `N forgotten` nudges, hidden at zero) and a hairline rule closing the header zone. See `docs/adr/0012-library-spine-band.md`. Below that: horizontal shelf tabs (scroll on mobile), then a toolbar: "Tonight's pick" shuffle (random still-wanted item from the shelf), sort (Recent / By color / A–Z), and a covers-only **wall mode** toggle. On the Inbox shelf the shuffle slot becomes **Swipe to triage** (card stack: right = keep, left = dismiss, folder = categorize, undo).
 
 ## Shelf definitions
 
@@ -24,7 +24,7 @@ Each shelf maps to a query over `items`:
 
 The steady-state strip is **All · Books · Watch · Articles · Done**. **Other** groups the long-tail categories (`restaurants`, `products`, `travel`, `recipes`) into one tab; the old per-category Listen/Eat/Shop/Travel/Cook/Tools tabs are gone, and **Read** is now labelled **Articles**. **Other** and **Inbox** are *dynamic* — shown only when they hold at least one item; if the shelf you are viewing empties out, you fall back to **All**.
 
-**Forgotten** is no longer a tab: `want` items older than 180 days surface as an "N forgotten" chip in the library insights plus the weekly "saved and forgot" digest.
+**Forgotten** is no longer a tab: `want` items older than 180 days surface as an "N forgotten" nudge link in the Spine Band caption plus the weekly "saved and forgot" digest.
 
 **Badge:** Inbox tab shows count of `status = inbox`.
 

@@ -8,7 +8,7 @@ import { extractFromHtml } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
 import { fetchViaJinaReader } from "@/lib/enrichment/jina-reader";
 import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
-import { cacheItemImage } from "@/lib/enrichment/image-cache";
+import { cacheItemImage, extractDominantColorForUrl } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
 import { enhanceCategoryWithGemini, isGeminiConfigured } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import { extractPageText } from "@/lib/enrichment/page-text";
@@ -300,10 +300,13 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       mergedCategorySource = merged.category_source;
     }
 
-    const cachedImage =
-      mergedImageUrl && !row.image_storage_path
+    const cachedImage = !mergedImageUrl
+      ? null
+      : !row.image_storage_path
         ? await cacheItemImage(admin, row.user_id, itemId, mergedImageUrl)
-        : null;
+        : !row.dominant_color
+          ? await extractDominantColorForUrl(mergedImageUrl)
+          : null;
     const imageStoragePath = cachedImage?.storagePath ?? row.image_storage_path ?? null;
 
     const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
