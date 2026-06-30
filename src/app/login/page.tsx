@@ -217,7 +217,7 @@ function LoginForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 w-full min-h-11 justify-center gap-2 text-base"
+                  className="h-11 w-full min-h-11 justify-center gap-2"
                   disabled={busy}
                   onClick={() => void signInWithProvider("github")}
                 >
@@ -227,7 +227,7 @@ function LoginForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11 w-full min-h-11 justify-center gap-2 text-base"
+                  className="h-11 w-full min-h-11 justify-center gap-2"
                   disabled={busy}
                   onClick={() => void signInWithProvider("google")}
                 >
@@ -258,7 +258,7 @@ function LoginForm() {
                   />
                 </div>
                 {turnstileWidget}
-                <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={busy || captchaPending}>
+                <Button type="submit" className="h-11 w-full min-h-11" disabled={busy || captchaPending}>
                   {pendingAction === "send" ? "Sending…" : "Send sign-in code"}
                 </Button>
               </form>
@@ -285,7 +285,7 @@ function LoginForm() {
                   className="h-12 rounded-xl text-center font-mono text-xl tracking-[0.3em]"
                 />
               </div>
-              <Button type="submit" className="h-11 w-full min-h-11 text-base" disabled={busy}>
+              <Button type="submit" className="h-11 w-full min-h-11" disabled={busy}>
                 {pendingAction === "verify" ? "Checking…" : "Continue to library"}
               </Button>
               {turnstileWidget}
