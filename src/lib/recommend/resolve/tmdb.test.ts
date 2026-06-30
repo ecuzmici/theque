@@ -7,7 +7,7 @@ vi.mock("@/lib/enrichment/fetch", () => ({
   assertSafeFetchUrl: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
+import { resolveMovieWithTmdb, selectTmdbMatch } from "@/lib/recommend/resolve/tmdb";
 
 const SEARCH_MOVIE = {
   results: [
@@ -147,5 +147,61 @@ describe("resolveMovieWithTmdb", () => {
       { includeCredits: true },
     );
     expect(r).toBeNull();
+  });
+
+  it("returns null when the only result is a wrong-title match (mismatch guard)", async () => {
+    stubFetch([
+      [
+        "/search/multi",
+        { results: [{ id: 99, media_type: "tv", name: "Living Single", first_air_date: "1993-08-22" }] },
+      ],
+    ]);
+    const r = await resolveMovieWithTmdb(
+      { title: "Living", creator: "", year: 2022 },
+      { includeCredits: true },
+    );
+    expect(r).toBeNull();
+  });
+});
+
+describe("selectTmdbMatch", () => {
+  const livingSingle = { id: 1, media_type: "tv" as const, name: "Living Single", first_air_date: "1993-08-22" };
+  const living2022 = { id: 2, media_type: "movie" as const, title: "Living", release_date: "2022-11-04" };
+
+  it("matches exact title + year (happy path)", () => {
+    expect(selectTmdbMatch([living2022], { title: "Living", year: 2022 })?.id).toBe(2);
+  });
+
+  it("prefers the year-matching result over a same-prefix wrong title", () => {
+    expect(selectTmdbMatch([livingSingle, living2022], { title: "Living", year: 2022 })?.id).toBe(2);
+  });
+
+  it("rejects a substring title ('Living Single') when no year is given", () => {
+    // exact 'Living' wins; 'Living Single' must never be accepted as a match for 'Living'
+    expect(selectTmdbMatch([livingSingle, living2022], { title: "Living", year: null })?.id).toBe(2);
+    expect(selectTmdbMatch([livingSingle], { title: "Living", year: null })).toBeNull();
+  });
+
+  it("disambiguates same-title results by year", () => {
+    const cg1990 = { id: 10, media_type: "movie" as const, title: "Common Ground", release_date: "1990-01-22" };
+    const cg2023 = { id: 11, media_type: "movie" as const, title: "Common Ground", release_date: "2023-01-23" };
+    expect(selectTmdbMatch([cg1990, cg2023], { title: "Common Ground", year: 2023 })?.id).toBe(11);
+  });
+
+  it("accepts a subtitle variant when the year matches (token subset)", () => {
+    const ron2 = { id: 20, media_type: "movie" as const, title: "Ready or Not 2", release_date: "2025-09-01" };
+    expect(
+      selectTmdbMatch([ron2], { title: "Ready or Not 2: Here I Come", year: 2025 })?.id,
+    ).toBe(20);
+  });
+
+  it("returns null when a year is known but no title-match is within ±1 year", () => {
+    const wrongEra = { id: 30, media_type: "movie" as const, title: "Mother!", release_date: "1996-05-01" };
+    expect(selectTmdbMatch([wrongEra], { title: "Mother!", year: 2017 })).toBeNull();
+  });
+
+  it("returns null when no result title-matches", () => {
+    const other = { id: 40, media_type: "tv" as const, name: "For All Mankind", first_air_date: "2019-11-01" };
+    expect(selectTmdbMatch([other], { title: "Star City", year: null })).toBeNull();
   });
 });

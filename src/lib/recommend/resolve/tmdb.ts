@@ -120,6 +120,73 @@ async function fetchTmdbCredits(
   }
 }
 
+type TmdbMatch = TmdbResult & { media_type: "movie" | "tv" };
+
+/** Normalize a title for comparison: lowercase, de-accent, alphanumeric-only,
+ *  collapse spaces, drop a single leading article. */
+function normalizeTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "") // strip combining marks before the alphanumeric pass
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/^(the|a|an) /, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function resultYear(result: TmdbResult): number | null {
+  const date = result.release_date ?? result.first_air_date ?? null;
+  if (!date) return null;
+  const year = Number.parseInt(date.slice(0, 4), 10);
+  return Number.isFinite(year) ? year : null;
+}
+
+function yearWithinOne(result: TmdbResult, candidateYear: number): boolean {
+  const ry = resultYear(result);
+  return ry !== null && Math.abs(ry - candidateYear) <= 1;
+}
+
+/** Whether a result is a confident title match. Exact normalized equality always
+ *  qualifies; a token-subset (subtitle variance) qualifies only with a matching
+ *  year, so e.g. "Living" never silently matches "Living Single". */
+function titleMatches(candidateTitle: string, candidateYear: number | null, result: TmdbResult): boolean {
+  const query = normalizeTitle(candidateTitle);
+  const target = normalizeTitle(result.title ?? result.name ?? "");
+  if (!query || !target) return false;
+  if (query === target) return true;
+  if (candidateYear !== null && yearWithinOne(result, candidateYear)) {
+    const queryTokens = query.split(" ");
+    const targetTokens = target.split(" ");
+    const [shorter, longer] =
+      queryTokens.length <= targetTokens.length ? [queryTokens, targetTokens] : [targetTokens, queryTokens];
+    const longerSet = new Set(longer);
+    if (shorter.every((token) => longerSet.has(token))) return true;
+  }
+  return false;
+}
+
+/**
+ * Choose the best movie/TV result for a candidate, or null when none is a
+ * confident match. TMDB multi-search ignores the `year` param and returns the
+ * most-popular title first, so an unverified `results[0]` silently picks the
+ * wrong entity for generic titles. We require a title match and, when a year is
+ * known, agreement within ±1 year — preferring an honest blank over a confident
+ * mismatch (ADR 0011).
+ */
+export function selectTmdbMatch(
+  results: TmdbMatch[],
+  candidate: { title: string; year: number | null },
+): TmdbMatch | null {
+  const matches = results.filter((r) => titleMatches(candidate.title, candidate.year, r));
+  if (matches.length === 0) return null;
+  if (candidate.year !== null) {
+    return matches.find((r) => yearWithinOne(r, candidate.year as number)) ?? null;
+  }
+  return matches[0];
+}
+
 /**
  * Resolve a movie/TV candidate against TMDB.
  *
@@ -135,14 +202,13 @@ export async function resolveMovieWithTmdb(
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) return null;
 
+  // Note: /search/multi ignores a `year` param, so we disambiguate by year
+  // client-side in selectTmdbMatch instead of sending it here.
   const params = new URLSearchParams({
     api_key: apiKey,
     query: candidate.title,
     include_adult: "false",
   });
-  if (candidate.year) {
-    params.set("year", String(candidate.year));
-  }
 
   const url = new URL(`${TMDB_SEARCH_BASE}?${params.toString()}`);
 
@@ -171,7 +237,9 @@ export async function resolveMovieWithTmdb(
 
   if (results.length === 0) return null;
 
-  const best = results[0];
+  const best = selectTmdbMatch(results, { title: candidate.title, year: candidate.year ?? null });
+  if (!best) return null;
+
   const yearStr = best.release_date ?? best.first_air_date ?? null;
   const confirmedYear = yearStr ? Number.parseInt(yearStr.slice(0, 4), 10) : null;
 

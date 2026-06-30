@@ -23,6 +23,7 @@ import { loadEnvConfig } from "@next/env";
 
 import type { Json } from "../src/lib/database.types";
 import { computeCrewBackfill } from "../src/lib/enrichment/crew-backfill";
+import { isErrorPageTitle } from "../src/lib/enrichment/meta-utils";
 import { resolveMovieWithTmdb } from "../src/lib/recommend/resolve/tmdb";
 import { createAdminClient } from "../src/lib/supabase/admin";
 
@@ -75,6 +76,10 @@ async function run() {
   for (const row of rows ?? []) {
     const title = row.title?.trim();
     if (!title) continue;
+    if (isErrorPageTitle(title)) {
+      console.log(`• ${title} (${row.id})\n    skip (error/bot-wall title)`);
+      continue;
+    }
 
     const structured = asRecord(row.structured);
     const year = typeof structured.year === "number" ? structured.year : null;

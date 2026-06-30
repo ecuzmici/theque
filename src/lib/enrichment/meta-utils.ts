@@ -22,7 +22,7 @@ export function personNames(val: unknown): string[] {
 }
 
 const ERROR_TITLE_RE =
-  /\b(404|not found|page cannot be found|bot or not|access denied|forbidden)\b/i;
+  /\b(404|not found|page cannot be found|bot or not|access denied|forbidden|just a moment|attention required|verifying you are human|checking your browser)\b/i;
 
 export function isErrorPageTitle(title: string | null | undefined): boolean {
   if (!title?.trim()) return false;
