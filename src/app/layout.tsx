@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
+import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
 
 import "./globals.css";
 
@@ -92,6 +93,7 @@ export default function RootLayout({
           {themeInitScript}
         </Script>
         <ThemeProvider>{children}</ThemeProvider>
+        <ServiceWorkerRegistrar />
         <Analytics />
       </body>
     </html>

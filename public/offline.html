@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Offline · thèque</title>
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #faf8f5;
+        --fg: #1c1917;
+        --muted: #78716c;
+        --accent: #b45309;
+        --card: rgba(180, 83, 9, 0.06);
+        --border: rgba(180, 83, 9, 0.25);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0c0a09;
+          --fg: #f5f5f4;
+          --muted: #a8a29e;
+          --accent: #fbbf24;
+          --card: rgba(251, 191, 36, 0.08);
+          --border: rgba(251, 191, 36, 0.18);
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        display: grid;
+        place-items: center;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      .card {
+        max-width: 22rem;
+        border: 1px solid var(--border);
+        background: var(--card);
+        border-radius: 1.25rem;
+        padding: 2rem 1.75rem;
+      }
+      .mark { width: 44px; height: 44px; margin: 0 auto 1rem; display: block; }
+      h1 { font-size: 1.4rem; margin: 0 0 0.5rem; }
+      p { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.5rem; }
+      button {
+        font: inherit;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-weight: 600;
+        color: #fff;
+        background: var(--accent);
+        border: 0;
+        border-radius: 0.75rem;
+        padding: 0.7rem 1.25rem;
+        min-height: 44px;
+        cursor: pointer;
+      }
+      button:active { transform: translateY(1px); }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <svg class="mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <defs><clipPath id="c"><rect width="32" height="32" rx="7" ry="7" /></clipPath></defs>
+        <g clip-path="url(#c)">
+          <path d="M0 0h11L0 11V0Z" fill="#57534e" />
+          <path d="M11 0h21v14L14 32H0V11L11 0Z" fill="#faf8f5" />
+          <path d="M32 32V14L14 32H32z" fill="#b45309" />
+        </g>
+      </svg>
+      <h1>You're offline</h1>
+      <p>thèque needs a connection to load your library. Reconnect and try again — your shelves are waiting.</p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </main>
+  </body>
+</html>

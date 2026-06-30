@@ -1,6 +1,6 @@
 # Overnight idea: PWA / installable add-to-home-screen
 
-Status: **in progress** (stub marker — real work follows in subsequent commits).
+Status: **complete**.
 
 Make thèque installable to the home screen and gently invite mobile users:
 - Complete the web app manifest icons (192 / 512 / maskable) on the existing `public/manifest.json`.

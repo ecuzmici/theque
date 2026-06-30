@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/AppShell";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { RecommendationProvider } from "@/components/recommend/RecommendationProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -7,6 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <RecommendationProvider>
         <AppShell>{children}</AppShell>
       </RecommendationProvider>
+      <InstallPrompt />
     </div>
   );
 }
