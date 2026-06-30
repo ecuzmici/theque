@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
+import { LayoutGrid, Palette, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
@@ -22,6 +22,12 @@ const SEARCH = {
   icon: Search,
   match: (p: string) => p === "/search",
 } as const;
+const PALETTE = {
+  href: "/palette",
+  label: "Palette",
+  icon: Palette,
+  match: (p: string) => p === "/palette",
+} as const;
 const SETTINGS = {
   href: "/settings",
   label: "Settings",
@@ -29,7 +35,7 @@ const SETTINGS = {
   match: (p: string) => p === "/settings",
 } as const;
 
-const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, PALETTE, SEARCH, SETTINGS] as const;
 const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
@@ -142,6 +148,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
+            <Link
+              href="/palette"
+              onClick={() => markPending("/palette")}
+              className={cn(
+                "ks-pointer-coarse-min-hit inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                PALETTE.match(activePath) && "bg-accent text-accent-foreground",
+              )}
+              aria-label="Palette"
+              aria-current={PALETTE.match(activePath) ? "page" : undefined}
+            >
+              <Palette className="size-5" aria-hidden />
+            </Link>
             <Link
               href="/settings"
               onClick={() => markPending("/settings")}
