@@ -38,7 +38,20 @@ describe("resolveMovie", () => {
     });
     expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
       { title: "The Dark Knight", creator: "", year: 2008 },
-      { includeCredits: true },
+      { includeCredits: true, imdbId: "tt0468569" },
+    );
+  });
+
+  it("passes imdbId null when the canonical URL has no IMDb id", async () => {
+    resolveMovieWithTmdb.mockResolvedValue(null);
+    await resolveMovie({
+      canonicalUrl: "https://letterboxd.com/film/inception/",
+      title: "Inception",
+      structured: { year: 2010 },
+    });
+    expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
+      { title: "Inception", creator: "", year: 2010 },
+      { includeCredits: true, imdbId: null },
     );
   });
 

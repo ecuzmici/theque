@@ -68,6 +68,7 @@ type TmdbSearchResponse = {
 };
 
 const TMDB_SEARCH_BASE = "https://api.themoviedb.org/3/search/multi";
+const TMDB_FIND_BASE = "https://api.themoviedb.org/3/find";
 const TMDB_DETAILS_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 const TIMEOUT_MS = 8000;
@@ -191,28 +192,53 @@ export function selectTmdbMatch(
 }
 
 /**
- * Resolve a movie/TV candidate against TMDB.
- *
- * Returns null when:
- * - TMDB_API_KEY is absent
- * - No matching result found
- * - Network/API error
+ * Resolve a TMDB movie/TV by a canonical IMDb id. An exact id removes all
+ * title ambiguity, so it is preferred over title-search when available. Movie
+ * results win over TV. Fails open (returns null) on any error.
  */
-export async function resolveMovieWithTmdb(
-  candidate: Pick<LlmCandidate, "title" | "creator" | "year">,
-  { includeCredits = false }: { includeCredits?: boolean } = {},
-): Promise<ResolvedMovie | null> {
-  const apiKey = process.env.TMDB_API_KEY;
-  if (!apiKey) return null;
+async function findTmdbByImdbId(apiKey: string, imdbId: string): Promise<TmdbMatch | null> {
+  const params = new URLSearchParams({ api_key: apiKey, external_source: "imdb_id" });
+  const url = new URL(`${TMDB_FIND_BASE}/${encodeURIComponent(imdbId)}?${params.toString()}`);
 
-  // Note: /search/multi ignores a `year` param, so we disambiguate by year
-  // client-side in selectTmdbMatch instead of sending it here.
+  try {
+    await assertSafeFetchUrl(url);
+  } catch {
+    return null;
+  }
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      movie_results?: Array<Omit<TmdbResult, "media_type">>;
+      tv_results?: Array<Omit<TmdbResult, "media_type">>;
+    };
+    const movie = body.movie_results?.[0];
+    if (movie) return { ...movie, media_type: "movie" };
+    const tv = body.tv_results?.[0];
+    if (tv) return { ...tv, media_type: "tv" };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve a TMDB movie/TV by title (the fuzzy fallback). /search/multi ignores a
+ * `year` param, so disambiguation happens client-side in selectTmdbMatch.
+ */
+async function searchTmdbByTitle(
+  apiKey: string,
+  candidate: Pick<LlmCandidate, "title" | "year">,
+): Promise<TmdbMatch | null> {
   const params = new URLSearchParams({
     api_key: apiKey,
     query: candidate.title,
     include_adult: "false",
   });
-
   const url = new URL(`${TMDB_SEARCH_BASE}?${params.toString()}`);
 
   try {
@@ -234,13 +260,33 @@ export async function resolveMovieWithTmdb(
   }
 
   const results = (raw.results ?? []).filter(
-    (r): r is TmdbResult & { media_type: "movie" | "tv" } =>
-      r.media_type === "movie" || r.media_type === "tv",
+    (r): r is TmdbMatch => r.media_type === "movie" || r.media_type === "tv",
   );
-
   if (results.length === 0) return null;
 
-  const best = selectTmdbMatch(results, { title: candidate.title, year: candidate.year ?? null });
+  return selectTmdbMatch(results, { title: candidate.title, year: candidate.year ?? null });
+}
+
+/**
+ * Resolve a movie/TV candidate against TMDB. A canonical IMDb id (when supplied)
+ * resolves to the exact entity and is preferred over fuzzy title-search.
+ *
+ * Returns null when:
+ * - TMDB_API_KEY is absent
+ * - No confident match found (id miss + title-search miss)
+ * - Network/API error
+ */
+export async function resolveMovieWithTmdb(
+  candidate: Pick<LlmCandidate, "title" | "creator" | "year">,
+  { includeCredits = false, imdbId = null }: { includeCredits?: boolean; imdbId?: string | null } = {},
+): Promise<ResolvedMovie | null> {
+  const apiKey = process.env.TMDB_API_KEY;
+  if (!apiKey) return null;
+
+  // Prefer the canonical id; fall back to title-search when there is no id or
+  // /find has no movie/TV result for it.
+  let best: TmdbMatch | null = imdbId ? await findTmdbByImdbId(apiKey, imdbId) : null;
+  if (!best) best = await searchTmdbByTitle(apiKey, candidate);
   if (!best) return null;
 
   const yearStr = best.release_date ?? best.first_air_date ?? null;

@@ -55,6 +55,36 @@ const TV_DETAILS = {
   credits: { crew: [] },
 };
 
+const FIND_MOVIE = {
+  movie_results: [
+    {
+      id: 27205,
+      title: "Inception",
+      release_date: "2010-07-16",
+      poster_path: "/poster.jpg",
+      vote_average: 8.4,
+      vote_count: 100,
+      genre_ids: [28, 878],
+    },
+  ],
+  tv_results: [],
+};
+
+const FIND_TV = {
+  movie_results: [],
+  tv_results: [
+    {
+      id: 1396,
+      name: "Breaking Bad",
+      first_air_date: "2008-01-20",
+      poster_path: "/bb.jpg",
+      vote_average: 8.9,
+      vote_count: 200,
+      genre_ids: [18],
+    },
+  ],
+};
+
 /** Stub fetch, routing by URL substring → JSON body. Unmatched URLs 404. */
 function stubFetch(routes: Array<[string, unknown]>) {
   const fetchMock = vi.fn(async (input: unknown) => {
@@ -161,6 +191,51 @@ describe("resolveMovieWithTmdb", () => {
       { includeCredits: true },
     );
     expect(r).toBeNull();
+  });
+
+  it("resolves the exact entity by IMDb id via /find, skipping title-search", async () => {
+    const fetchMock = stubFetch([
+      ["/find/tt1375666", FIND_MOVIE],
+      ["/movie/27205", MOVIE_DETAILS],
+    ]);
+    // A deliberately wrong stored title must be ignored when an id is present.
+    const r = await resolveMovieWithTmdb(
+      { title: "Mother!", creator: "", year: null },
+      { includeCredits: true, imdbId: "tt1375666" },
+    );
+    expect(r?.external_id).toBe("27205");
+    expect(r?.canonical_url).toContain("/movie/27205");
+    expect(r?.directors).toEqual(["Christopher Nolan"]);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("/find/tt1375666"))).toBe(true);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("/search/multi"))).toBe(false);
+  });
+
+  it("resolves a TV result by IMDb id via /find", async () => {
+    stubFetch([
+      ["/find/tt0903747", FIND_TV],
+      ["/tv/1396", TV_DETAILS],
+    ]);
+    const r = await resolveMovieWithTmdb(
+      { title: "x", creator: "", year: null },
+      { includeCredits: true, imdbId: "tt0903747" },
+    );
+    expect(r?.external_id).toBe("1396");
+    expect(r?.canonical_url).toContain("/tv/1396");
+    expect(r?.directors).toEqual(["Vince Gilligan"]);
+  });
+
+  it("falls back to title-search when /find returns no movie/tv result", async () => {
+    const fetchMock = stubFetch([
+      ["/find/tt9999999", { movie_results: [], tv_results: [] }],
+      ["/search/multi", SEARCH_MOVIE],
+      ["/movie/27205", MOVIE_DETAILS],
+    ]);
+    const r = await resolveMovieWithTmdb(
+      { title: "Inception", creator: "", year: 2010 },
+      { includeCredits: true, imdbId: "tt9999999" },
+    );
+    expect(r?.external_id).toBe("27205");
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("/search/multi"))).toBe(true);
   });
 });
 

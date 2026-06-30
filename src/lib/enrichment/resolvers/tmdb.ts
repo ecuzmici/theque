@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
+import { extractImdbTitleId } from "@/lib/enrichment/url-hints";
 import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers/types";
 
 /**
@@ -16,7 +17,8 @@ export const resolveMovie: CategoryResolver = async (input) => {
   if (!title) return null;
 
   const year = typeof input.structured.year === "number" ? input.structured.year : null;
-  const resolved = await resolveMovieWithTmdb({ title, creator: "", year }, { includeCredits: true });
+  const imdbId = extractImdbTitleId(input.canonicalUrl);
+  const resolved = await resolveMovieWithTmdb({ title, creator: "", year }, { includeCredits: true, imdbId });
   if (!resolved) return null;
 
   const structured: Record<string, unknown> = {};

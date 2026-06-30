@@ -24,6 +24,7 @@ import { loadEnvConfig } from "@next/env";
 import type { Json } from "../src/lib/database.types";
 import { computeCrewBackfill } from "../src/lib/enrichment/crew-backfill";
 import { isErrorPageTitle } from "../src/lib/enrichment/meta-utils";
+import { extractImdbTitleId } from "../src/lib/enrichment/url-hints";
 import { resolveMovieWithTmdb } from "../src/lib/recommend/resolve/tmdb";
 import { createAdminClient } from "../src/lib/supabase/admin";
 
@@ -55,7 +56,7 @@ async function run() {
 
   const { data: rows, error } = await admin
     .from("items")
-    .select("id, title, structured, raw_metadata")
+    .select("id, title, structured, raw_metadata, canonical_url")
     .eq("category", "movies_and_tv")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -84,10 +85,11 @@ async function run() {
     const structured = asRecord(row.structured);
     const year = typeof structured.year === "number" ? structured.year : null;
     const fieldSources = fieldSourcesOf(row.raw_metadata);
+    const imdbId = extractImdbTitleId(row.canonical_url ?? "");
 
     let tmdb = null;
     try {
-      tmdb = await resolveMovieWithTmdb({ title, creator: "", year }, { includeCredits: true });
+      tmdb = await resolveMovieWithTmdb({ title, creator: "", year }, { includeCredits: true, imdbId });
     } catch (err) {
       console.warn(`  TMDB lookup failed for ${row.id} (${title}):`, err instanceof Error ? err.message : err);
     }
