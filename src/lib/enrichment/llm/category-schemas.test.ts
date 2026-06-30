@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildStructuredJsonSchema,
   validateLlmCategoryEnhancement,
   validateLlmItemRewriteProposal,
 } from "@/lib/enrichment/llm/category-schemas";
@@ -25,16 +26,40 @@ describe("validateLlmCategoryEnhancement", () => {
     expect(result.ok).toBe(true);
   });
 
-  it("rejects fields from the wrong category", () => {
+  it("drops fields from the wrong category instead of rejecting the payload", () => {
     const result = validateLlmCategoryEnhancement("books", {
       structured: {
+        authors: ["Real Author"],
         directors: ["Wrong category"],
       },
       confidence: 0.7,
       sources: ["model"],
     });
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.structured).toEqual({ authors: ["Real Author"] });
+    }
+  });
+
+  it("drops a single unknown field and keeps the valid ones", () => {
+    const result = validateLlmCategoryEnhancement("movies_and_tv", {
+      structured: {
+        year: 2010,
+        release_year: 2010,
+        directors: ["Christopher Nolan"],
+      },
+      confidence: 0.8,
+      sources: ["json_ld"],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.structured).toEqual({
+        year: 2010,
+        directors: ["Christopher Nolan"],
+      });
+    }
   });
 
   it("rejects invalid confidence values", () => {
@@ -49,7 +74,23 @@ describe("validateLlmCategoryEnhancement", () => {
     expect(result.ok).toBe(false);
   });
 
-  it("rejects invalid structured value shapes", () => {
+  it("drops a known field with an invalid value and keeps valid siblings", () => {
+    const result = validateLlmCategoryEnhancement("books", {
+      structured: {
+        authors: ["Frank Herbert"],
+        published_year: "unknown",
+      },
+      confidence: 0.7,
+      sources: ["json_ld"],
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.structured).toEqual({ authors: ["Frank Herbert"] });
+    }
+  });
+
+  it("drops every structured field when all are invalid, without failing", () => {
     const result = validateLlmCategoryEnhancement("books", {
       structured: {
         authors: [123],
@@ -59,7 +100,10 @@ describe("validateLlmCategoryEnhancement", () => {
       sources: ["json_ld"],
     });
 
-    expect(result.ok).toBe(false);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.structured).toEqual({});
+    }
   });
 
   it("accepts a valid category suggestion", () => {
@@ -236,5 +280,13 @@ describe("validateLlmItemRewriteProposal", () => {
     });
 
     expect(result).toEqual({ ok: false, reason: "unknown_structured_field:authors" });
+  });
+});
+
+describe("buildStructuredJsonSchema", () => {
+  it("forbids additional properties so the model cannot emit out-of-schema fields", () => {
+    expect(buildStructuredJsonSchema("movies_and_tv").additionalProperties).toBe(false);
+    // also for the category-less union schema (used when the model may reclassify)
+    expect(buildStructuredJsonSchema().additionalProperties).toBe(false);
   });
 });

@@ -129,7 +129,7 @@ export function buildStructuredJsonSchema(category?: ItemCategory): JsonSchemaFr
       Object.assign(properties, fields);
     }
   }
-  return { type: "object", properties };
+  return { type: "object", properties, additionalProperties: false };
 }
 
 /** Ordered list of structured field names a category supports, for prompting. */
@@ -269,6 +269,11 @@ export function validateLlmCategoryEnhancement(
     }
   }
 
+  // A single out-of-schema or malformed field must not throw away an otherwise
+  // good enhancement — drop the offending field and keep the valid ones
+  // (partial enrichment beats none). The model's structured schema also sets
+  // additionalProperties:false so these should be rare in the first place.
+  let cleanedStructured: Record<string, unknown> | undefined;
   const structured = value.structured;
   if (structured !== undefined) {
     if (!isRecord(structured)) return { ok: false, reason: "invalid_structured" };
@@ -276,15 +281,19 @@ export function validateLlmCategoryEnhancement(
       ? (categorySuggestion as ItemCategory)
       : category;
     if (structuredCategory === null) {
+      // No category to bind the fields to — we cannot validate them at all.
       if (Object.keys(structured).length > 0) {
         return { ok: false, reason: "structured_without_category" };
       }
+      cleanedStructured = {};
     } else {
       const allowed = allowedStructuredFields[structuredCategory];
       const validators = fieldValidators[structuredCategory];
+      cleanedStructured = {};
       for (const [key, fieldValue] of Object.entries(structured)) {
-        if (!allowed.has(key)) return { ok: false, reason: `unknown_structured_field:${key}` };
-        if (!validators[key]?.(fieldValue)) return { ok: false, reason: `invalid_structured_field:${key}` };
+        if (!allowed.has(key)) continue; // drop unknown field
+        if (!validators[key]?.(fieldValue)) continue; // drop invalid value
+        cleanedStructured[key] = fieldValue;
       }
     }
   }
@@ -313,7 +322,7 @@ export function validateLlmCategoryEnhancement(
       subtitle: typeof value.subtitle === "string" ? value.subtitle : undefined,
       description: typeof value.description === "string" ? value.description : undefined,
       image_url: typeof value.image_url === "string" ? value.image_url : undefined,
-      structured: isRecord(structured) ? structured : undefined,
+      structured: cleanedStructured,
       field_sources: fieldSources,
       confidence,
       sources: value.sources,
