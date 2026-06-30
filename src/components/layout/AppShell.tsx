@@ -8,6 +8,7 @@ import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { ExtensionNudge } from "@/components/layout/ExtensionNudge";
+import { PageTransition } from "@/components/layout/PageTransition";
 import { cn } from "@/lib/utils";
 
 const LIBRARY = {
@@ -177,7 +178,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(var(--ks-nav-height)+1rem)] pt-6 lg:pb-10">
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
 
         <nav

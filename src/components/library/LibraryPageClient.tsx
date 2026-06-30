@@ -334,6 +334,10 @@ export function LibraryPageClient({
         </div>
       </div>
 
+      {/* Keyed by shelf so a shelf swap replays a soft fade; wall-mode and
+          triage toggles keep `activeShelf` stable, so they don't re-animate.
+          Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
+      <div key={activeShelf} className="ks-shelf-enter">
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
           {loadError}
@@ -378,6 +382,7 @@ export function LibraryPageClient({
           onItemsChange={updateActiveShelfItems}
         />
       )}
+      </div>
     </div>
   );
 }
