@@ -77,6 +77,79 @@
   --primary-foreground: #1c1917;
 }
 
+/*
+ * Library "binding" themes — an accent re-skin applied via `data-binding` on
+ * <html> (see src/components/theme/binding.ts). Orthogonal to light/dark: each
+ * binding overrides only the accent family, scoped per scheme so the deep
+ * light accents and the lighter dark accents stay legible against
+ * `--primary-foreground`. The default (amber) sets NO attribute, so the base
+ * cascade above is what renders — existing screens are unchanged.
+ */
+[data-binding="leather"]:not(.dark) {
+  --ks-accent: #6f4518;
+  --ks-accent-hover: #5a3712;
+  --ks-accent-soft: #f0e4d4;
+  --ks-ring: rgba(111, 69, 24, 0.35);
+}
+.dark[data-binding="leather"] {
+  --ks-accent: #c08a52;
+  --ks-accent-hover: #d09a62;
+  --ks-accent-soft: rgba(192, 138, 82, 0.16);
+  --ks-ring: rgba(192, 138, 82, 0.4);
+}
+
+[data-binding="claret"]:not(.dark) {
+  --ks-accent: #9b2242;
+  --ks-accent-hover: #7f1a36;
+  --ks-accent-soft: #f7dde3;
+  --ks-ring: rgba(155, 34, 66, 0.35);
+}
+.dark[data-binding="claret"] {
+  --ks-accent: #d9667f;
+  --ks-accent-hover: #e57e94;
+  --ks-accent-soft: rgba(217, 102, 127, 0.16);
+  --ks-ring: rgba(217, 102, 127, 0.4);
+}
+
+[data-binding="forest"]:not(.dark) {
+  --ks-accent: #2f6b46;
+  --ks-accent-hover: #245538;
+  --ks-accent-soft: #d9ece0;
+  --ks-ring: rgba(47, 107, 70, 0.35);
+}
+.dark[data-binding="forest"] {
+  --ks-accent: #5aa97a;
+  --ks-accent-hover: #6cb98a;
+  --ks-accent-soft: rgba(90, 169, 122, 0.16);
+  --ks-ring: rgba(90, 169, 122, 0.4);
+}
+
+[data-binding="midnight"]:not(.dark) {
+  --ks-accent: #34508c;
+  --ks-accent-hover: #283f70;
+  --ks-accent-soft: #dde4f2;
+  --ks-ring: rgba(52, 80, 140, 0.35);
+}
+.dark[data-binding="midnight"] {
+  --ks-accent: #7d9bd6;
+  --ks-accent-hover: #93acdf;
+  --ks-accent-soft: rgba(125, 155, 214, 0.16);
+  --ks-ring: rgba(125, 155, 214, 0.4);
+}
+
+[data-binding="plum"]:not(.dark) {
+  --ks-accent: #6d3a73;
+  --ks-accent-hover: #56295b;
+  --ks-accent-soft: #ecdef0;
+  --ks-ring: rgba(109, 58, 115, 0.35);
+}
+.dark[data-binding="plum"] {
+  --ks-accent: #b07ab6;
+  --ks-accent-hover: #bd8cc2;
+  --ks-accent-soft: rgba(176, 122, 182, 0.16);
+  --ks-ring: rgba(176, 122, 182, 0.4);
+}
+
 @theme inline {
   --color-background: var(--ks-bg);
   --color-foreground: var(--ks-fg);
