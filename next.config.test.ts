@@ -32,4 +32,10 @@ describe("security headers", () => {
       "wss://example.supabase.co",
     );
   });
+
+  it("allows the Cloudflare Turnstile script and challenge iframe", async () => {
+    const csp = await loadCspHeader("production");
+    expect(csp).toMatch(/script-src[^;]*https:\/\/challenges\.cloudflare\.com/);
+    expect(csp).toMatch(/frame-src[^;]*https:\/\/challenges\.cloudflare\.com/);
+  });
 });

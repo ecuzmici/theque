@@ -20,6 +20,8 @@ const scriptSrc = [
   "'unsafe-inline'",
   ...(process.env.NODE_ENV === "development" ? ["'unsafe-eval'"] : []),
   "https://va.vercel-scripts.com",
+  // Cloudflare Turnstile (login CAPTCHA) — loads its script and renders in an iframe.
+  "https://challenges.cloudflare.com",
 ].join(" ");
 
 const securityHeaders = [
@@ -35,7 +37,9 @@ const securityHeaders = [
       "font-src 'self' data:",
       "style-src 'self' 'unsafe-inline'",
       scriptSrc,
-      `connect-src 'self' ${supabaseConnectSources.join(" ")} https://vitals.vercel-insights.com`,
+      // Cloudflare Turnstile renders its challenge inside an iframe.
+      "frame-src 'self' https://challenges.cloudflare.com",
+      `connect-src 'self' ${supabaseConnectSources.join(" ")} https://vitals.vercel-insights.com https://challenges.cloudflare.com`,
       "upgrade-insecure-requests",
     ].join("; "),
   },
