@@ -47,6 +47,32 @@ function qaUrl(next) {
   return `${base}/api/dev/qa-session?secret=${encodeURIComponent(secret)}&next=${encodeURIComponent(next)}`;
 }
 
+/*
+  Hide the Next.js dev-tools indicator (the floating logo badge, bottom-left by
+  default) so it never lands in a store screenshot. The indicator lives in an
+  open shadow root on a `nextjs-portal` element, which Next attaches after the
+  initial render — so this runs at capture time (shadow root guaranteed present)
+  rather than as an init script. It hides only the badge; runtime/compile error
+  overlays in the same portal stay visible so a broken capture can't slip through.
+*/
+async function hideDevIndicator(page) {
+  await page.evaluate(() => {
+    const STYLE = `
+      [data-nextjs-dev-tools-button],
+      [data-next-badge-root],
+      [data-next-badge] { display: none !important; }
+    `;
+    for (const portal of document.querySelectorAll("nextjs-portal")) {
+      const root = portal.shadowRoot;
+      if (!root || root.querySelector("style[data-hide-devtools]")) continue;
+      const style = document.createElement("style");
+      style.setAttribute("data-hide-devtools", "true");
+      style.textContent = STYLE;
+      root.appendChild(style);
+    }
+  });
+}
+
 async function settle(page, ms = 1200) {
   // Wait for in-viewport images (covers) to finish decoding, then a short beat.
   await page
@@ -59,6 +85,7 @@ async function settle(page, ms = 1200) {
 }
 
 async function shoot(page, file) {
+  await hideDevIndicator(page);
   await page.screenshot({ path: path.join(outDir, file), fullPage: false });
   console.log(`- ${file}`);
 }
@@ -87,10 +114,11 @@ async function main() {
     await shoot(page, `app-library-${colorScheme}-1280x800.png`);
 
     // A couple of category shelves + the Done shelf (verdicts). Skipped if no cards render.
+    // Shelf ids come from src/lib/shelves.ts (note: Articles is the `read` id).
     for (const [shelf, label] of [
       ["books", "books"],
       ["watch", "watch"],
-      ["shop", "shop"],
+      ["read", "articles"],
       ["done", "done"],
     ]) {
       await page.goto(`${base}/library?shelf=${shelf}`, { waitUntil: "networkidle" });
@@ -113,6 +141,35 @@ async function main() {
       await shoot(page, `app-item-detail-${colorScheme}-1280x800.png`);
     } else {
       console.log("! no item cards found — skipped item detail");
+    }
+
+    // AI recommendations deck — Books shelf. Gated on the AI Gateway being
+    // configured (and ≥3 titled books); a live model call can take a few
+    // seconds. Skipped (not fatal) if the button is absent or the run doesn't
+    // resolve, so a missing gateway key never breaks the rest of the capture.
+    await page.goto(`${base}/library?shelf=books`, { waitUntil: "networkidle" });
+    await settle(page);
+    const recommendBtn = page.getByRole("button", { name: /recommend/i });
+    if (await recommendBtn.count()) {
+      await recommendBtn.first().click();
+      const readyCard = page.getByText(/Recommendation \d+ of/i);
+      // A run may fall through up to 3 models at 20s each before resolving.
+      await readyCard.waitFor({ state: "visible", timeout: 75000 }).catch(() => {});
+      if (await readyCard.count()) {
+        await settle(page, 900); // let the cover decode and the slide-in finish
+        await shoot(page, `app-recommendations-${colorScheme}-1280x800.png`);
+      } else {
+        const deckError = await page
+          .getByText(/couldn|try again|no new recommendations/i)
+          .first()
+          .textContent()
+          .catch(() => null);
+        console.log(
+          `! recommendations didn't reach a ready card — skipped${deckError ? ` (deck: "${deckError.trim()}")` : ""}`,
+        );
+      }
+    } else {
+      console.log("! Recommend button unavailable (gateway off?) — skipped recommendations");
     }
   } finally {
     await browser.close();

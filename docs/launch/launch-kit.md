@@ -44,7 +44,7 @@ Launching drives your one-time burst of attention at each channel. Don't waste i
 - [ ] **Terms + Privacy** live (done: `/terms`, `/privacy`).
 - [ ] **You've watched 7–10 real people run the current build** (post verdict-loop) and fixed the worst friction. Today: 9 users, 3 active. Bar: most of them save 3+ items, get cards they call accurate and good-looking, and come back at least once without you nudging them. Recommender quality is **not** a launch gate; cold-start makes it unfair to judge on day one. By this bar you are not through the gate yet, so finish it before you spend the launch.
 - [ ] **Cost guardrails confirmed:** rate limits + quotas are on (they are). Know your Gemini spend per active user, both enrichment and recommendation inference, so growth doesn't surprise you.
-- [ ] **A 20–40s demo video/GIF** that leads with the instant loop: click extension → card appears → shelf fills, then a short closing tag of the recommendation deck getting smarter. The instant loop is the hook; the deck is the "it grows with you" promise. This is the single highest-converting asset across every channel.
+- [x] **A 20–40s demo video/GIF** that leads with the instant loop: click extension → card appears → shelf fills, then a short closing tag of the recommendation deck getting smarter. The instant loop is the hook; the deck is the "it grows with you" promise. This is the single highest-converting asset across every channel. **Done:** automated via `.demo/record-demo.mjs` (mp4/webm/GIFs in `.demo/out/`); four beats incl. the verdict loop. See `docs/launch/demo-gif-shotlist.md`.
 
 ---
 

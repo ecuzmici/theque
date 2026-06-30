@@ -53,6 +53,7 @@ next-env.d.ts
 extension/popup.js
 extension/background.js
 extension/category-hints.js
+extension/page-snapshot.js
 
 # packaged extension upload artifact (run npm run package:extension)
 theque-extension-v*.zip
