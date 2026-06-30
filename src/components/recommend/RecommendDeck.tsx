@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, ChevronDown, SkipForward, Star, X } from "lucide-react";
+import { Bookmark, ChevronDown, Star, X } from "lucide-react";
 
 import { CoverImage } from "@/components/recommend/CoverImage";
 import { LOADING_STATUS_LINES } from "@/components/recommend/recommend-deck-utils";
@@ -132,26 +132,32 @@ function RecommendCard({
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col items-center gap-3">
+          <div className="grid w-full grid-cols-2 gap-2">
+            <Button
+              variant="destructive"
+              size="lg"
+              className="gap-1.5 transition-transform active:scale-[0.98]"
+              onClick={onDismissStart}
+            >
+              <X className="size-4" /> Not for me
+            </Button>
+            <Button
+              size="lg"
+              className="gap-1.5 transition-transform active:scale-[0.98]"
+              onClick={onSave}
+            >
+              <Bookmark className="size-4" /> Save
+            </Button>
+          </div>
           <Button
-            variant="outline"
-            className="gap-1.5 px-2 text-xs transition-transform active:scale-95 sm:text-sm"
-            onClick={onDismissStart}
-          >
-            <X className="size-4" /> Not for me
-          </Button>
-          <Button
+            type="button"
             variant="ghost"
-            className="gap-1.5 px-2 text-xs transition-transform active:scale-95 sm:text-sm"
+            size="sm"
             onClick={onSkip}
+            className="px-2 text-xs text-muted-foreground underline-offset-2 hover:underline"
           >
-            <SkipForward className="size-4" /> Skip
-          </Button>
-          <Button
-            className="gap-1.5 px-2 text-xs transition-transform active:scale-95 sm:text-sm"
-            onClick={onSave}
-          >
-            <Bookmark className="size-4" /> Save
+            Skip for now
           </Button>
         </div>
       )}
