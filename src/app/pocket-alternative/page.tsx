@@ -5,7 +5,7 @@ import { Check, Puzzle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CHROME_STORE_URL } from "@/lib/extension-identity";
 
-const SUPPORT_EMAIL = "ecuzmici@gmail.com";
+const SUPPORT_EMAIL = "hello@theque.app";
 
 export const metadata: Metadata = {
   title: "A private, visual Pocket alternative | thèque",

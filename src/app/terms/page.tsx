@@ -134,10 +134,10 @@ export default function TermsPage() {
             <p>
               Questions about these Terms? Contact the site owner at{" "}
               <a
-                href="mailto:ecuzmici@gmail.com"
+                href="mailto:hello@theque.app"
                 className="text-foreground underline underline-offset-4 hover:no-underline"
               >
-                ecuzmici@gmail.com
+                hello@theque.app
               </a>
               . See also our{" "}
               <Link

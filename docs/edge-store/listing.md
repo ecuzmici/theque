@@ -77,7 +77,7 @@ https://theque.app
 
 ### Support contact
 ```
-ecuzmici@gmail.com
+hello@theque.app
 ```
 
 ### Search terms (Edge-specific field; Chrome has no equivalent)

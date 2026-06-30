@@ -49,7 +49,7 @@ function startServer() {
 const chromeStub = () => {
   const store = {
     theque_capture_token: "bmly_demoTokenForStoreScreenshot",
-    theque_connected_email: "ecuzmici@gmail.com",
+    theque_connected_email: "hello@theque.app",
     theque_api_base_url: "https://theque.app",
   };
   // @ts-expect-error injected test double

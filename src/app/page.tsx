@@ -15,7 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const SUPPORT_EMAIL = "ecuzmici@gmail.com";
+const SUPPORT_EMAIL = "hello@theque.app";
 
 const STEPS = [
   {

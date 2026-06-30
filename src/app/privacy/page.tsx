@@ -50,7 +50,7 @@ export default function PrivacyPage() {
             because browsers restrict extension access to those pages.
           </p>
           <p>
-            For questions or support, contact the site owner at ecuzmici@gmail.com.
+            For questions or support, contact the site owner at hello@theque.app.
           </p>
         </div>
       </article>

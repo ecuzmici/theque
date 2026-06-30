@@ -58,7 +58,7 @@ HOW TO START
 3. Connect the extension once from Settings.
 4. Click the thèque button on any page to save it.
 
-Questions or support: ecuzmici@gmail.com
+Questions or support: hello@theque.app
 Privacy policy: https://theque.app/privacy
 ```
 
