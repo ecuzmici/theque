@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
@@ -15,6 +15,12 @@ const LIBRARY = {
   label: "Library",
   icon: LayoutGrid,
   match: (p: string) => p === "/library" || p.startsWith("/library"),
+} as const;
+const STATS = {
+  href: "/stats",
+  label: "Stats",
+  icon: BarChart3,
+  match: (p: string) => p === "/stats",
 } as const;
 const SEARCH = {
   href: "/search",
@@ -29,7 +35,7 @@ const SETTINGS = {
   match: (p: string) => p === "/settings",
 } as const;
 
-const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, STATS, SEARCH, SETTINGS] as const;
 const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
