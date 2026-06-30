@@ -180,6 +180,41 @@ An item you triaged away — a non-destructive "no" that hides it from shelves b
 keeps the row (so dedup and history survive).
 _Avoid_: deleted, archived (dismissed items are kept, not removed)
 
+## Enrichment
+
+The pipeline that turns a captured URL into a category-aware card: fetch/snapshot →
+classify → **resolvers** → optional **LLM enrichment**. See
+`docs/adr/0011-deterministic-first-crew-enrichment.md`.
+
+**Resolver**:
+A free, deterministic external source that fills structured fields after classify
+(TMDB, Google Books, YouTube oEmbed). Runs only when important fields are still sparse,
+and **ranks above** any LLM output. The preferred way to fill a field — code, not a
+model. Registered per-category in `src/lib/enrichment/resolvers/index.ts`.
+_Avoid_: enricher, scraper (it is a typed source with an allowlist of fields).
+
+**LLM enrichment**:
+The gated, optional Gemini pass that fills *gaps* a resolver could not. Two surfaces:
+the **automatic background path** (`gemini-category-enhancer.ts`, gap-fill only, never
+overwrites) and the user-reviewed **"Enrich with AI" button**
+(`gemini-item-rewriter.ts`, a full overwrite proposal). Last resort, not first.
+_Avoid_: "the AI", enrichment (it is one tier *of* enrichment, below resolvers).
+
+**Model-knowledge field**:
+A structured value the LLM filled from its own training memory rather than page
+evidence, tagged `model_knowledge` in `field_sources`. Trusted for **stable** book/film
+facts (year, page count, authors) but **forbidden** for **volatile** facts (price,
+rating, address) and for **crew** — see _Crew rule_.
+_Avoid_: hallucination (most are correct; the label is about *provenance*, not error).
+
+**Crew rule**:
+Movie/TV `directors` (and TV `created_by`, mapped into `directors`) come from **TMDB
+only**. The LLM is forbidden from supplying crew from memory because it systematically
+returns a cast member instead of the director. When TMDB has no match the field stays
+**empty** — an honest blank beats a confident fabrication. Enforced for the background
+path via `VOLATILE_STRUCTURED_FIELDS`; the manual button is a known un-enforced gap.
+_Avoid_: applying this to `authors` (book authors-from-memory are reliable and allowed).
+
 ## Accessibility
 
 See `docs/adr/0006-touch-target-policy-wcag-258-aa.md` and the audit in
