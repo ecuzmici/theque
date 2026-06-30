@@ -1,6 +1,6 @@
 # Overnight idea: SEO / comparison landing pages
 
-Status: **in progress** (stub marker)
+Status: **complete**
 
 Adds public, indexable comparison landing pages mirroring `/pocket-alternative` to
 capture high-intent search traffic:
