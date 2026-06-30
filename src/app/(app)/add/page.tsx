@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
-import { CheckCircle2, CircleAlert, CopyCheck, Loader2 } from "lucide-react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { CheckCircle2, CircleAlert, CopyCheck, Loader2, Upload } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { formatDateMedium } from "@/lib/format-timestamp";
+import { extractImportedUrls, MAX_IMPORT_URLS } from "@/lib/import/parse-import";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -49,6 +50,13 @@ function AddForm() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchInput, setBatchInput] = useState("");
   const [batchResults, setBatchResults] = useState<BatchResult[] | null>(null);
+  const [importInfo, setImportInfo] = useState<{
+    name: string;
+    count: number;
+    truncated: boolean;
+  } | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Pre-populate from PWA share target (?url=, ?text=, ?title=).
   // Android share sheet may put the URL in any of these fields.
@@ -163,6 +171,28 @@ function AddForm() {
     }
   }
 
+  async function ingestFile(file: File) {
+    setError(null);
+    try {
+      const text = await file.text();
+      const urls = extractImportedUrls(file.name, text);
+      if (!urls.length) {
+        setImportInfo({ name: file.name, count: 0, truncated: false });
+        return;
+      }
+      const capped = urls.slice(0, MAX_IMPORT_URLS);
+      setBatchInput(capped.join("\n"));
+      setBatchResults(null);
+      setImportInfo({
+        name: file.name,
+        count: capped.length,
+        truncated: urls.length > capped.length,
+      });
+    } catch {
+      setError("Could not read that file.");
+    }
+  }
+
   const savedAgo = existing ? formatDateMedium(existing.created_at) : null;
   const batchUrlCount = parseUrlLines(batchInput).length;
   const batchDone = batchResults != null && batchResults.every((r) => r.state !== "pending");
@@ -241,6 +271,62 @@ function AddForm() {
             </form>
           ) : (
             <form onSubmit={(e) => void onBatchSubmit(e)} className="space-y-5">
+              {batchResults == null ? (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragActive(true);
+                  }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragActive(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) void ingestFile(file);
+                  }}
+                  className={`rounded-lg border border-dashed px-4 py-4 transition-colors ${
+                    dragActive
+                      ? "border-accent-foreground/60 bg-accent/40"
+                      : "border-border bg-muted/30"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Upload className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="min-w-0 flex-1 text-sm text-muted-foreground">
+                      Import a bookmarks file or CSV — browser export, Pocket, or Goodreads.
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Choose file
+                    </Button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".html,.htm,.csv,text/html,text/csv,text/plain"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void ingestFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  {importInfo ? (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {importInfo.count > 0
+                        ? `Imported ${importInfo.count} ${importInfo.count === 1 ? "link" : "links"} from ${importInfo.name}.`
+                        : `No links found in ${importInfo.name}.`}
+                      {importInfo.truncated ? ` Showing the first ${MAX_IMPORT_URLS}.` : ""}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-2">
                 <Label htmlFor="add-batch">Links, one per line</Label>
                 <Textarea
@@ -309,6 +395,7 @@ function AddForm() {
                     setBatchMode(false);
                     setBatchResults(null);
                     setBatchInput("");
+                    setImportInfo(null);
                   }}
                 >
                   {batchDone ? "Add more" : "Single link"}
