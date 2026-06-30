@@ -8,6 +8,11 @@ import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { ExtensionNudge } from "@/components/layout/ExtensionNudge";
+import {
+  CommandPalette,
+  CommandTriggerButton,
+  CommandTriggerIcon,
+} from "@/components/command/CommandPalette";
 import { cn } from "@/lib/utils";
 
 const LIBRARY = {
@@ -100,6 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-col lg:flex-row">
+      <CommandPalette />
       <aside className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -108,6 +114,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <ThemeToggle />
         </div>
+
+        <CommandTriggerButton className="mt-6" />
 
         <nav className="mt-10 flex flex-col gap-1" aria-label="Primary">
           {DESKTOP_NAV.map((item) => (
@@ -142,6 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
+            <CommandTriggerIcon />
             <Link
               href="/settings"
               onClick={() => markPending("/settings")}

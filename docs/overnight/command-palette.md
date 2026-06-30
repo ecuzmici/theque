@@ -1,6 +1,6 @@
 # Overnight idea: Cmd-K command palette + global quick-add
 
-Status: **in progress** (stub marker — real work follows in subsequent commits).
+Status: **complete**.
 
 A global ⌘K / Ctrl-K command palette for the authenticated app:
 - Jump to shelves (All · Books · Watch · Articles · Done) and pages (Search, Add, Settings).
