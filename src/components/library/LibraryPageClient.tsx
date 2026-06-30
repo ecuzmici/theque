@@ -13,6 +13,7 @@ import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
+import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -209,6 +210,15 @@ export function LibraryPageClient({
       <ExtensionNudge />
 
       <LibraryInsights />
+
+      {/* "Made for you" unlockable recommendation banner — landing shelf only. */}
+      {activeShelf === "all" ? (
+        <RecommendUnlockBanner
+          booksEnabled={recommendBooksEnabled}
+          watchEnabled={recommendWatchEnabled}
+          items={cachedItems ?? []}
+        />
+      ) : null}
 
       {inboxCount != null && inboxCount > 0 && activeShelf !== "inbox" ? (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-accent/50 px-4 py-3">
