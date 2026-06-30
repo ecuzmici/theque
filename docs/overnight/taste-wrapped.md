@@ -10,4 +10,14 @@ them back into the library.
 
 Private + RLS-scoped. No public route, no sharing surface, no schema change.
 
-Status: STUB — implementation lands in the following commit.
+Status: COMPLETE.
+
+Shipped:
+- `src/lib/wrapped/wrapped-stats.ts` — pure, unit-tested aggregation (`computeWrapped`)
+  + RLS-scoped `fetchWrappedData` (slim projection, capped at 1500 most-recent rows).
+- `src/lib/wrapped/wrapped-stats.test.ts` — 15 tests.
+- `src/components/wrapped/WrappedView.tsx` — server-rendered recap (zero client JS),
+  on-brand, `motion-safe` entrance animations, empty state.
+- `src/app/(app)/wrapped/page.tsx` — auth-guarded server page.
+- Entry points: **Wrapped** in the desktop sidebar nav + a card on **Settings**
+  (mobile discoverability); `/wrapped` added to middleware protected prefixes + matcher.

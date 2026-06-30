@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
+import { LayoutGrid, Plus, Search, Settings, Sparkles } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
@@ -28,8 +28,14 @@ const SETTINGS = {
   icon: Settings,
   match: (p: string) => p === "/settings",
 } as const;
+const WRAPPED = {
+  href: "/wrapped",
+  label: "Wrapped",
+  icon: Sparkles,
+  match: (p: string) => p === "/wrapped",
+} as const;
 
-const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, SEARCH, WRAPPED, SETTINGS] as const;
 const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
