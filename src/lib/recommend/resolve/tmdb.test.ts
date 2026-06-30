@@ -204,4 +204,17 @@ describe("selectTmdbMatch", () => {
     const other = { id: 40, media_type: "tv" as const, name: "For All Mankind", first_air_date: "2019-11-01" };
     expect(selectTmdbMatch([other], { title: "Star City", year: null })).toBeNull();
   });
+
+  it("returns null for an ambiguous yearless title (multiple exact matches)", () => {
+    // "Mother!" with no stored year and several same-normalized results can't be
+    // disambiguated — prefer an honest blank over guessing the most-popular one.
+    const motherTr = { id: 50, media_type: "movie" as const, title: "Mother", release_date: "2016-01-01" };
+    const mother2017 = { id: 51, media_type: "movie" as const, title: "Mother!", release_date: "2017-09-15" };
+    expect(selectTmdbMatch([motherTr, mother2017], { title: "Mother!", year: null })).toBeNull();
+  });
+
+  it("still accepts a single yearless title-match", () => {
+    const pastLives = { id: 52, media_type: "movie" as const, title: "Past Lives", release_date: "2023-06-02" };
+    expect(selectTmdbMatch([pastLives], { title: "Past Lives", year: null })?.id).toBe(52);
+  });
 });

@@ -184,7 +184,10 @@ export function selectTmdbMatch(
   if (candidate.year !== null) {
     return matches.find((r) => yearWithinOne(r, candidate.year as number)) ?? null;
   }
-  return matches[0];
+  // Year unknown: only accept an unambiguous single title-match. Several
+  // same-normalized results (e.g. "Mother") can't be disambiguated without a
+  // year, so prefer an honest blank over the most-popular guess (ADR 0011).
+  return matches.length === 1 ? matches[0] : null;
 }
 
 /**
