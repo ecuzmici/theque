@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DemoLibrary } from "@/components/landing/DemoLibrary";
 import { CHROME_STORE_URL } from "@/lib/extension-identity";
 import { createClient } from "@/lib/supabase/server";
 
@@ -132,16 +133,8 @@ export default async function Home() {
           </p>
         </section>
 
-        {/* Real library screenshot: the promise of what's inside */}
-        <div className="w-full overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-          <img
-            src="/landing-library.png"
-            width={1280}
-            height={800}
-            alt="A thèque library shown as a grid of book and film cover cards across shelves."
-            className="h-auto w-full"
-          />
-        </div>
+        {/* Live, interactive demo: let visitors browse a real-looking thèque before signing up. */}
+        <DemoLibrary />
 
         {/* How it works */}
         <section aria-labelledby="how-heading" className="w-full">
