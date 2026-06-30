@@ -3,7 +3,12 @@ import type { FieldSource } from "@/lib/enrichment/llm/category-schemas";
 import type { GeminiCategoryResult } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
 
-/** Volatile facts that must never be persisted from model_knowledge alone. */
+/**
+ * Facts that must never be persisted from model_knowledge alone — either
+ * volatile (price/rating/address change over time) or, for `directors`,
+ * systematically wrong from memory (the model returns a cast member, not the
+ * director — see ADR 0011, the Crew rule). Page-sourced values still pass.
+ */
 const VOLATILE_STRUCTURED_FIELDS = new Set([
   "price",
   "availability",
@@ -13,6 +18,7 @@ const VOLATILE_STRUCTURED_FIELDS = new Set([
   "ratings_count",
   "rating",
   "rating_scale",
+  "directors",
 ]);
 
 export type MergeLlmInput = {

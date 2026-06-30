@@ -36,10 +36,38 @@ describe("resolveMovie", () => {
       image_url: "https://image.tmdb.org/t/p/w500/poster.jpg",
       structured: { year: 2008, media_type: "movie" },
     });
-    expect(resolveMovieWithTmdb).toHaveBeenCalledWith({
-      title: "The Dark Knight",
-      creator: "",
-      year: 2008,
+    expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
+      { title: "The Dark Knight", creator: "", year: 2008 },
+      { includeCredits: true },
+    );
+  });
+
+  it("maps directors, runtime, genres, and rating into the patch when present", async () => {
+    resolveMovieWithTmdb.mockResolvedValue({
+      canonical_url: "https://www.themoviedb.org/movie/27205",
+      cover_url: null,
+      confirmed_year: 2010,
+      verified_author: null,
+      directors: ["Christopher Nolan"],
+      runtime_minutes: 148,
+      genres: ["Action", "Sci-Fi"],
+      source_rating: 4.2,
+    });
+
+    const patch = await resolveMovie({
+      canonicalUrl: "https://www.imdb.com/title/tt1375666/",
+      title: "Inception",
+      structured: { year: 2010 },
+    });
+
+    expect(patch?.structured).toEqual({
+      year: 2010,
+      media_type: "movie",
+      directors: ["Christopher Nolan"],
+      runtime_minutes: 148,
+      genres: ["Action", "Sci-Fi"],
+      rating: 4.2,
+      rating_scale: 5,
     });
   });
 

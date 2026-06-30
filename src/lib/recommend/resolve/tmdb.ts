@@ -16,14 +16,27 @@ export type ResolvedMovie = {
   confirmed_year: number | null;
   /** TMDB movie or TV id as a string. */
   external_id: string;
-  /** Always null for movies/TV — TMDB multi-search doesn't return a director,
-   * so the displayed creator falls back to the LLM candidate. Present for a
-   * uniform shape with ResolvedBook. */
+  /** Always null for movies/TV — TMDB multi-search doesn't return a director.
+   * The director is fetched separately via `includeCredits` (see `directors`);
+   * this field is kept for a uniform shape with ResolvedBook. */
   verified_author: string | null;
   source_rating?: number | null;
   rating_count?: string | null;
   length?: string | null;
   genres?: string[];
+  /** Crew: movie directors (crew job=Director) or TV creators (created_by).
+   * Only populated when `includeCredits` is set and the extra fetch succeeds. */
+  directors?: string[] | null;
+  /** Movie runtime or TV per-episode runtime. Only populated with `includeCredits`. */
+  runtime_minutes?: number | null;
+};
+
+type TmdbCrewMember = { job?: string; name?: string };
+type TmdbDetails = {
+  runtime?: number;
+  episode_run_time?: number[];
+  created_by?: Array<{ name?: string }>;
+  credits?: { crew?: TmdbCrewMember[] };
 };
 
 type TmdbResult = {
@@ -55,8 +68,57 @@ type TmdbSearchResponse = {
 };
 
 const TMDB_SEARCH_BASE = "https://api.themoviedb.org/3/search/multi";
+const TMDB_DETAILS_BASE = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 const TIMEOUT_MS = 8000;
+
+/**
+ * Fetch crew + runtime for a resolved title. Movies → crew job=Director;
+ * TV → created_by (showrunner). Fails open (returns null) on any error so a
+ * credits hiccup never sinks an otherwise-good resolution.
+ */
+async function fetchTmdbCredits(
+  apiKey: string,
+  mediaType: "movie" | "tv",
+  id: number,
+): Promise<{ directors: string[]; runtime_minutes: number | null } | null> {
+  const params = new URLSearchParams({ api_key: apiKey, append_to_response: "credits" });
+  const url = new URL(`${TMDB_DETAILS_BASE}/${mediaType}/${id}?${params.toString()}`);
+
+  try {
+    await assertSafeFetchUrl(url);
+  } catch {
+    return null;
+  }
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as TmdbDetails;
+
+    const directors =
+      mediaType === "tv"
+        ? (body.created_by ?? [])
+            .map((c) => c?.name)
+            .filter((n): n is string => typeof n === "string" && n.trim().length > 0)
+        : (body.credits?.crew ?? [])
+            .filter((c) => c?.job === "Director")
+            .map((c) => c?.name)
+            .filter((n): n is string => typeof n === "string" && n.trim().length > 0);
+
+    const runtime_minutes =
+      mediaType === "tv"
+        ? (Array.isArray(body.episode_run_time) ? body.episode_run_time[0] ?? null : null)
+        : (typeof body.runtime === "number" ? body.runtime : null);
+
+    return { directors, runtime_minutes };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Resolve a movie/TV candidate against TMDB.
@@ -68,6 +130,7 @@ const TIMEOUT_MS = 8000;
  */
 export async function resolveMovieWithTmdb(
   candidate: Pick<LlmCandidate, "title" | "creator" | "year">,
+  { includeCredits = false }: { includeCredits?: boolean } = {},
 ): Promise<ResolvedMovie | null> {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) return null;
@@ -121,7 +184,7 @@ export async function resolveMovieWithTmdb(
     .filter((g): g is string => Boolean(g))
     .slice(0, 3);
 
-  return {
+  const resolved: ResolvedMovie = {
     canonical_url: `https://www.themoviedb.org/${best.media_type}/${best.id}`,
     cover_url: best.poster_path ? `${TMDB_IMAGE_BASE}${best.poster_path}` : null,
     confirmed_year: Number.isFinite(confirmedYear) ? (confirmedYear as number) : null,
@@ -133,4 +196,22 @@ export async function resolveMovieWithTmdb(
     length: best.media_type === "tv" ? "TV series" : "Film",
     genres: genres.length > 0 ? genres : undefined,
   };
+
+  // Crew (directors) is never in multi-search; fetch it on demand for enrichment.
+  // The recommendation path omits includeCredits and pays no extra round-trip.
+  if (includeCredits) {
+    const credits = await fetchTmdbCredits(apiKey, best.media_type, best.id);
+    if (credits) {
+      if (credits.directors.length > 0) resolved.directors = credits.directors;
+      if (
+        typeof credits.runtime_minutes === "number" &&
+        Number.isInteger(credits.runtime_minutes) &&
+        credits.runtime_minutes > 0
+      ) {
+        resolved.runtime_minutes = credits.runtime_minutes;
+      }
+    }
+  }
+
+  return resolved;
 }

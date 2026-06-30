@@ -375,4 +375,60 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
     expect(merged.structured).toEqual({ brand: "Acme" });
     expect(merged.structured).not.toHaveProperty("price");
   });
+
+  it("rejects directors sourced from model_knowledge (crew rule)", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Manchester by the Sea",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "movies_and_tv",
+        category_confidence: 0.9,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.7,
+          sources: ["model_knowledge"],
+          structured: { directors: ["Casey Affleck"] },
+          field_sources: { directors: "model_knowledge" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.structured).not.toHaveProperty("directors");
+  });
+
+  it("keeps directors sourced from page evidence (crew rule)", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Manchester by the Sea",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "movies_and_tv",
+        category_confidence: 0.9,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.9,
+          sources: ["page_text"],
+          structured: { directors: ["Kenneth Lonergan"] },
+          field_sources: { directors: "page" },
+        },
+        providerMetadata: { provider: "gemini" },
+      },
+      now: "2026-06-13T00:00:00.000Z",
+    });
+    expect(merged.structured).toEqual({ directors: ["Kenneth Lonergan"] });
+  });
 });
