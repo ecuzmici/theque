@@ -7,6 +7,7 @@ import type { Database } from "@/lib/database.types";
 /** Routes that require a session; must stay in sync with matcher (excluding public entries). */
 const PROTECTED_PREFIXES = [
   "/library",
+  "/stats",
   "/settings",
   "/item",
   "/search",
@@ -124,6 +125,8 @@ export const config = {
     "/login/:path*",
     "/library",
     "/library/:path*",
+    "/stats",
+    "/stats/:path*",
     "/settings",
     "/settings/:path*",
     "/item/:path*",

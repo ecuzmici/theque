@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { BarChart3, ChevronRight } from "lucide-react";
+
 import { CaptureTokens } from "@/components/settings/CaptureTokens";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +28,21 @@ export default async function SettingsPage() {
         title="Settings"
         description="Capture tokens for Chrome and shortcuts."
       />
+      <Link
+        href="/stats"
+        className="mb-6 flex items-center gap-3 rounded-[var(--ks-radius-card)] border border-border bg-card p-4 shadow-[var(--ks-shadow)] transition hover:bg-muted"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+          <BarChart3 className="size-5" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-foreground">Your taste in numbers</span>
+          <span className="block text-xs text-muted-foreground">
+            Totals, categories, colors and verdicts across your library
+          </span>
+        </span>
+        <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
       <CaptureTokens initialTokens={tokens ?? []} userEmail={user.email ?? undefined} />
     </div>
   );

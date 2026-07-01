@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
@@ -15,6 +15,12 @@ const LIBRARY = {
   label: "Library",
   icon: LayoutGrid,
   match: (p: string) => p === "/library" || p.startsWith("/library"),
+} as const;
+const STATS = {
+  href: "/stats",
+  label: "Stats",
+  icon: BarChart3,
+  match: (p: string) => p === "/stats",
 } as const;
 const SEARCH = {
   href: "/search",
@@ -29,7 +35,7 @@ const SETTINGS = {
   match: (p: string) => p === "/settings",
 } as const;
 
-const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, STATS, SEARCH, SETTINGS] as const;
 const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
@@ -142,6 +148,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
+            <Link
+              href="/stats"
+              onClick={() => markPending("/stats")}
+              className={cn(
+                "ks-pointer-coarse-min-hit inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                STATS.match(activePath) && "bg-accent text-accent-foreground",
+              )}
+              aria-label="Stats"
+              aria-current={STATS.match(activePath) ? "page" : undefined}
+            >
+              <BarChart3 className="size-5" aria-hidden />
+            </Link>
             <Link
               href="/settings"
               onClick={() => markPending("/settings")}
