@@ -104,7 +104,7 @@ export function ItemCard({
         aria-label={item.title ?? item.domain}
         className="block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <ViewTransition name={`item-cover-${item.id}`}>
+        <ViewTransition name={`item-cover-${item.id}`} share="morph">
           <div
             className={cn(
               "relative w-full bg-muted",

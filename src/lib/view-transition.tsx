@@ -4,6 +4,12 @@ import * as React from "react";
 
 type ViewTransitionProps = {
   name?: string;
+  /** e.g. "morph" — assigns a class to the transition group for CSS targeting. */
+  share?: string;
+  enter?: string;
+  exit?: string;
+  update?: string;
+  default?: string;
   children: React.ReactNode;
 };
 

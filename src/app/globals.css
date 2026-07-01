@@ -170,20 +170,60 @@
   }
 }
 
-/* Navigation motion: a gentle fade+rise as a new route enters, and a soft fade
-   when the library swaps shelves. Kept short and calm to match the amber /
-   spine-band feel — cosmetic only, never blocking interaction. Mirrors the
-   ks-shimmer pattern: custom keyframes with an explicit reduced-motion guard,
-   since the global reduced-motion rule only neutralizes ks-shimmer. */
-@keyframes ks-fade-rise {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 6px, 0);
+/* ── Navigation motion ─────────────────────────────────────────────────────
+   Native View Transitions (React <ViewTransition>, enabled via
+   experimental.viewTransition in next.config) carry the feel:
+
+   • Card ↔ detail: the tapped cover morphs into the detail hero as one
+     continuous object (share="morph" on ItemCard/ItemDetail) — Apple-Photos
+     spatial continuity, the one thing a plain fade can't fake.
+   • Sibling routes (Library ↔ Add ↔ Search ↔ Settings): the native `root`
+     crossfade, tuned calm below. Snapshot-based, so it never remounts the page
+     or discards the library's in-memory shelf cache.
+   • Shelf swaps aren't navigations (setState/query only), so <ViewTransition>
+     can't fire on them — they keep a CSS crossfade (.ks-shelf-enter).
+
+   Calm-not-loud, to match the amber / spine-band feel; cosmetic only, never
+   blocking interaction. Timing lives in vars so the exact feel is tunable from
+   one place — judge it on a real phone, not a static mock. */
+:root {
+  --ks-morph-duration: 420ms;
+  --ks-morph-ease: cubic-bezier(0.22, 1, 0.36, 1); /* generous ease-out, no overshoot */
+  --ks-crossfade-duration: 280ms;
+}
+
+/* Cover morph. share="morph" assigns the `.morph` class to the transition group. */
+::view-transition-group(.morph) {
+  animation-duration: var(--ks-morph-duration);
+  animation-timing-function: var(--ks-morph-ease);
+}
+::view-transition-image-pair(.morph) {
+  /* Soften mid-flight: the grid cover is object-cover (cropped) while the detail
+     hero is object-contain, so a brief blur hides the crop interpolation. */
+  animation-name: ks-morph-blur;
+  animation-duration: var(--ks-morph-duration);
+  animation-timing-function: var(--ks-morph-ease);
+}
+@keyframes ks-morph-blur {
+  30% {
+    filter: blur(3px);
   }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+}
+
+/* Sibling-route crossfade (the default `root` snapshot). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--ks-crossfade-duration);
+  animation-timing-function: ease;
+}
+
+/* Anchor the chrome: the sidebar / mobile header / bottom nav carry a stable
+   view-transition-name (AppShell), so they hold still while content transitions
+   — one fixed spatial reference, never a sliding frame. */
+::view-transition-group(app-sidebar),
+::view-transition-group(app-header),
+::view-transition-group(app-bottomnav) {
+  animation: none;
 }
 
 @keyframes ks-fade {
@@ -195,19 +235,23 @@
   }
 }
 
-/* `backwards` (not `both`/`forwards`) so no transform lingers after the run —
-   a resting transform would establish a containing block and could break
+/* Shelf-swap crossfade. `backwards` (not forwards) so nothing lingers after the
+   run — a resting transform would establish a containing block and could break
    `position: sticky` descendants. */
-.ks-page-enter {
-  animation: ks-fade-rise 320ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
-}
-
 .ks-shelf-enter {
-  animation: ks-fade 200ms ease-out backwards;
+  animation: ks-fade var(--ks-crossfade-duration) ease backwards;
 }
 
+/* Directional slides were deliberately skipped (top motion-sickness trigger,
+   and a library has no natural forward/back order), so reduced-motion just needs
+   to neutralize the morph's scale/position and every crossfade. */
 @media (prefers-reduced-motion: reduce) {
-  .ks-page-enter,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
   .ks-shelf-enter {
     animation: none;
   }

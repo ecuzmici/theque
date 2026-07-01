@@ -8,7 +8,6 @@ import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { ExtensionNudge } from "@/components/layout/ExtensionNudge";
-import { PageTransition } from "@/components/layout/PageTransition";
 import { cn } from "@/lib/utils";
 
 const LIBRARY = {
@@ -107,7 +106,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-col lg:flex-row">
-      <aside className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6">
+      <aside
+        className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6"
+        style={{ viewTransitionName: "app-sidebar" }}
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <ThequeLogo size="lg" href="/library" />
@@ -146,7 +148,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-full min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
+        <header
+          className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden"
+          style={{ viewTransitionName: "app-header" }}
+        >
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
             <Link
@@ -178,7 +183,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(var(--ks-nav-height)+1rem)] pt-6 lg:pb-10">
-          <PageTransition>{children}</PageTransition>
+          {children}
         </main>
 
         <nav
@@ -186,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "fixed bottom-0 left-0 right-0 z-30 flex h-[var(--ks-nav-height)] items-end border-t border-border bg-card/95 backdrop-blur lg:hidden",
             "px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
           )}
+          style={{ viewTransitionName: "app-bottomnav" }}
           aria-label="Primary"
         >
           <div className="flex min-w-0 flex-1 justify-center">

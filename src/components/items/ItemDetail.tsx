@@ -229,7 +229,7 @@ export function ItemDetail({
       <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
         {/* Cover pane — sticky alongside the metadata on desktop */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <ViewTransition name={`item-cover-${item.id}`}>
+          <ViewTransition name={`item-cover-${item.id}`} share="morph">
           <div
             className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
             style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
