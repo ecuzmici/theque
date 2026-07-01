@@ -2,8 +2,11 @@
 
 /**
  * "Made for you" recommendation banner, framed as a single-tier unlockable
- * achievement. Shown on the default "All" shelf (the library's landing) so the
- * AI-recommendation feature is discoverable without drilling into a category.
+ * achievement. Part of the persistent library masthead, so it is shown on every
+ * shelf (see docs/adr/0013). It is **shelf-aware**: the All shelf offers both
+ * recommendation categories, each category shelf (Books / Watch) features its
+ * own, and shelves with no recommendation category (Articles, Done, Other,
+ * Inbox) render the banner in a disabled state — see `bannerModeForShelf`.
  *
  * Progress = save RECOMMEND_MIN_ITEMS titled items in a category → that
  * category's recommendations unlock. Before unlock, a progress-ring CTA shows how
@@ -22,6 +25,7 @@ import { BookOpen, ChevronDown, Clapperboard, Sparkles, Star } from "lucide-reac
 
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
 import { Button } from "@/components/ui/button";
+import { bannerModeForShelf } from "@/lib/recommend/banner-mode";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +43,7 @@ import {
   persistUnlocked,
   readUnlocked,
 } from "@/lib/recommend/unlock-storage";
+import type { ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
@@ -70,11 +75,18 @@ type CategoryProgress = CategoryMeta & { saved: number; unlocked: boolean };
 type Props = {
   booksEnabled: boolean;
   watchEnabled: boolean;
-  /** Already-loaded "All" items — used only for the decorative cover thumbnails. */
+  /** The library shelf currently in view — drives which category is featured. */
+  activeShelf: ShelfId;
+  /** Already-loaded shelf items — used only for the decorative cover thumbnails. */
   items: LibraryItemRow[];
 };
 
-export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Props) {
+export function RecommendUnlockBanner({
+  booksEnabled,
+  watchEnabled,
+  activeShelf,
+  items,
+}: Props) {
   const { start } = useRecommendationContext();
 
   const enabled = useMemo(
@@ -128,15 +140,38 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
     [items],
   );
 
+  // Feature entirely off (no env-enabled category): no masthead banner anywhere.
   if (enabled.length === 0) return null;
+
+  // Shelves with no recommendation category (Articles, Done, Other, Inbox…) keep
+  // the banner visible but disabled, so the masthead height stays constant across
+  // shelf switches (no pop).
+  const mode = bannerModeForShelf(activeShelf);
+  if (mode.kind === "disabled") {
+    return <DisabledBanner thumbs={thumbs} />;
+  }
+
   if (progress == null || progress.length === 0) return null;
 
-  const featured = featuredOf(progress);
+  // On a category shelf feature that one category; on "All" use the heuristic.
+  const featured =
+    mode.kind === "featured"
+      ? (progress.find((p) => p.shelfId === mode.shelfId) ?? null)
+      : featuredOf(progress);
+
+  // A category shelf whose category is not env-enabled has no progress row —
+  // there's nothing to recommend, so disable rather than crash.
+  if (featured == null) {
+    return <DisabledBanner thumbs={thumbs} />;
+  }
+
+  // Category shelves offer only their own category; "All" offers every category.
+  const offeredRows = mode.kind === "featured" ? [toRow(featured)] : progress.map(toRow);
 
   if (featured.unlocked) {
     return (
       <div className={SHELL}>
-        <ActiveBanner rows={progress.map(toRow)} start={start} thumbs={thumbs} />
+        <ActiveBanner rows={offeredRows} start={start} thumbs={thumbs} />
       </div>
     );
   }
@@ -196,6 +231,10 @@ function achieve(p: CategoryProgress): {
 const SHELL =
   "mb-5 overflow-hidden rounded-2xl border border-amber-300/40 bg-amber-50 px-4 py-4 dark:border-amber-400/15 dark:bg-amber-500/10 sm:px-5";
 
+/** Muted twin of SHELL for shelves that have no recommendation category. */
+const SHELL_DISABLED =
+  "mb-5 overflow-hidden rounded-2xl border border-border bg-muted/30 px-4 py-4 sm:px-5";
+
 const RING_CLASS =
   "relative grid size-16 shrink-0 place-items-center rounded-full bg-amber-50 ring-1 ring-amber-300/50 transition active:scale-95 dark:bg-amber-500/10 dark:ring-amber-400/20";
 
@@ -212,6 +251,38 @@ type CategoryRow = {
 
 function toRow(p: CategoryProgress): CategoryRow {
   return { shelfId: p.shelfId, label: p.label, noun: p.noun, Icon: p.Icon, ready: p.unlocked };
+}
+
+/* ---- disabled (no-recommend-category shelf) banner ----------------------- */
+
+/**
+ * Kept visible (not removed) on shelves without a recommendation category so the
+ * masthead's height is stable across shelf switches. Mirrors the locked banner's
+ * ring-sized layout so switching to/from it doesn't jump the page.
+ */
+function DisabledBanner({ thumbs }: { thumbs: string[] }) {
+  return (
+    <div
+      className={SHELL_DISABLED}
+      title="No recommendations for this shelf"
+      aria-label="Made for you — no recommendations for this shelf"
+    >
+      <div className="flex items-center gap-4">
+        <div className={cn(RING_CLASS, "bg-muted ring-border")}>
+          <Sparkles className="relative size-6 text-muted-foreground" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-muted-foreground sm:text-lg">
+            Made for you
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            No picks for this shelf
+          </p>
+        </div>
+        <StackedCovers thumbs={thumbs} />
+      </div>
+    </div>
+  );
 }
 
 /* ---- active (unlocked) banner -------------------------------------------- */
