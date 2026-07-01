@@ -17,7 +17,7 @@
  * accurately regardless of library size.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Clapperboard, Sparkles, Star } from "lucide-react";
 
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
@@ -44,6 +44,11 @@ import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
 
 const SAVE_TARGET = RECOMMEND_MIN_ITEMS;
+
+// Read localStorage before the browser paints so the reserved skeleton matches
+// the banner's settled height (avoids a hydration mismatch that a render-time
+// read would cause). Falls back to useEffect on the server render.
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type CategoryMeta = {
   shelfId: RecommendShelfId;
@@ -87,6 +92,14 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
   // locked state for an already-unlocked library.
   const [progress, setProgress] = useState<CategoryProgress[] | null>(null);
 
+  // If any category is already unlocked (sticky localStorage flag), the settled
+  // banner will be the taller "active" state — which stacks on mobile. Reserve
+  // that height in the skeleton so the tabs below don't get shoved on load.
+  const [reserveTall, setReserveTall] = useState(false);
+  useIsomorphicLayoutEffect(() => {
+    setReserveTall(enabled.some((c) => readUnlocked(c.shelfId)));
+  }, [enabled]);
+
   useEffect(() => {
     if (enabled.length === 0) return;
     let cancelled = false;
@@ -129,7 +142,10 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
   );
 
   if (enabled.length === 0) return null;
-  if (progress == null || progress.length === 0) return null;
+  // While the per-category counts load, reserve the banner's settled height with a
+  // muted skeleton so the shelf tabs below don't get shoved down when it pops in.
+  if (progress == null) return <BannerSkeleton tall={reserveTall} />;
+  if (progress.length === 0) return null;
 
   const featured = featuredOf(progress);
 
@@ -193,8 +209,37 @@ function achieve(p: CategoryProgress): {
   };
 }
 
-const SHELL =
-  "mb-5 overflow-hidden rounded-2xl border border-amber-300/40 bg-amber-50 px-4 py-4 dark:border-amber-400/15 dark:bg-amber-500/10 sm:px-5";
+// Shared banner chrome. `min-h-[6.125rem]` (98px) is the settled locked-state
+// height; the unlocked "active" state grows past it (and stacks on mobile).
+const SHELL_BASE =
+  "mb-5 flex flex-col justify-center overflow-hidden rounded-2xl border border-amber-300/40 bg-amber-50 px-4 py-4 dark:border-amber-400/15 dark:bg-amber-500/10 sm:px-5";
+const SHELL = cn(SHELL_BASE, "min-h-[6.125rem]");
+
+/**
+ * Reserved-height placeholder matching the settled banner's height, so the
+ * initial library load doesn't shift the tabs below once the counts arrive.
+ * `tall` reserves the taller mobile "active" (unlocked) layout; on desktop that
+ * state is a single row, so the extra height applies to mobile only.
+ */
+function BannerSkeleton({ tall }: { tall: boolean }) {
+  return (
+    <div
+      className={cn(
+        SHELL_BASE,
+        tall ? "min-h-[9.125rem] sm:min-h-[6.125rem]" : "min-h-[6.125rem]",
+      )}
+      aria-hidden="true"
+    >
+      <div className="flex animate-pulse items-center gap-4">
+        <div className="size-16 shrink-0 rounded-full bg-amber-200/40 dark:bg-amber-400/10" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 w-40 max-w-[60%] rounded bg-amber-200/40 dark:bg-amber-400/10" />
+          <div className="h-3 w-24 max-w-[40%] rounded bg-amber-200/30 dark:bg-amber-400/10" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const RING_CLASS =
   "relative grid size-16 shrink-0 place-items-center rounded-full bg-amber-50 ring-1 ring-amber-300/50 transition active:scale-95 dark:bg-amber-500/10 dark:ring-amber-400/20";

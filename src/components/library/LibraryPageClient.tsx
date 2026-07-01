@@ -204,7 +204,8 @@ export function LibraryPageClient({
       <PageHeader title="Library" />
 
       {/* Spine band (band + counts caption) is a whole-library identity element —
-          landing shelf only, same gate as the "Made for you" banner below it. */}
+          landing shelf only, same gate as the "Made for you" banner below it.
+          Both reserve their settled height while loading to avoid initial CLS. */}
       {activeShelf === "all" ? (
         <>
           <LibrarySpineBand />

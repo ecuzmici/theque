@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { useCallback } from "react";
 
@@ -56,6 +57,14 @@ export function ItemCard({
   onItemPatch,
   onOpenMarkDone,
 }: ItemCardProps) {
+  const router = useRouter();
+  const detailHref = `/item/${item.id}`;
+  // Warm the item route so the cover morph starts promptly instead of stalling on
+  // the server fetch. Fires on hover / focus / press-in — well before the click.
+  const prefetchDetail = useCallback(() => {
+    router.prefetch(detailHref);
+  }, [router, detailHref]);
+
   const aspect = cardAspectRatio(item.category, item.display);
   const [aw, ah] = aspect.split("/").map(Number);
   const ratioStyle =
@@ -100,9 +109,12 @@ export function ItemCard({
       ) : null}
 
       <Link
-        href={`/item/${item.id}`}
+        href={detailHref}
         aria-label={item.title ?? item.domain}
-        className="block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        onPointerEnter={prefetchDetail}
+        onFocus={prefetchDetail}
+        onPointerDown={prefetchDetail}
+        className="block outline-none transition-transform duration-100 ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <ViewTransition name={`item-cover-${item.id}`}>
           <div

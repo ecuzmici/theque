@@ -166,10 +166,13 @@ export function LibrarySpineBand() {
   }, [loaded, colorPool.length]);
 
   if (!loaded) {
-    // Reserve the band's height so the banner/tabs below don't jump once data arrives.
+    // Reserve the full loaded height (band + caption line + rule) so the tabs below
+    // don't jump once data arrives — mirrors the loaded layout's box model exactly.
     return (
-      <div className="mb-5">
-        <div className="h-11 w-full rounded-lg bg-muted/20" aria-hidden="true" />
+      <div className="mb-5" aria-hidden="true">
+        <div className="mb-3 h-11 w-full rounded-lg bg-muted/20 motion-safe:animate-pulse" />
+        <div className="h-5 w-48 max-w-[60%] rounded bg-muted/20" />
+        <div className="mt-4 border-t border-border" />
       </div>
     );
   }
