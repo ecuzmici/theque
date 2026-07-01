@@ -235,7 +235,7 @@ export function LibraryStatsView({ stats }: { stats: LibraryStats }) {
             {stats.byMonth.map((m) => {
               const h = m.count > 0 ? Math.max(8, Math.round((m.count / monthMax) * 100)) : 3;
               return (
-                <div key={m.month} className="flex flex-1 flex-col items-center gap-1.5">
+                <div key={m.month} className="flex h-full flex-1 flex-col items-center gap-1.5">
                   <div className="flex w-full flex-1 items-end">
                     <div
                       className="w-full rounded-t-sm bg-primary/75"
