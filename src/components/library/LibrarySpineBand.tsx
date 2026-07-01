@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Images } from "lucide-react";
 
 import { FORGOTTEN_AFTER_DAYS, getShelf, olderThanCutoff } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
@@ -219,20 +220,33 @@ export function LibrarySpineBand() {
           </span>{" "}
           new this week
         </p>
-        {showInboxNudge || showForgottenNudge ? (
-          <p className="flex items-baseline gap-1 text-muted-foreground">
-            {showInboxNudge ? (
-              <Link href="/library?shelf=inbox" className={NUDGE_LINK_CLASSES}>
-                {counts.inboxBacklog} to sort
-              </Link>
-            ) : null}
-            {showInboxNudge && showForgottenNudge ? <span aria-hidden="true">·</span> : null}
-            {showForgottenNudge ? (
-              <Link href="/library?shelf=forgotten" className={NUDGE_LINK_CLASSES}>
-                {counts.forgotten} forgotten
-              </Link>
-            ) : null}
-          </p>
+        {showInboxNudge || showForgottenNudge || showBand ? (
+        <p className="flex items-center gap-2 text-muted-foreground">
+          {showInboxNudge ? (
+            <Link href="/library?shelf=inbox" className={NUDGE_LINK_CLASSES}>
+              {counts.inboxBacklog} to sort
+            </Link>
+          ) : null}
+          {showInboxNudge && showForgottenNudge ? <span aria-hidden="true">·</span> : null}
+          {showForgottenNudge ? (
+            <Link href="/library?shelf=forgotten" className={NUDGE_LINK_CLASSES}>
+              {counts.forgotten} forgotten
+            </Link>
+          ) : null}
+          {(showInboxNudge || showForgottenNudge) && showBand ? (
+            <span aria-hidden="true">·</span>
+          ) : null}
+          {showBand ? (
+            <Link
+              href="/ambient"
+              title="View your library as a drifting wall of covers"
+              className="inline-flex items-center gap-1 rounded transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            >
+              <Images className="size-3.5" aria-hidden="true" />
+              Ambient
+            </Link>
+          ) : null}
+        </p>
         ) : null}
       </div>
 
