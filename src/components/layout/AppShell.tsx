@@ -149,6 +149,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
             <Link
+              href="/stats"
+              onClick={() => markPending("/stats")}
+              className={cn(
+                "ks-pointer-coarse-min-hit inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                STATS.match(activePath) && "bg-accent text-accent-foreground",
+              )}
+              aria-label="Stats"
+              aria-current={STATS.match(activePath) ? "page" : undefined}
+            >
+              <BarChart3 className="size-5" aria-hidden />
+            </Link>
+            <Link
               href="/settings"
               onClick={() => markPending("/settings")}
               className={cn(
