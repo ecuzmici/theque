@@ -9,6 +9,7 @@ import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
+import { OnThisDay } from "@/components/library/OnThisDay";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
@@ -208,6 +209,7 @@ export function LibraryPageClient({
       {activeShelf === "all" ? (
         <>
           <LibrarySpineBand />
+          <OnThisDay />
           <RecommendUnlockBanner
             booksEnabled={recommendBooksEnabled}
             watchEnabled={recommendWatchEnabled}
