@@ -1,11 +1,20 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ItemLoading() {
+/**
+ * Loading fallback for the item detail route. When `coverName` is provided, the
+ * cover placeholder carries that `view-transition-name` so the library cover
+ * morphs into this box while the real data loads — keeping the shared-element
+ * transition continuous through the Suspense boundary (see ItemPage).
+ */
+export function ItemDetailSkeleton({ coverName }: { coverName?: string }) {
   return (
     <article aria-busy="true" aria-live="polite" className="pb-12">
       <Skeleton className="h-11 w-24 rounded-md lg:h-5" />
 
-      <Skeleton className="mt-4 h-[min(40vh,28rem)] w-full rounded-xl" />
+      <Skeleton
+        className="ks-cover-morph mt-4 h-[min(40vh,28rem)] w-full rounded-xl"
+        style={coverName ? { viewTransitionName: coverName } : undefined}
+      />
 
       <header className="mt-6">
         <div className="flex flex-wrap gap-2">

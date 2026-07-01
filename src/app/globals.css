@@ -192,7 +192,14 @@
   --ks-crossfade-duration: 280ms;
 }
 
-/* Cover morph. share="morph" assigns the `.morph` class to the transition group. */
+/* Each cover's view-transition-name is per-item (set inline on ItemCard/ItemDetail);
+   this shared view-transition-class lets the rules below target them collectively.
+   Fail-open: browsers without view-transition-class just get the default morph timing. */
+.ks-cover-morph {
+  view-transition-class: morph;
+}
+
+/* Cover morph — the tuned timing for every `.morph` cover group. */
 ::view-transition-group(.morph) {
   animation-duration: var(--ks-morph-duration);
   animation-timing-function: var(--ks-morph-ease);
@@ -247,6 +254,7 @@
    to neutralize the morph's scale/position and every crossfade. */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
+  ::view-transition-image-pair(*),
   ::view-transition-old(*),
   ::view-transition-new(*) {
     animation-duration: 0.01ms !important;

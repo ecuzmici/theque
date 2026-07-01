@@ -51,9 +51,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  experimental: {
-    viewTransition: true,
-  },
+  // View transitions are driven by next-view-transitions (which calls the browser's
+  // document.startViewTransition directly). React's experimental.viewTransition
+  // integration does not fire on App Router navigation in this Next version, so it's
+  // intentionally not enabled here.
   poweredByHeader: false,
   async headers() {
     return [

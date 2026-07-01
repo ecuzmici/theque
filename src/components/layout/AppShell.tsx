@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";

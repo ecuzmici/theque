@@ -1,10 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { Hourglass } from "lucide-react";
 import { useCallback } from "react";
-
-import { ViewTransition } from "@/lib/view-transition";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import {
@@ -104,15 +102,17 @@ export function ItemCard({
         aria-label={item.title ?? item.domain}
         className="block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <ViewTransition name={`item-cover-${item.id}`} share="morph">
           <div
             className={cn(
-              "relative w-full bg-muted",
+              "ks-cover-morph relative w-full bg-muted",
               processing && !imgSrc && "ks-shimmer",
               !imgSrc && !item.dominant_color && `bg-gradient-to-br ${categoryPlaceholderClass(item.category)}`,
             )}
             style={{
               ...ratioStyle,
+              // Shared-element morph: this cover and the detail hero carry the same
+              // view-transition-name, so the tapped cover grows into the hero.
+              viewTransitionName: `item-cover-${item.id}`,
               // Extracted cover color doubles as loading base and imageless tint.
               ...(item.dominant_color ? { backgroundColor: item.dominant_color } : null),
             }}
@@ -151,7 +151,6 @@ export function ItemCard({
               </div>
             ) : null}
           </div>
-        </ViewTransition>
 
         {wall ? null : (
           <div className="p-3">

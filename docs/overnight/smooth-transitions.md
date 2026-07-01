@@ -1,65 +1,65 @@
-# Smooth transitions (overnight) — native-first rework
+# Smooth transitions (overnight) — shared-element cover morph
 
-Goal: navigation should feel **premium/calming**, not abrupt. The first pass
-was CSS-only (a whole-page fade+rise on route change). It read as
-invisible/cheap because a fade communicates nothing — nothing survives the cut.
+Goal: navigation should feel **premium/calming**, not abrupt. The headline is a
+**shared-element morph** — the tapped cover grows into the detail hero as one
+continuous object (Apple-Photos style), the thing a plain fade can't fake.
 
-## The reframe
+## Why the first passes read as "nothing"
 
-The card→detail **cover morph was already live on `master`**: `experimental.
-viewTransition: true` is set (`next.config.ts`) and `ItemCard` / `ItemDetail`
-already wrap the cover in matching `<ViewTransition name={`item-cover-${id}`}>`.
-But there was **zero `::view-transition` CSS**, so it ran the browser's *default*
-~250ms crossfade-morph, and the CSS whole-page fade fired **on top of it** on the
-same navigation — two uncoordinated animations, which is what read as muddy.
+The repo had `experimental.viewTransition: true` + React `<ViewTransition>`
+wrappers on the covers, which *looks* like a working morph. It isn't: verified in
+an instrumented browser (dev **and** production build, stable **and**
+experimental react channel), Next 16.2.7's App Router never calls
+`document.startViewTransition` on navigation, so React's `<ViewTransition>` is
+inert — 0 transitions fire. The browser's View Transitions API itself works when
+called directly. (This is the known App-Router gap that `next-view-transitions`
+exists to fill.)
 
-So the fix is mostly **tuning + subtraction**, native-first (React
-`<ViewTransition>` + tuned `::view-transition` CSS), aimed at an Apple-Photos
-spatial-calm feel.
+So the morph needs a real engine, and the covers need CSS `view-transition-name`,
+not React's component.
 
-## What changed
+## How it works now
 
-- **`globals.css`** — replaced the `ks-fade-rise` / `.ks-page-enter` keyframes
-  with `::view-transition` rules:
-  - **Cover morph** (`::view-transition-group(.morph)` / `image-pair(.morph)`):
-    ~420ms, generous ease-out (`cubic-bezier(0.22, 1, 0.36, 1)`, no overshoot),
-    with a mid-flight `blur(3px)` to hide the object-cover→object-contain crop
-    interpolation. Timing is exposed as CSS vars (`--ks-morph-duration`,
-    `--ks-morph-ease`, `--ks-crossfade-duration`) so the feel is tunable from one
-    place — judge it on a real phone, not a static mock.
-  - **Sibling routes** (Library ↔ Add ↔ Search ↔ Settings): the native `root`
-    crossfade, tuned to a calm ~280ms. Snapshot-based, so it never remounts the
-    page or discards the library's in-memory shelf cache (the reason the old pass
-    avoided `template.tsx` — the native path sidesteps that entirely).
-  - **Reduced-motion**: neutralizes every `::view-transition-*` duration + the
-    shelf crossfade → instant swap.
-- **`ItemCard.tsx` / `ItemDetail.tsx`** — added `share="morph"` to the existing
-  cover `<ViewTransition>`, which assigns the `.morph` class the CSS targets.
-- **`view-transition.tsx`** — widened the shim's prop type to pass
-  `share`/`enter`/`exit`/`update`/`default` through to React's `<ViewTransition>`
-  (the vitest pass-through fallback ignores them, as before).
-- **`AppShell.tsx`** — removed the `<PageTransition>` wrap (deleted), and gave the
-  sidebar / mobile header / bottom nav a stable `viewTransitionName`
-  (`app-sidebar` / `app-header` / `app-bottomnav`) so the chrome holds still
-  during a transition — one fixed spatial anchor, never a sliding frame.
-- **`PageTransition.tsx`** — **deleted**; the whole-page fade competed with the
-  morph. Sibling-route motion is now the native root crossfade.
-- **`LibraryPageClient.tsx`** — unchanged behaviour: shelf swaps still use the CSS
-  `.ks-shelf-enter` crossfade (shelf swaps are `setState`/query changes, not
-  navigations, so `<ViewTransition>` can't fire on them), retuned to match the
-  route crossfade duration.
+- **`next-view-transitions`** provides a `<ViewTransitions>` provider (root
+  layout) and a `<Link>` that wraps App-Router navigation in
+  `document.startViewTransition`. Navigation links use this `<Link>`
+  (`ItemCard`, `ItemDetail` back link, `AppShell` nav). Verified firing.
+- **Shared element**: the grid cover (`ItemCard`) and the detail hero
+  (`ItemDetail`) carry the same inline `view-transition-name: item-cover-<id>`,
+  so the browser morphs one into the other. `experimental.viewTransition` is
+  removed from `next.config` — React's integration is unused.
+- **Through the loading state**: the detail route fetches data, so it Suspends.
+  The route-level `loading.tsx` was replaced by an **in-page `<Suspense>`** whose
+  fallback (`ItemDetailSkeleton`) carries the same `item-cover-<id>` on its cover
+  box — so the morph stays continuous cover → skeleton → loaded hero instead of
+  degrading to a crossfade. (A route `loading.tsx` can't see the id; the in-page
+  boundary can.)
+- **Tuning** (`globals.css`, `::view-transition` CSS): `.ks-cover-morph` sets
+  `view-transition-class: morph`, and `::view-transition-group(.morph)` /
+  `image-pair(.morph)` run ~420ms, generous ease-out
+  (`cubic-bezier(0.22, 1, 0.36, 1)`), with a mid-flight `blur(3px)` to hide the
+  object-cover → object-contain crop. Sibling routes get the tuned native `root`
+  crossfade (~280ms). Timing lives in CSS vars.
+- **Anchored chrome**: sidebar / mobile header / bottom nav carry a stable
+  `viewTransitionName` so they hold still during a transition.
+- **Reduced-motion**: neutralizes every `::view-transition-*` (group, image-pair,
+  old, new) + the shelf crossfade → instant. Verified: 0 running animations under
+  `prefers-reduced-motion: reduce`.
+
+## Verified (instrumented Chromium, authed library, 24 items)
+
+- Morph fires on card → detail (`startViewTransition` called; cover visibly morphs
+  through the skeleton into the hero).
+- `npm run build` green · `npm test` → 495 passed · reduced-motion → 0ms.
 
 ## Deliberately skipped
 
-- **Directional route slides** — the top motion-sickness trigger, and a library
-  has no natural forward/back order, so every sibling route uses a calm crossfade
-  instead. If we ever want a spatial "deeper" cue, it's `transitionTypes` on the
-  detail `<Link>` + `nav-forward`/`nav-back` CSS (see Next's view-transitions
-  guide), but it's intentionally out of scope here.
+Directional route slides (top motion-sickness trigger; a library has no natural
+forward/back order). Shelf swaps keep the CSS `.ks-shelf-enter` crossfade — they
+are `setState`/query changes, not navigations.
 
-## Quality bars
+## Test note
 
-- Native View Transitions fail open (unsupported browsers just don't animate);
-  respects `prefers-reduced-motion`; no layout shift; cosmetic-only, never blocks
-  interaction (view transitions are non-blocking).
-- `npm run build` green; `npm test` green.
+`next-view-transitions`' ESM entry imports `next/link` in a way vitest can't
+resolve, so component tests alias it to `src/test/next-view-transitions-stub.tsx`
+(a pass-through). Runtime is unaffected.

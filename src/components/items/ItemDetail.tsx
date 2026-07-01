@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ViewTransition } from "@/lib/view-transition";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
@@ -229,10 +228,13 @@ export function ItemDetail({
       <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
         {/* Cover pane — sticky alongside the metadata on desktop */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <ViewTransition name={`item-cover-${item.id}`} share="morph">
           <div
-            className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
-            style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
+            className="ks-cover-morph overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
+            style={{
+              // Matches the grid cover's name so the tapped cover morphs into this hero.
+              viewTransitionName: `item-cover-${item.id}`,
+              ...(item.dominant_color ? { backgroundColor: item.dominant_color } : null),
+            }}
           >
             {imgSrc ? (
               <>
@@ -251,7 +253,6 @@ export function ItemDetail({
               </div>
             )}
           </div>
-          </ViewTransition>
           <p className="mt-3 text-xs text-muted-foreground">
             Saved from{" "}
             <a

@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 
 import { ItemDetail } from "@/components/items/ItemDetail";
+import { ItemDetailSkeleton } from "@/components/items/ItemDetailSkeleton";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -9,8 +11,20 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
+// Suspense (not a route-level loading.tsx) so the fallback can carry the cover's
+// view-transition-name — the library cover morphs into the skeleton box and then
+// into the loaded hero, one continuous shared element (see next-view-transitions
+// wiring in RootLayout + ItemCard/ItemDetail).
 export default async function ItemPage({ params }: PageProps) {
   const { id } = await params;
+  return (
+    <Suspense fallback={<ItemDetailSkeleton coverName={`item-cover-${id}`} />}>
+      <ItemDetailContent id={id} />
+    </Suspense>
+  );
+}
+
+async function ItemDetailContent({ id }: { id: string }) {
   const supabase = await createClient();
   const {
     data: { user },
