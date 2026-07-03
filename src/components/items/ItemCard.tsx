@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
+import { useRouter } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { useCallback } from "react";
-
-import { ViewTransition } from "@/lib/view-transition";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import {
@@ -56,6 +55,14 @@ export function ItemCard({
   onItemPatch,
   onOpenMarkDone,
 }: ItemCardProps) {
+  const router = useRouter();
+  const detailHref = `/item/${item.id}`;
+  // Warm the item route on hover / focus / press-in — well before the click — so the
+  // cover morph starts promptly instead of stalling on the server fetch.
+  const prefetchDetail = useCallback(() => {
+    router.prefetch(detailHref);
+  }, [router, detailHref]);
+
   const aspect = cardAspectRatio(item.category, item.display);
   const [aw, ah] = aspect.split("/").map(Number);
   const ratioStyle =
@@ -100,11 +107,13 @@ export function ItemCard({
       ) : null}
 
       <Link
-        href={`/item/${item.id}`}
+        href={detailHref}
         aria-label={item.title ?? item.domain}
-        className="block outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        onPointerEnter={prefetchDetail}
+        onFocus={prefetchDetail}
+        onPointerDown={prefetchDetail}
+        className="block outline-none transition-transform duration-100 ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <ViewTransition name={`item-cover-${item.id}`}>
           <div
             className={cn(
               "relative w-full bg-muted",
@@ -151,7 +160,6 @@ export function ItemCard({
               </div>
             ) : null}
           </div>
-        </ViewTransition>
 
         {wall ? null : (
           <div className="p-3">

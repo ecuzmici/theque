@@ -13,6 +13,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      // next-view-transitions' ESM entry imports next/link in a way vitest can't
+      // resolve; use a pass-through stub for component tests (see the stub file).
+      "next-view-transitions": path.resolve(
+        __dirname,
+        "./src/test/next-view-transitions-stub.tsx",
+      ),
     },
   },
 });

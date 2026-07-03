@@ -11,7 +11,6 @@ import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -203,18 +202,18 @@ export function LibraryPageClient({
     <div>
       <PageHeader title="Library" />
 
-      {/* Spine band (band + counts caption) is a whole-library identity element —
-          landing shelf only, same gate as the "Made for you" banner below it. */}
-      {activeShelf === "all" ? (
-        <>
-          <LibrarySpineBand />
-          <RecommendUnlockBanner
-            booksEnabled={recommendBooksEnabled}
-            watchEnabled={recommendWatchEnabled}
-            items={cachedItems ?? []}
-          />
-        </>
-      ) : null}
+      {/* Persistent masthead: the Spine Band (whole-library identity) and the
+          shelf-aware "Made for you" banner render above the keyed grid on every
+          shelf, so switching shelves never pops the top of the page. The band
+          stays whole-library; the banner adapts its featured category to the
+          active shelf. See docs/adr/0013-persistent-shelf-aware-library-header.md. */}
+      <LibrarySpineBand />
+      <RecommendUnlockBanner
+        booksEnabled={recommendBooksEnabled}
+        watchEnabled={recommendWatchEnabled}
+        activeShelf={activeShelf}
+        items={cachedItems ?? []}
+      />
 
       <ScrollArea className="w-full pb-4">
         {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
@@ -311,14 +310,8 @@ export function LibraryPageClient({
           </Button>
         )}
         <div className="flex items-center gap-2">
-          {((activeShelf === "books" && recommendBooksEnabled) ||
-            (activeShelf === "watch" && recommendWatchEnabled)) &&
-          cachedItems !== undefined ? (
-            <RecommendButton
-              shelfId={activeShelf as "books" | "watch"}
-              shelfItems={cachedItems}
-            />
-          ) : null}
+          {/* Recommend CTA lives in the persistent "Made for you" masthead banner
+              above (shelf-aware), so the toolbar no longer duplicates it. */}
           <Button
             type="button"
             variant={wall ? "secondary" : "outline"}
@@ -334,6 +327,10 @@ export function LibraryPageClient({
         </div>
       </div>
 
+      {/* Keyed by shelf so a shelf swap replays a soft fade; wall-mode and
+          triage toggles keep `activeShelf` stable, so they don't re-animate.
+          Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
+      <div key={activeShelf} className="ks-shelf-enter">
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
           {loadError}
@@ -378,6 +375,7 @@ export function LibraryPageClient({
           onItemsChange={updateActiveShelfItems}
         />
       )}
+      </div>
     </div>
   );
 }

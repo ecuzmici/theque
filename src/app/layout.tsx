@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next";
 
 import Script from "next/script";
 
+import { ViewTransitions } from "next-view-transitions";
+
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 import "./globals.css";
@@ -91,7 +93,9 @@ export default function RootLayout({
         <Script id="theque-theme-init" strategy="beforeInteractive">
           {themeInitScript}
         </Script>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ViewTransitions>{children}</ViewTransitions>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>
