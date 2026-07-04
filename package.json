@@ -14,6 +14,7 @@
     "seed": "tsx scripts/seed.ts",
     "backfill:images": "tsx --conditions=react-server scripts/backfill-image-cache.ts",
     "backfill:crew": "tsx --conditions=react-server scripts/backfill-tmdb-crew.ts",
+    "backfill:field-encryption": "tsx --conditions=react-server scripts/backfill-field-encryption.ts",
     "screenshots:extension-store": "node scripts/generate-extension-store-screenshots.mjs",
     "supabase:sync-auth": "node scripts/update-supabase-auth.mjs",
     "qa:install-browsers": "playwright install chromium",

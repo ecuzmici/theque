@@ -44,3 +44,34 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     done_at: summary.done_at ?? null,
   };
 }
+
+/**
+ * Narrows a full (already-decrypted) `items` row — e.g. the response of the
+ * decrypting `GET /api/items/[id]` — down to the `LibraryItemRow` fields the
+ * library grid renders. Used to merge fresh content into a displayed card
+ * (see `useItemRealtime`) without ever taking `note`/`verdict` from a
+ * realtime payload, which is ciphertext on the wire (ADR 0013).
+ */
+export function libraryItemFromRow(
+  row: Database["public"]["Tables"]["items"]["Row"],
+): LibraryItemRow {
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle,
+    image_url: row.image_url,
+    image_storage_path: row.image_storage_path,
+    domain: row.domain,
+    category: row.category,
+    status: row.status,
+    processing_status: row.processing_status,
+    created_at: row.created_at,
+    display: row.display,
+    canonical_url: row.canonical_url,
+    dominant_color: row.dominant_color,
+    dominant_hue: row.dominant_hue,
+    rating_personal: row.rating_personal,
+    verdict: row.verdict,
+    done_at: row.done_at,
+  };
+}

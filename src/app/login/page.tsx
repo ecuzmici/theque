@@ -48,6 +48,7 @@ function LoginForm() {
   const safeNext = sanitizeRedirectPath(searchParams.get("next"));
   const authError = searchParams.get("error") === "auth";
   const authReason = searchParams.get("reason");
+  const accountDeleted = searchParams.get("deleted") === "1";
 
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
@@ -199,6 +200,15 @@ function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {accountDeleted ? (
+            <p
+              role="status"
+              className="mb-4 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
+            >
+              Your account has been deleted.
+            </p>
+          ) : null}
+
           {authError ? (
             <p
               role="alert"

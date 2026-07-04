@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ItemDetail } from "@/components/items/ItemDetail";
 import { ItemDetailSkeleton } from "@/components/items/ItemDetailSkeleton";
+import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
 import { createClient } from "@/lib/supabase/server";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -40,6 +41,10 @@ async function ItemDetailContent({ id }: { id: string }) {
     notFound();
   }
 
+  // Decrypt-on-read (ADR 0013): a tampered enc.* value throws, which surfaces
+  // as this route segment's error boundary — never rendered ciphertext.
+  const decryptedRow = decryptItemFields(row);
+
   let related: LibraryItemRow[] = [];
   if (row.category) {
     const { data: relatedRows } = await supabase
@@ -51,9 +56,10 @@ async function ItemDetailContent({ id }: { id: string }) {
       .order("created_at", { ascending: false })
       .limit(12);
     related = ((relatedRows ?? []) as LibraryItemRow[])
+      .map((r) => decryptItemFields(r))
       .sort((a, b) => Number(b.domain === row.domain) - Number(a.domain === row.domain))
       .slice(0, 8);
   }
 
-  return <ItemDetail key={id} initial={row} related={related} />;
+  return <ItemDetail key={id} initial={decryptedRow} related={related} />;
 }
