@@ -5,6 +5,10 @@ undetailed, captured before they evaporate. Append-only, newest first. To add
 one, use the `/note-idea` skill (or let a `/grill-me` session offer it when
 nothing concrete came out).
 
+## War-room-queryable funnel analytics — no GA4 (2026-07-04)
+
+Visits/referrers are already covered: the mounted `@vercel/analytics` collects them and Vercel's Web Analytics REST API (`/v1/query/web-analytics/visits/*`) lets the `/war-room` agent query visitors, pageviews, and referrer breakdowns with a plain access token — wired into the war-room command. Custom `track()` events turned out to be Pro-only (not on Hobby), so for funnel events (signup → save → recommend) the free path is a tiny first-party, no-PII event table in Supabase (path, referrer, day bucket, rate-limited insert) that the agent can SQL-query alongside the rest. GA4 considered and rejected: adblock-blind for the HN/PH/Reddit launch audience, cookies would force a GDPR consent banner that clashes with the private-library positioning, and no lightweight API for an agent to poll.
+
 ## Smoother tab/shelf/page transitions (2026-07-01)
 
 Navigation between tabs, shelves, and pages currently feels clunky/abrupt. Wants transitions to feel smooth and calming — likely needs deliberate motion/animation design (easing, shared-element or fade transitions) rather than instant cuts.

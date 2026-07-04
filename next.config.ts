@@ -54,6 +54,9 @@ const nextConfig: NextConfig = {
   experimental: {
     viewTransition: true,
   },
+  // Store screenshots and demo captures are recorded against the dev server;
+  // the on-screen dev indicator must never appear in those assets.
+  devIndicators: false,
   poweredByHeader: false,
   async headers() {
     return [

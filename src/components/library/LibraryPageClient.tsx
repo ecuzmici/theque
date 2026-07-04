@@ -9,6 +9,12 @@ import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
+import { PrototypePagedSection } from "@/components/library/PrototypePagedSection";
+import {
+  PrototypeGridSwitcher,
+  variantIsPaged,
+  variantToLayout,
+} from "@/components/library/PrototypeGridSwitcher";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { RecommendButton } from "@/components/recommend/RecommendButton";
@@ -62,6 +68,10 @@ export function LibraryPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
+  // PROTOTYPE: grid layout variant from `?variant=` (A/B/C/D).
+  const gridVariant = searchParams.get("variant");
+  const gridLayout = variantToLayout(gridVariant);
+  const gridPaged = variantIsPaged(gridVariant);
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
 
   const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
@@ -367,6 +377,15 @@ export function LibraryPageClient({
           }}
           onExit={() => setTriageMode(false)}
         />
+      ) : gridPaged ? (
+        <PrototypePagedSection
+          key={`${activeShelf}-paged`}
+          shelfId={activeShelf}
+          initialItems={cachedItems ?? []}
+          initialHasMore={cachedHasMore}
+          wall={wall}
+          layout={gridLayout}
+        />
       ) : (
         <LibraryItemsSection
           key={activeShelf}
@@ -375,9 +394,12 @@ export function LibraryPageClient({
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
           wall={wall}
+          layout={gridLayout}
           onItemsChange={updateActiveShelfItems}
         />
       )}
+
+      {process.env.NODE_ENV !== "production" ? <PrototypeGridSwitcher /> : null}
     </div>
   );
 }
