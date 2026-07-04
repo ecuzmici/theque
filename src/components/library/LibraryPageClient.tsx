@@ -16,7 +16,7 @@ import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBan
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { fetchLibraryItemsForShelf } from "@/lib/library-items-for-shelf";
+import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import {
   SHELVES,
@@ -128,13 +128,12 @@ export function LibraryPageClient({
     if (itemsCacheRef.current[activeShelf] !== undefined) return;
 
     let cancelled = false;
-    const supabase = createClient();
     const targetShelf = activeShelf;
 
     void (async () => {
       setLoadError(null);
       try {
-        const result = await fetchLibraryItemsForShelf(supabase, targetShelf, 0);
+        const result = await fetchLibraryItemsPage(targetShelf, 0);
         if (cancelled) return;
         setItemsCache((prev) => ({ ...prev, [targetShelf]: result }));
       } catch (e) {

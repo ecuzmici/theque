@@ -9,8 +9,7 @@ import { LibraryItemsSection } from "./LibraryItemsSection";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const mocks = vi.hoisted(() => ({
-  createClient: vi.fn(() => ({}) as never),
-  fetchLibraryItemsForShelf: vi.fn(),
+  fetchLibraryItemsPage: vi.fn(),
   useItemRealtime: vi.fn(),
 }));
 
@@ -18,12 +17,8 @@ vi.mock("@/hooks/useItemRealtime", () => ({
   useItemRealtime: mocks.useItemRealtime,
 }));
 
-vi.mock("@/lib/library-items-for-shelf", () => ({
-  fetchLibraryItemsForShelf: mocks.fetchLibraryItemsForShelf,
-}));
-
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: mocks.createClient,
+vi.mock("@/lib/library-items-client", () => ({
+  fetchLibraryItemsPage: mocks.fetchLibraryItemsPage,
 }));
 
 vi.mock("next/navigation", () => ({
@@ -80,7 +75,7 @@ describe("LibraryItemsSection", () => {
       resolveRefresh = resolve;
     });
 
-    mocks.fetchLibraryItemsForShelf.mockReturnValueOnce(refreshPromise);
+    mocks.fetchLibraryItemsPage.mockReturnValueOnce(refreshPromise);
 
     container = document.createElement("div");
     document.body.append(container);
@@ -99,7 +94,7 @@ describe("LibraryItemsSection", () => {
       await refreshPromise;
     });
 
-    expect(mocks.fetchLibraryItemsForShelf).toHaveBeenCalledTimes(1);
+    expect(mocks.fetchLibraryItemsPage).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Artificial Wisdom");
     expect(container.textContent).not.toContain("Gathering details");
   });
