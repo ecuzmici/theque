@@ -23,6 +23,7 @@ import {
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
+import { getHeadlineFacts } from "@/lib/item-detail-display";
 import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type {
@@ -210,6 +211,7 @@ export function ItemDetail({
   const refreshLabel =
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
+  const facts = getHeadlineFacts(item.category, item.structured);
   const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
   const verb = doneVerb(item.category);
@@ -238,7 +240,7 @@ export function ItemDetail({
                 <img
                   src={imgSrc}
                   alt=""
-                  className="h-auto max-h-[26rem] w-full object-contain lg:max-h-[32rem]"
+                  className="h-auto max-h-[40vh] w-full object-contain lg:max-h-[32rem]"
                 />
               </>
             ) : (
@@ -278,68 +280,8 @@ export function ItemDetail({
           {item.subtitle ? (
             <p className="mt-2 text-base text-muted-foreground">{item.subtitle}</p>
           ) : null}
-
-          {item.description ? (
-            <section className="mt-5" aria-label="About">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                About
-              </h2>
-              <p
-                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
-                  descIsLong && !descExpanded ? "line-clamp-6" : ""
-                }`}
-              >
-                {item.description}
-              </p>
-              {descIsLong ? (
-                <button
-                  type="button"
-                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                  onClick={() => setDescExpanded((v) => !v)}
-                >
-                  {descExpanded ? "Show less" : "Show more"}
-                </button>
-              ) : null}
-            </section>
-          ) : null}
-
-          {item.note ? (
-            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
-                Your note
-              </p>
-              <p className="mt-1 text-sm leading-relaxed text-foreground">{item.note}</p>
-            </div>
-          ) : null}
-
-          {isDone && (item.rating_personal != null || item.verdict || doneDate) ? (
-            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
-                Your verdict
-              </p>
-              {item.rating_personal != null ? (
-                <div className="mt-1.5 flex items-center gap-0.5" aria-label={`${item.rating_personal} of 5 stars`}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Star
-                      key={n}
-                      className={
-                        n <= (item.rating_personal ?? 0)
-                          ? "size-4 fill-amber-500 text-amber-500"
-                          : "size-4 text-muted-foreground/40"
-                      }
-                      aria-hidden
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {item.verdict ? (
-                <p className="mt-1.5 text-sm leading-relaxed text-foreground">{item.verdict}</p>
-              ) : null}
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Marked {verb}
-                {doneDate ? <> · {doneDate}</> : null}
-              </p>
-            </div>
+          {facts.length > 0 ? (
+            <p className="mt-1.5 text-sm text-muted-foreground">{facts.join(" · ")}</p>
           ) : null}
 
           <div className="mt-6 flex flex-wrap gap-2">
@@ -419,6 +361,69 @@ export function ItemDetail({
             <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {item.enrichment_error}
             </p>
+          ) : null}
+
+          {item.note ? (
+            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
+                Your note
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-foreground">{item.note}</p>
+            </div>
+          ) : null}
+
+          {isDone && (item.rating_personal != null || item.verdict || doneDate) ? (
+            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
+                Your verdict
+              </p>
+              {item.rating_personal != null ? (
+                <div className="mt-1.5 flex items-center gap-0.5" aria-label={`${item.rating_personal} of 5 stars`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star
+                      key={n}
+                      className={
+                        n <= (item.rating_personal ?? 0)
+                          ? "size-4 fill-amber-500 text-amber-500"
+                          : "size-4 text-muted-foreground/40"
+                      }
+                      aria-hidden
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {item.verdict ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-foreground">{item.verdict}</p>
+              ) : null}
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Marked {verb}
+                {doneDate ? <> · {doneDate}</> : null}
+              </p>
+            </div>
+          ) : null}
+
+          {item.description ? (
+            <section className="mt-5" aria-label="About">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                About
+              </h2>
+              <p
+                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
+                  descIsLong && !descExpanded ? "line-clamp-6" : ""
+                }`}
+              >
+                {item.description}
+              </p>
+              {descIsLong ? (
+                <button
+                  type="button"
+                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </section>
           ) : null}
 
           <StructuredFields
