@@ -422,6 +422,7 @@ export function ItemDetail({
           ) : null}
 
           <StructuredFields
+            category={item.category}
             structured={item.structured}
             omitKeys={item.description ? ["description"] : undefined}
           />
