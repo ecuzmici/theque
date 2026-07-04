@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ItemGrid, type GridLayout } from "@/components/items/ItemGrid";
+import { ItemGrid } from "@/components/items/ItemGrid";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
@@ -29,8 +29,6 @@ type LibraryItemsSectionProps = {
   initialHasMore?: boolean;
   sort?: LibrarySort;
   wall?: boolean;
-  /** PROTOTYPE: grid layout variant. */
-  layout?: GridLayout;
   onItemsChange?: (items: LibraryItemRow[]) => void;
 };
 
@@ -47,7 +45,6 @@ export function LibraryItemsSection({
   initialHasMore = false,
   sort = "recent",
   wall = false,
-  layout = "masonry",
   onItemsChange,
 }: LibraryItemsSectionProps) {
   const router = useRouter();
@@ -278,7 +275,6 @@ export function LibraryItemsSection({
         shelfId={shelfId}
         itemActionsEnabled
         wall={wall}
-        layout={layout}
         selectedId={selectedItem?.id ?? null}
         onItemPatch={onItemPatch}
         onOpenMarkDone={openMarkDoneItem}

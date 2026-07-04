@@ -33,8 +33,6 @@ type ItemCardProps = {
   inboxActionsEnabled?: boolean;
   /** Imagery-only presentation: no caption, covers carry the wall. */
   wall?: boolean;
-  /** PROTOTYPE: force a fixed image aspect (uniform-grid / justified variants). */
-  aspectOverride?: string;
   /** Keyboard-navigation highlight from the library page. */
   selected?: boolean;
   onItemPatch?: (
@@ -55,7 +53,6 @@ export function ItemCard({
   itemActionsEnabled,
   inboxActionsEnabled,
   wall,
-  aspectOverride,
   selected,
   onItemPatch,
   onOpenMarkDone,
@@ -68,7 +65,7 @@ export function ItemCard({
     router.prefetch(detailHref);
   }, [router, detailHref]);
 
-  const aspect = aspectOverride ?? cardAspectRatio(item.category, item.display);
+  const aspect = cardAspectRatio(item.category, item.display);
   const [aw, ah] = aspect.split("/").map(Number);
   const ratioStyle =
     aw > 0 && ah > 0 ? ({ aspectRatio: `${aw} / ${ah}` } as const) : ({ aspectRatio: "2 / 3" } as const);

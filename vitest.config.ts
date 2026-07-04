@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
     // Ignore git worktrees living under `./.worktrees/` and `.claude/worktrees/`
     // (nested node_modules/tests) and the Playwright e2e runner (standalone tsx
     // script, run via `npm run test:e2e`).
