@@ -2,7 +2,10 @@ import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import type { Database } from "@/lib/database.types";
 import { hasMaxLength, MAX_SEARCH_QUERY_LENGTH } from "@/lib/input-limits";
+import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
+import { parseShelfParam } from "@/lib/shelves";
 import type { ItemSummaryPayload, ItemsListResponseBody } from "@/lib/types/api";
+import type { LibraryItemRow } from "@/lib/types/library-item";
 import { createClient } from "@/lib/supabase/server";
 
 type ItemRow = Database["public"]["Tables"]["items"]["Row"];
@@ -20,6 +23,24 @@ function decodeItemsCursor(cursor: string | null): number {
   } catch {
     return 0;
   }
+}
+
+/** Plain numeric `offset` takes priority over the opaque `cursor` — the
+ * library client tracks offsets itself, so it doesn't need to round-trip the
+ * cursor encoding for shelf/sort pagination. */
+function resolveOffset(qp: URLSearchParams): number {
+  const offsetRaw = qp.get("offset");
+  if (offsetRaw != null) {
+    const n = Number.parseInt(offsetRaw, 10);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+  }
+  return decodeItemsCursor(qp.get("cursor"));
+}
+
+const LIBRARY_SORTS = new Set<LibrarySort>(["recent", "color", "title"]);
+
+function parseSortParam(param: string | null): LibrarySort {
+  return param && LIBRARY_SORTS.has(param as LibrarySort) ? (param as LibrarySort) : "recent";
 }
 
 function mapSummary(row: ItemRow): ItemSummaryPayload {
@@ -56,7 +77,9 @@ export async function GET(req: Request) {
   const limitRaw = Number.parseInt(qp.get("limit") ?? "24", 10);
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 24;
 
-  const offset = decodeItemsCursor(qp.get("cursor"));
+  const offset = resolveOffset(qp);
+
+  const shelfParam = qp.get("shelf");
 
   const statusCsv = qp.get("status");
   const statuses = statusCsv
@@ -79,6 +102,46 @@ export async function GET(req: Request) {
   const q = qp.get("q");
 
   const supabase = await createClient();
+
+  // Shelf-aware library reads (initial shelf load, shelf switch, sort change,
+  // infinite scroll, pending-item polling) go through `fetchLibraryItemsForShelf`
+  // — the same shelf filter/sort logic the server-rendered paths use — so the
+  // browser never queries `items` directly for library summaries and always
+  // gets decrypted `note`/`verdict` (ADR 0013 / issue #68).
+  if (shelfParam) {
+    const shelfId = parseShelfParam(shelfParam);
+    const sort = parseSortParam(qp.get("sort"));
+
+    let shelfResult: { items: LibraryItemRow[]; hasMore: boolean };
+    try {
+      shelfResult = await fetchLibraryItemsForShelf(supabase, shelfId, offset, sort);
+    } catch (err) {
+      console.error(
+        "[api/items] shelf_query_failed:",
+        err instanceof Error ? err.message : "unknown_error",
+      );
+      return Response.json({ code: "query_failed" }, { status: 500 });
+    }
+
+    // Fail closed, same contract as the general list branch below.
+    let shelfItems: ItemSummaryPayload[];
+    try {
+      shelfItems = shelfResult.items.map((row) => ({ ...decryptItemFields(row) }));
+    } catch (err) {
+      console.error(
+        "[api/items] decrypt_failed:",
+        err instanceof Error ? err.message : "unknown_error",
+      );
+      return Response.json({ code: "decrypt_failed" }, { status: 500 });
+    }
+
+    const shelfBody: ItemsListResponseBody = {
+      items: shelfItems,
+      next_cursor: shelfResult.hasMore ? encodeItemsCursor(offset + shelfResult.items.length) : null,
+    };
+
+    return Response.json(shelfBody);
+  }
 
   let query = supabase
     .from("items")
