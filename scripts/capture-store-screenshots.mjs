@@ -143,13 +143,15 @@ async function main() {
       console.log("! no item cards found — skipped item detail");
     }
 
-    // AI recommendations deck — Books shelf. Gated on the AI Gateway being
-    // configured (and ≥3 titled books); a live model call can take a few
-    // seconds. Skipped (not fatal) if the button is absent or the run doesn't
-    // resolve, so a missing gateway key never breaks the rest of the capture.
-    await page.goto(`${base}/library?shelf=books`, { waitUntil: "networkidle" });
+    // AI recommendations deck — Watch shelf (a film pick). Gated on the AI
+    // Gateway being configured (and the Watch category unlocked); a live model
+    // call can take a few seconds. Skipped (not fatal) if the button is absent
+    // or the run doesn't resolve, so a missing gateway key never breaks the rest
+    // of the capture. The unlocked banner's CTA is labelled "Get my picks"; on a
+    // category shelf it starts that shelf's run directly (no picker).
+    await page.goto(`${base}/library?shelf=watch`, { waitUntil: "networkidle" });
     await settle(page);
-    const recommendBtn = page.getByRole("button", { name: /recommend/i });
+    const recommendBtn = page.getByRole("button", { name: /get my picks/i });
     if (await recommendBtn.count()) {
       await recommendBtn.first().click();
       const readyCard = page.getByText(/Recommendation \d+ of/i);
@@ -169,7 +171,7 @@ async function main() {
         );
       }
     } else {
-      console.log("! Recommend button unavailable (gateway off?) — skipped recommendations");
+      console.log("! 'Get my picks' unavailable (gateway off / Watch locked?) — skipped recommendations");
     }
   } finally {
     await browser.close();
