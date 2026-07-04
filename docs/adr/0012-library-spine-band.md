@@ -1,8 +1,14 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0013-persistent-shelf-aware-library-header.md
 ---
 
 # Replace the library KPI strip with a "spine band"
+
+> **Superseded by [ADR 0013](0013-persistent-shelf-aware-library-header.md)** on the
+> "All shelf only" decision below: the masthead (title + band + "Made for you"
+> banner) now renders on **every** shelf so switching shelves is seamless. The rest
+> of this ADR (the band treatment itself, its density/order/caption) still holds.
 
 The top of `/library` opened with `LibraryInsights` — a bordered `bg-muted/30` box of
 KPI tiles (`Total saves`, `Added this week`, amber `Inbox backlog`, amber `forgotten`).

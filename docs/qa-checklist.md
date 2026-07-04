@@ -1,6 +1,6 @@
 # Theque — integration QA checklist
 
-Use this matrix before calling a release “good enough” for personal PoC. Capture paths: **Chrome extension**, **iOS Shortcut** (or **`curl`** with Bearer token). Web app: library, inbox, collections.
+Use this matrix before calling a release “good enough” for personal PoC. Capture paths: **Chrome extension**, **iOS Shortcut** (or **`curl`** with Bearer token). Web app: library, inbox.
 
 **Agent session:** Paste [`docs/sessions/qa-integration-prompt.md`](./sessions/qa-integration-prompt.md). Skips interactive email login; local auth via `npm run qa:session-url` (see `AGENTS.md`).
 
@@ -34,7 +34,6 @@ For each URL above:
 |----------|--------|----------------|
 | **Dedupe** | Capture the **same** URL twice (same path: extension or API). | Second response shows **`created`: false** (or UI shows single item / no duplicate row). |
 | **Low-confidence routing** | Capture a generic/long-tail URL unlikely to match parsers (obscure blog home page). | Lands in **inbox** or low-confidence path per classifier rules; user can triage status/category. |
-| **Collections + shelves** | Capture with `collection_ids` OR assign collection on detail screen; filter shelf/view by collection. | Item appears under expected collection filter; removing from collection updates filter. |
 | **401 handling** | Omit or corrupt Bearer token once. | Clear **401** / unauthorized behavior from API (Shortcut/extension show failure). |
 
 ## Clients checklist

@@ -51,8 +51,18 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // View transitions are driven by next-view-transitions (which calls the browser's
+  // document.startViewTransition directly). React's experimental.viewTransition
+  // integration does not fire on App Router navigation in this Next version, so it's
+  // intentionally not enabled here.
   experimental: {
-    viewTransition: true,
+    // Keep dynamic route segments (e.g. /library) in the client Router Cache so
+    // navigating back to them is instant and restored — not a re-fetch + skeleton
+    // ("reload feel"). Default since Next 15 is 0 (no caching). See staleTimes docs.
+    staleTimes: {
+      dynamic: 300,
+      static: 300,
+    },
   },
   // Store screenshots and demo captures are recorded against the dev server;
   // the on-screen dev indicator must never appear in those assets.

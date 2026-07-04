@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ViewTransition } from "@/lib/view-transition";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
@@ -21,9 +20,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
+import { getHeadlineFacts } from "@/lib/item-detail-display";
 import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type {
@@ -211,6 +218,7 @@ export function ItemDetail({
   const refreshLabel =
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
+  const facts = getHeadlineFacts(item.category, item.structured);
   const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
   const verb = doneVerb(item.category);
@@ -229,7 +237,6 @@ export function ItemDetail({
       <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
         {/* Cover pane — sticky alongside the metadata on desktop */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <ViewTransition name={`item-cover-${item.id}`}>
           <div
             className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
             style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
@@ -240,7 +247,7 @@ export function ItemDetail({
                 <img
                   src={imgSrc}
                   alt=""
-                  className="h-auto max-h-[26rem] w-full object-contain lg:max-h-[32rem]"
+                  className="h-auto max-h-[40vh] w-full object-contain lg:max-h-[32rem]"
                 />
               </>
             ) : (
@@ -251,7 +258,6 @@ export function ItemDetail({
               </div>
             )}
           </div>
-          </ViewTransition>
           <p className="mt-3 text-xs text-muted-foreground">
             Saved from{" "}
             <a
@@ -281,29 +287,88 @@ export function ItemDetail({
           {item.subtitle ? (
             <p className="mt-2 text-base text-muted-foreground">{item.subtitle}</p>
           ) : null}
+          {facts.length > 0 ? (
+            <p className="mt-1.5 text-sm text-muted-foreground">{facts.join(" · ")}</p>
+          ) : null}
 
-          {item.description ? (
-            <section className="mt-5" aria-label="About">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                About
-              </h2>
-              <p
-                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
-                  descIsLong && !descExpanded ? "line-clamp-6" : ""
-                }`}
-              >
-                {item.description}
-              </p>
-              {descIsLong ? (
-                <button
+          <div className="mt-6 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={isDone ? "outline" : "default"}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+            onClick={() => {
+              if (!isDone) {
+                void syncPatch({ status: "done" }).then((next) => {
+                  if (next) setMarkDoneOpen(true);
+                });
+              } else {
+                setMarkDoneOpen(true);
+              }
+            }}
+          >
+            <CheckCircle2 className="size-4" />
+            {isDone ? "Edit verdict" : `Mark as ${verb}`}
+          </Button>
+          <Button
+            nativeButton={false}
+            variant={isDone ? "default" : "outline"}
+            render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
+            className="min-h-11 gap-1.5 lg-fine:min-h-8"
+          >
+            <ExternalLink className="size-4" />
+            Open original
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
                   type="button"
-                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-                  onClick={() => setDescExpanded((v) => !v)}
-                >
-                  {descExpanded ? "Show less" : "Show more"}
-                </button>
+                  variant="outline"
+                  className="min-h-11 gap-1.5 px-3 lg-fine:min-h-8"
+                  aria-label="More actions"
+                  disabled={retryBusy || aiProposalBusy || aiApplyBusy || deleteBusy}
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+                Edit details
+              </DropdownMenuItem>
+              {showRefreshMetadata ? (
+                <DropdownMenuItem disabled={retryBusy} onClick={() => void onRetry()}>
+                  <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
+                  {retryBusy ? "Refreshing…" : refreshLabel}
+                </DropdownMenuItem>
               ) : null}
-            </section>
+              <DropdownMenuItem
+                disabled={aiProposalBusy || aiApplyBusy}
+                onClick={() => void onOpenAiReview()}
+              >
+                <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
+                {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteOpen(true);
+                }}
+              >
+                <Trash2 className="size-4" />
+                Delete item
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+          {item.enrichment_error ? (
+            <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {item.enrichment_error}
+            </p>
           ) : null}
 
           {item.note ? (
@@ -345,86 +410,32 @@ export function ItemDetail({
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={isDone ? "outline" : "default"}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => {
-              if (!isDone) {
-                void syncPatch({ status: "done" }).then((next) => {
-                  if (next) setMarkDoneOpen(true);
-                });
-              } else {
-                setMarkDoneOpen(true);
-              }
-            }}
-          >
-            <CheckCircle2 className="size-4" />
-            {isDone ? "Edit verdict" : `Mark as ${verb}`}
-          </Button>
-          <Button
-            nativeButton={false}
-            variant={isDone ? "default" : "outline"}
-            render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-          >
-            <ExternalLink className="size-4" />
-            Open original
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => setEditOpen(true)}
-          >
-            <Pencil className="size-4" />
-            Edit details
-          </Button>
-          {showRefreshMetadata ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={retryBusy}
-              className="min-h-11 gap-1.5 lg-fine:min-h-8"
-              onClick={() => void onRetry()}
-            >
-              <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
-              {retryBusy ? "Refreshing…" : refreshLabel}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            disabled={aiProposalBusy || aiApplyBusy}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => void onOpenAiReview()}
-          >
-            <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
-            {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={deleteBusy}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => {
-              setDeleteError(null);
-              setDeleteOpen(true);
-            }}
-          >
-            <Trash2 className="size-4" />
-            Delete item
-          </Button>
-        </div>
-
-          {item.enrichment_error ? (
-            <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {item.enrichment_error}
-            </p>
+          {item.description ? (
+            <section className="mt-5" aria-label="About">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                About
+              </h2>
+              <p
+                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
+                  descIsLong && !descExpanded ? "line-clamp-6" : ""
+                }`}
+              >
+                {item.description}
+              </p>
+              {descIsLong ? (
+                <button
+                  type="button"
+                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? "Show less" : "Show more"}
+                </button>
+              ) : null}
+            </section>
           ) : null}
 
           <StructuredFields
+            category={item.category}
             structured={item.structured}
             omitKeys={item.description ? ["description"] : undefined}
           />

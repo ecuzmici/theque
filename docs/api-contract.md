@@ -37,8 +37,6 @@ Create or return existing item. **Must respond in <500ms** — enqueue enrichmen
   "url": "https://www.goodreads.com/book/show/123",
   "note": "optional",
   "category_hint": "books",
-  "tag_names": ["sci-fi"],
-  "collection_ids": ["uuid"],
   "source": "ios_shortcut"
 }
 ```
@@ -48,9 +46,9 @@ Create or return existing item. **Must respond in <500ms** — enqueue enrichmen
 | `url` | yes | Must be `http` or `https` |
 | `note` | no | Max 2000 chars |
 | `category_hint` | no | Optional enrichment signal from capture clients (e.g. Chrome extension shelf picker). Accepted values extension hint subset: `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, `recipes`. Not a manual category override (`PATCH /api/items/:id` is). |
-| `tag_names` | no | Max 50; created if missing; normalized lowercase; each tag max 64 chars |
-| `collection_ids` | no | Max 100; must belong to user |
 | `source` | yes | Enum `item_source` |
+
+Legacy fields: `tag_names` and `collection_ids` are still **accepted and ignored** (no validation, no writes) for Web Store 1.0.0 extension compatibility — tags and collections were removed from the product.
 
 Duplicate URLs: the handler resolves an existing item and returns **`200`** with `created: false` **before** optional hints influence the outcome, so **`category_hint` is not validated for duplicate captures** — an invalid hint does **not** change the duplicate response into an error.
 
@@ -90,12 +88,9 @@ Same shape with `"created": false` and existing item fields.
 | 400 | `invalid_url` | Malformed URL |
 | 400 | `invalid_source` | `source` missing or not an `item_source` value |
 | 400 | `invalid_note` | `note` is not a string or exceeds 2000 chars |
-| 400 | `invalid_tags` | `tag_names` is malformed, too long, or has too many entries |
-| 400 | `invalid_collections` | `collection_ids` is malformed or has too many entries |
 | 400 | `invalid_category_hint` | `category_hint` present but not one of `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `articles`, `recipes` (skipped for duplicates; see above) |
 | 401 | `unauthorized` | Missing/invalid auth |
-| 403 | `forbidden` | Collection not owned |
-| 500 | `insert_failed`, `tag_failed`, `tag_link_failed`, `collection_link_failed` | Server/database write failure |
+| 500 | `insert_failed` | Server/database write failure |
 
 ---
 
@@ -111,8 +106,6 @@ List items for authenticated user.
 |-------|------|-------|
 | `status` | string | Comma-separated statuses |
 | `category` | string | Comma-separated categories |
-| `collection_id` | uuid | Items in collection |
-| `tag` | string | Tag name |
 | `q` | string | Search title, description, domain, note; max 200 chars |
 | `processing_status` | string | Filter pipeline state |
 | `cursor` | string | Opaque pagination cursor |
@@ -141,8 +134,6 @@ List items for authenticated user.
   "processing_status": "ready",
   "canonical_url": "string",
   "created_at": "ISO8601",
-  "tags": ["sci-fi"],
-  "collection_ids": ["uuid"],
   "display": { "card_aspect": "2/3" }
 }
 ```
@@ -155,7 +146,7 @@ List items for authenticated user.
 
 **Response `200`**
 
-Full item object including `structured`, `raw_metadata`, `display`, `note`, tags, collections.
+Full item object including `structured`, `raw_metadata`, `display`, `note`.
 
 **Errors:** `404` if not found or not owned
 
@@ -173,13 +164,11 @@ Full item object including `structured`, `raw_metadata`, `display`, `note`, tags
   "category": "books",
   "note": "updated",
   "title": "override",
-  "display": { "card_aspect": "2/3" },
-  "tag_names": ["fiction"],
-  "collection_ids": ["uuid"]
+  "display": { "card_aspect": "2/3" }
 }
 ```
 
-Setting `category` sets `category_source` to `manual` and `category_confidence` to `1`; setting `category` to `null` clears category fields. `note` is max 2000 chars, `title` is max 300 chars, `tag_names` is max 50 entries, and `collection_ids` is max 100 entries. `display` is merged into existing JSON after filtering prototype-pollution keys.
+Setting `category` sets `category_source` to `manual` and `category_confidence` to `1`; setting `category` to `null` clears category fields. `note` is max 2000 chars and `title` is max 300 chars. `display` is merged into existing JSON after filtering prototype-pollution keys.
 
 **Response `200`:** Updated item
 
@@ -258,37 +247,7 @@ Validates and applies a proposal returned by `ai-enrichment-proposal`. Writes ac
 }
 ```
 
-**Response `200`:** Updated full item object including tags and collections.
-
----
-
-### `GET /api/collections`
-
-**Auth:** Session
-
-List user collections with item counts.
-
----
-
-### `POST /api/collections`
-
-**Auth:** Session
-
-```json
-{ "name": "Japan 2026", "description": "optional" }
-```
-
----
-
-### `PATCH /api/collections/:id`
-
-**Auth:** Session
-
----
-
-### `DELETE /api/collections/:id`
-
-**Auth:** Session — removes join rows
+**Response `200`:** Updated full item object.
 
 ---
 

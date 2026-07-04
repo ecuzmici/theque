@@ -6,7 +6,6 @@ export type ShelfId =
   | "watch"
   | "read"
   | "other"
-  | "done"
   | "forgotten"
   | "inbox";
 
@@ -18,8 +17,6 @@ export type ShelfDefinition = {
     category?: ItemCategory | ItemCategory[];
     excludeDismissed?: boolean;
     excludeInbox?: boolean;
-    /** Backlog shelves hide consumed items; All and Done keep them visible. */
-    excludeDone?: boolean;
     /** Only items saved at least this many days ago (the Forgotten shelf). */
     olderThanDays?: number;
   };
@@ -35,16 +32,16 @@ export function olderThanCutoff(days: number): Date {
 
 export const SHELVES: ShelfDefinition[] = [
   { id: "all", label: "All", filter: { excludeDismissed: true } },
-  { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true, excludeDone: true } },
+  { id: "books", label: "Books", filter: { category: "books", excludeDismissed: true } },
   {
     id: "watch",
     label: "Watch",
-    filter: { category: "movies_and_tv", excludeDismissed: true, excludeDone: true },
+    filter: { category: "movies_and_tv", excludeDismissed: true },
   },
   {
     id: "read",
     label: "Articles",
-    filter: { category: "articles", excludeDismissed: true, excludeInbox: true, excludeDone: true },
+    filter: { category: "articles", excludeDismissed: true, excludeInbox: true },
   },
   {
     id: "other",
@@ -52,10 +49,8 @@ export const SHELVES: ShelfDefinition[] = [
     filter: {
       category: ["restaurants", "products", "travel", "recipes"],
       excludeDismissed: true,
-      excludeDone: true,
     },
   },
-  { id: "done", label: "Done", filter: { status: "done" } },
   {
     id: "forgotten",
     label: "Forgotten",
@@ -80,9 +75,11 @@ export function parseShelfParam(param: string | null | undefined): ShelfId {
 
 /**
  * The shelves the tab strip should render, in order. The strip is conservative:
- * `all`, `books`, `watch`, `read` (Articles), and `done` are always shown, while
- * `other` and `inbox` appear only when they hold something. `forgotten` is never
- * a tab (it surfaces via the insights chip / digest instead).
+ * `all`, `books`, `watch`, and `read` (Articles) are always shown, while `other`
+ * and `inbox` appear only when they hold something. `forgotten` is never a tab
+ * (it surfaces via the insights chip / digest instead). Consumed items live on
+ * their category shelf now, not a separate Done shelf; the "Hide done" toggle
+ * controls their visibility.
  */
 export function visibleShelves(counts: Partial<Record<ShelfId, number>>): ShelfId[] {
   return SHELVES.filter((s) => {

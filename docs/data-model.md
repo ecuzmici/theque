@@ -101,53 +101,9 @@ create index items_processing_pending_idx on items (processing_status)
   where processing_status in ('pending', 'processing');
 ```
 
-### `tags`
-
-| Column | Type |
-|--------|------|
-| `id` | `uuid` PK |
-| `user_id` | `uuid` NOT NULL |
-| `name` | `text` NOT NULL — normalized lowercase |
-| `created_at` | `timestamptz` |
-
-```sql
-unique (user_id, name)
-```
-
-### `item_tags`
-
-| Column | Type |
-|--------|------|
-| `item_id` | `uuid` FK → items ON DELETE CASCADE |
-| `tag_id` | `uuid` FK → tags ON DELETE CASCADE |
-
-Primary key `(item_id, tag_id)`.
-
-### `collections`
-
-| Column | Type |
-|--------|------|
-| `id` | `uuid` PK |
-| `user_id` | `uuid` NOT NULL |
-| `name` | `text` NOT NULL |
-| `description` | `text` |
-| `cover_image_url` | `text` |
-| `created_at` | `timestamptz` |
-| `updated_at` | `timestamptz` |
-
-```sql
-unique (user_id, name)
-```
-
-### `collection_items`
-
-| Column | Type |
-|--------|------|
-| `collection_id` | `uuid` FK |
-| `item_id` | `uuid` FK |
-| `added_at` | `timestamptz` |
-
-Primary key `(collection_id, item_id)`.
+> **Removed tables:** `tags`, `item_tags`, `collections`, and `collection_items` were dropped in
+> `20260628120000_taste_loop_focus.sql` (unused — zero rows at decision time). The capture API
+> still accepts their legacy request fields as no-ops.
 
 ### `capture_tokens`
 
@@ -190,16 +146,14 @@ create policy items_delete_own on items for delete to authenticated
   using (user_id = auth.uid());
 ```
 
-Apply the same `user_id = auth.uid()` pattern to `tags`, `collections`, `capture_tokens`.
-
-For `item_tags` and `collection_items`, use EXISTS subquery on parent `items` / `collections` owned by `auth.uid()`.
+Apply the same `user_id = auth.uid()` pattern to `capture_tokens`.
 
 **Capture API note:** Route handlers accept either a web session or a `bmly_...` Bearer token. Token-authenticated requests use the service role only inside server code to insert on behalf of the validated user. Do not expose service role to clients.
 
 ## Triggers
 
 ```sql
--- updated_at on items, collections
+-- updated_at on items
 create trigger items_updated_at before update on items
   for each row execute function moddatetime(updated_at);
 ```

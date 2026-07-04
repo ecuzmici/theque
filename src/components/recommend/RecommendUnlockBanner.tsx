@@ -2,8 +2,11 @@
 
 /**
  * "Made for you" recommendation banner, framed as a single-tier unlockable
- * achievement. Shown on the default "All" shelf (the library's landing) so the
- * AI-recommendation feature is discoverable without drilling into a category.
+ * achievement. Part of the persistent library masthead, so it is shown on every
+ * shelf (see docs/adr/0013). It is **shelf-aware**: the All shelf offers both
+ * recommendation categories, each category shelf (Books / Watch) features its
+ * own, and shelves with no recommendation category (Articles, Done, Other,
+ * Inbox) render the banner in a disabled state — see `bannerModeForShelf`.
  *
  * Progress = save RECOMMEND_MIN_ITEMS titled items in a category → that
  * category's recommendations unlock. Before unlock, a progress-ring CTA shows how
@@ -17,11 +20,12 @@
  * accurately regardless of library size.
  */
 
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronDown, Clapperboard, Sparkles, Star } from "lucide-react";
 
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
 import { Button } from "@/components/ui/button";
+import { bannerModeForShelf } from "@/lib/recommend/banner-mode";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,16 +43,12 @@ import {
   persistUnlocked,
   readUnlocked,
 } from "@/lib/recommend/unlock-storage";
+import type { ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
 
 const SAVE_TARGET = RECOMMEND_MIN_ITEMS;
-
-// Read localStorage before the browser paints so the reserved skeleton matches
-// the banner's settled height (avoids a hydration mismatch that a render-time
-// read would cause). Falls back to useEffect on the server render.
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 type CategoryMeta = {
   shelfId: RecommendShelfId;
@@ -75,11 +75,18 @@ type CategoryProgress = CategoryMeta & { saved: number; unlocked: boolean };
 type Props = {
   booksEnabled: boolean;
   watchEnabled: boolean;
-  /** Already-loaded "All" items — used only for the decorative cover thumbnails. */
+  /** The library shelf currently in view — drives which category is featured. */
+  activeShelf: ShelfId;
+  /** Already-loaded shelf items — used only for the decorative cover thumbnails. */
   items: LibraryItemRow[];
 };
 
-export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Props) {
+export function RecommendUnlockBanner({
+  booksEnabled,
+  watchEnabled,
+  activeShelf,
+  items,
+}: Props) {
   const { start } = useRecommendationContext();
 
   const enabled = useMemo(
@@ -91,14 +98,6 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
   // `null` while the counts are still loading, so the banner doesn't flash a
   // locked state for an already-unlocked library.
   const [progress, setProgress] = useState<CategoryProgress[] | null>(null);
-
-  // If any category is already unlocked (sticky localStorage flag), the settled
-  // banner will be the taller "active" state — which stacks on mobile. Reserve
-  // that height in the skeleton so the tabs below don't get shoved on load.
-  const [reserveTall, setReserveTall] = useState(false);
-  useIsomorphicLayoutEffect(() => {
-    setReserveTall(enabled.some((c) => readUnlocked(c.shelfId)));
-  }, [enabled]);
 
   useEffect(() => {
     if (enabled.length === 0) return;
@@ -141,18 +140,44 @@ export function RecommendUnlockBanner({ booksEnabled, watchEnabled, items }: Pro
     [items],
   );
 
+  // Feature entirely off (no env-enabled category): no masthead banner anywhere.
   if (enabled.length === 0) return null;
-  // While the per-category counts load, reserve the banner's settled height with a
-  // muted skeleton so the shelf tabs below don't get shoved down when it pops in.
-  if (progress == null) return <BannerSkeleton tall={reserveTall} />;
+
+  // Shelves with no recommendation category (Articles, Done, Other, Inbox…) keep
+  // the banner visible but disabled, so the masthead height stays constant across
+  // shelf switches (no pop).
+  const mode = bannerModeForShelf(activeShelf);
+  if (mode.kind === "disabled") {
+    return <DisabledBanner thumbs={thumbs} />;
+  }
+
+  // While the count query is in flight, reserve the banner's settled height so the
+  // tabs/grid below don't get shoved down when it resolves (transparent — no
+  // muted→amber flash, just the reserved box).
+  if (progress == null) {
+    return <div className="mb-5 min-h-[6.125rem]" aria-hidden="true" />;
+  }
   if (progress.length === 0) return null;
 
-  const featured = featuredOf(progress);
+  // On a category shelf feature that one category; on "All" use the heuristic.
+  const featured =
+    mode.kind === "featured"
+      ? (progress.find((p) => p.shelfId === mode.shelfId) ?? null)
+      : featuredOf(progress);
+
+  // A category shelf whose category is not env-enabled has no progress row —
+  // there's nothing to recommend, so disable rather than crash.
+  if (featured == null) {
+    return <DisabledBanner thumbs={thumbs} />;
+  }
+
+  // Category shelves offer only their own category; "All" offers every category.
+  const offeredRows = mode.kind === "featured" ? [toRow(featured)] : progress.map(toRow);
 
   if (featured.unlocked) {
     return (
       <div className={SHELL}>
-        <ActiveBanner rows={progress.map(toRow)} start={start} thumbs={thumbs} />
+        <ActiveBanner rows={offeredRows} start={start} thumbs={thumbs} />
       </div>
     );
   }
@@ -209,43 +234,20 @@ function achieve(p: CategoryProgress): {
   };
 }
 
-// Shared banner chrome. `min-h-[6.125rem]` (98px) is the settled locked-state
-// height; the unlocked "active" state grows past it (and stacks on mobile).
-const SHELL_BASE =
-  "mb-5 flex flex-col justify-center overflow-hidden rounded-2xl border border-amber-300/40 bg-amber-50 px-4 py-4 dark:border-amber-400/15 dark:bg-amber-500/10 sm:px-5";
-const SHELL = cn(SHELL_BASE, "min-h-[6.125rem]");
+// Fixed min-height + vertical centering so every banner state (locked, unlocked,
+// disabled) is exactly the same height — switching shelves must not jump the masthead.
+const SHELL =
+  "mb-5 flex min-h-[6.125rem] flex-col justify-center overflow-hidden rounded-2xl border border-amber-300/40 bg-amber-50 px-4 py-4 dark:border-amber-400/15 dark:bg-amber-500/10 sm:px-5";
 
-/**
- * Reserved-height placeholder matching the settled banner's height, so the
- * initial library load doesn't shift the tabs below once the counts arrive.
- * `tall` reserves the taller mobile "active" (unlocked) layout; on desktop that
- * state is a single row, so the extra height applies to mobile only.
- */
-function BannerSkeleton({ tall }: { tall: boolean }) {
-  return (
-    <div
-      className={cn(
-        SHELL_BASE,
-        tall ? "min-h-[9.125rem] sm:min-h-[6.125rem]" : "min-h-[6.125rem]",
-      )}
-      aria-hidden="true"
-    >
-      <div className="flex animate-pulse items-center gap-4">
-        <div className="size-16 shrink-0 rounded-full bg-amber-200/40 dark:bg-amber-400/10" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-40 max-w-[60%] rounded bg-amber-200/40 dark:bg-amber-400/10" />
-          <div className="h-3 w-24 max-w-[40%] rounded bg-amber-200/30 dark:bg-amber-400/10" />
-        </div>
-      </div>
-    </div>
-  );
-}
+/** Muted twin of SHELL for shelves that have no recommendation category. */
+const SHELL_DISABLED =
+  "mb-5 flex min-h-[6.125rem] flex-col justify-center overflow-hidden rounded-2xl border border-border bg-muted/30 px-4 py-4 sm:px-5";
 
 const RING_CLASS =
   "relative grid size-16 shrink-0 place-items-center rounded-full bg-amber-50 ring-1 ring-amber-300/50 transition active:scale-95 dark:bg-amber-500/10 dark:ring-amber-400/20";
 
-/** Full-width on mobile, auto on desktop; ≥44px tap target. */
-const CTA_CLASS = "min-h-11 w-full shrink-0 gap-1.5 sm:w-auto";
+/** Compact CTA kept on one row so the banner height matches the other states. */
+const CTA_CLASS = "min-h-11 shrink-0 gap-1.5";
 
 type CategoryRow = {
   shelfId: RecommendShelfId;
@@ -257,6 +259,38 @@ type CategoryRow = {
 
 function toRow(p: CategoryProgress): CategoryRow {
   return { shelfId: p.shelfId, label: p.label, noun: p.noun, Icon: p.Icon, ready: p.unlocked };
+}
+
+/* ---- disabled (no-recommend-category shelf) banner ----------------------- */
+
+/**
+ * Kept visible (not removed) on shelves without a recommendation category so the
+ * masthead's height is stable across shelf switches. Mirrors the locked banner's
+ * ring-sized layout so switching to/from it doesn't jump the page.
+ */
+function DisabledBanner({ thumbs }: { thumbs: string[] }) {
+  return (
+    <div
+      className={SHELL_DISABLED}
+      title="No recommendations for this shelf"
+      aria-label="Made for you — no recommendations for this shelf"
+    >
+      <div className="flex items-center gap-4">
+        <div className={cn(RING_CLASS, "bg-muted ring-border")}>
+          <Sparkles className="relative size-6 text-muted-foreground" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-muted-foreground sm:text-lg">
+            Made for you
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            No picks for this shelf
+          </p>
+        </div>
+        <StackedCovers thumbs={thumbs} />
+      </div>
+    </div>
+  );
 }
 
 /* ---- active (unlocked) banner -------------------------------------------- */
@@ -272,7 +306,7 @@ function ActiveBanner({
 }) {
   const readyRows = rows.filter((r) => r.ready);
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <div className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <StackedCovers thumbs={thumbs} />
         <div className="min-w-0">
@@ -280,7 +314,9 @@ function ActiveBanner({
             <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             Made for you
           </p>
-          <div className="mt-0.5">
+          {/* Nudge is non-essential; hidden on mobile so the row fits on one line
+              and the banner height matches the other states. */}
+          <div className="mt-0.5 hidden sm:block">
             <VerdictTip />
           </div>
         </div>
@@ -406,13 +442,14 @@ function RingTrack({ value, max }: { value: number; max: number }) {
 }
 
 /**
- * Small neat stacked cover-art cluster. Hidden on the narrowest phones (<400px)
- * so the row never overflows; shows from there up.
+ * Small neat stacked cover-art cluster. Decorative, so hidden on mobile — the
+ * single-row banner keeps its title on one line and its height matches the other
+ * states there; shows from `sm` up where there's room.
  */
 function StackedCovers({ thumbs }: { thumbs: string[] }) {
   if (thumbs.length === 0) return null;
   return (
-    <div className="hidden shrink-0 items-center min-[400px]:flex">
+    <div className="hidden shrink-0 items-center sm:flex">
       {thumbs.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element -- small decorative thumbnail; avoids next/image remote-domain config
         <img

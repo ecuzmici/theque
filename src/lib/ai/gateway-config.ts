@@ -2,7 +2,7 @@
  * Gateway config helpers that are safe to import anywhere — no "server-only",
  * no AI SDK. The actual model calls live in ./gateway (which is server-only);
  * these pure env/string helpers are split out so client-imported modules
- * (e.g. recommend-config, consumed by RecommendButton) can use them without
+ * (e.g. recommend-config, consumed by the "Made for you" banner) can use them without
  * pulling "server-only" into the client bundle.
  */
 

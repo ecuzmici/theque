@@ -29,6 +29,8 @@ type LibraryItemsSectionProps = {
   initialHasMore?: boolean;
   sort?: LibrarySort;
   wall?: boolean;
+  /** When set, consumed items are dropped from this shelf's fetches and realtime updates. */
+  hideDone?: boolean;
   onItemsChange?: (items: LibraryItemRow[]) => void;
 };
 
@@ -45,6 +47,7 @@ export function LibraryItemsSection({
   initialHasMore = false,
   sort = "recent",
   wall = false,
+  hideDone = false,
   onItemsChange,
 }: LibraryItemsSectionProps) {
   const router = useRouter();
@@ -59,6 +62,10 @@ export function LibraryItemsSection({
   const hasPendingItems = hasPendingEnrichment(items);
 
   useItemRealtime(userId, shelfId, items, setItems);
+
+  // "Hide done" is a display filter: consumed items stay in `items` (so toggling
+  // it back reveals them without a refetch) but are dropped from what we render.
+  const displayItems = hideDone ? items.filter((i) => i.status !== "done") : items;
 
   useEffect(() => {
     onItemsChange?.(items);
@@ -157,13 +164,13 @@ export function LibraryItemsSection({
         router.push("/search");
         return;
       }
-      if (!items.length) return;
+      if (!displayItems.length) return;
 
       const move = (delta: number) => {
         e.preventDefault();
         setSelectedIdx((i) => {
-          if (i == null) return delta > 0 ? 0 : items.length - 1;
-          return Math.min(items.length - 1, Math.max(0, i + delta));
+          if (i == null) return delta > 0 ? 0 : displayItems.length - 1;
+          return Math.min(displayItems.length - 1, Math.max(0, i + delta));
         });
       };
 
@@ -174,14 +181,15 @@ export function LibraryItemsSection({
         setQuickLookOpen(true);
       } else if (e.key === "o" && selectedIdx != null && !quickLookOpen) {
         e.preventDefault();
-        router.push(`/item/${items[selectedIdx].id}`);
+        const target = displayItems[selectedIdx];
+        if (target) router.push(`/item/${target.id}`);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [items, selectedIdx, quickLookOpen, router]);
+  }, [displayItems, selectedIdx, quickLookOpen, router]);
 
-  const selectedItem = selectedIdx != null ? (items[selectedIdx] ?? null) : null;
+  const selectedItem = selectedIdx != null ? (displayItems[selectedIdx] ?? null) : null;
 
   useEffect(() => {
     if (!selectedItem) return;
@@ -206,8 +214,8 @@ export function LibraryItemsSection({
 
   // Opens the mark-done dialog for an item. Fires the status PATCH immediately
   // (with optimistic update), then opens the verdict dialog. The dialog is rendered
-  // at this level — not inside ItemCard — so it isn't unmounted when the item
-  // disappears from an excludeDone shelf via the realtime handler.
+  // at this level — not inside ItemCard — and the empty state below keeps it mounted
+  // even when the last card leaves the shelf (e.g. with "Hide done" on).
   const openMarkDoneItem = useCallback(
     async (item: LibraryItemRow) => {
       if (item.status !== "done") {
@@ -239,6 +247,9 @@ export function LibraryItemsSection({
   const handleMarkDoneDialogChange = useCallback(
     (open: boolean) => {
       if (!open && markDoneItem) {
+        // Done items now live on their category shelf, so a just-consumed item
+        // stays in `items` (the "Hide done" display filter is what hides it).
+        // Only structural non-matches (e.g. a re-categorised item) get dropped.
         const doneItem = { ...markDoneItem, status: "done" as const };
         if (!itemMatchesShelf(doneItem, shelfId)) {
           setItems((prev) => prev.filter((i) => i.id !== markDoneItem.id));
@@ -249,53 +260,82 @@ export function LibraryItemsSection({
     [markDoneItem, shelfId],
   );
 
-  if (items.length === 0) {
-    const empty = SHELF_EMPTY[shelfId];
-    return (
-      <Card className="border-dashed">
-        <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
-          <div className="w-full max-w-md">
-            <h2 className="font-heading text-lg font-medium text-card-foreground">{empty.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
-              {empty.description}
-            </p>
-            <Button nativeButton={false} render={<Link href="/add" />} className="mt-6 min-h-11">
-              Add a link
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const empty = SHELF_EMPTY[shelfId];
+  // Everything on the shelf is consumed and "Hide done" is filtering it all out.
+  const allHiddenAsDone = displayItems.length === 0 && items.length > 0;
+  const moreSkeletons = (count: number) => (
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      {Array.from({ length: count }, (_, i) => (
+        <li key={i}>
+          <ItemCardSkeleton />
+        </li>
+      ))}
+    </ul>
+  );
 
   return (
     <div>
-      <ItemGrid
-        items={items}
-        shelfId={shelfId}
-        itemActionsEnabled
-        wall={wall}
-        selectedId={selectedItem?.id ?? null}
-        onItemPatch={onItemPatch}
-        onOpenMarkDone={openMarkDoneItem}
-      />
-      {/* Infinite scroll sentinel */}
-      <div ref={sentinelRef} className="h-1" aria-hidden />
-      {loadingMore ? (
-        <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-          {Array.from({ length: 4 }, (_, i) => (
-            <li key={i}>
-              <ItemCardSkeleton />
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {/* Empty states render inline (not via early return) so the mark-done dialog
+          below stays mounted when the last card leaves the shelf. */}
+      {displayItems.length === 0 ? (
+        hasMore ? (
+          // No visible items yet, but more pages exist (e.g. a first page that is
+          // all done while "Hide done" is on) — the sentinel below keeps loading.
+          moreSkeletons(4)
+        ) : allHiddenAsDone ? (
+          <Card className="border-dashed">
+            <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
+              <div className="w-full max-w-md">
+                <h2 className="font-heading text-lg font-medium text-card-foreground">
+                  Done items are hidden
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  Everything on this shelf is marked done. Turn off “Hide done” to see it again.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
+              <div className="w-full max-w-md">
+                <h2 className="font-heading text-lg font-medium text-card-foreground">
+                  {empty.title}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  {empty.description}
+                </p>
+                <Button nativeButton={false} render={<Link href="/add" />} className="mt-6 min-h-11">
+                  Add a link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <>
+          <ItemGrid
+            items={displayItems}
+            shelfId={shelfId}
+            itemActionsEnabled
+            wall={wall}
+            selectedId={selectedItem?.id ?? null}
+            onItemPatch={onItemPatch}
+            onOpenMarkDone={openMarkDoneItem}
+          />
+          {loadingMore ? <div className="mt-3">{moreSkeletons(4)}</div> : null}
+        </>
+      )}
+
+      {/* Infinite scroll sentinel — kept outside the empty branch so pagination
+          continues even while every loaded item is hidden as done. */}
+      {hasMore ? <div ref={sentinelRef} className="h-1" aria-hidden /> : null}
 
       <QuickLookDialog
         item={selectedItem}
         open={quickLookOpen && selectedItem != null}
         onOpenChange={setQuickLookOpen}
-        onNext={() => setSelectedIdx((i) => Math.min(items.length - 1, (i ?? -1) + 1))}
+        onNext={() => setSelectedIdx((i) => Math.min(displayItems.length - 1, (i ?? -1) + 1))}
         onPrev={() => setSelectedIdx((i) => Math.max(0, (i ?? 1) - 1))}
       />
 

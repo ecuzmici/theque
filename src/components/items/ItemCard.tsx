@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { Hourglass } from "lucide-react";
 import { useCallback } from "react";
-
-import { ViewTransition } from "@/lib/view-transition";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import {
@@ -59,8 +57,8 @@ export function ItemCard({
 }: ItemCardProps) {
   const router = useRouter();
   const detailHref = `/item/${item.id}`;
-  // Warm the item route so the cover morph starts promptly instead of stalling on
-  // the server fetch. Fires on hover / focus / press-in — well before the click.
+  // Warm the item route on hover / focus / press-in — well before the click — so the
+  // cover morph starts promptly instead of stalling on the server fetch.
   const prefetchDetail = useCallback(() => {
     router.prefetch(detailHref);
   }, [router, detailHref]);
@@ -116,7 +114,6 @@ export function ItemCard({
         onPointerDown={prefetchDetail}
         className="block outline-none transition-transform duration-100 ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <ViewTransition name={`item-cover-${item.id}`}>
           <div
             className={cn(
               "relative w-full bg-muted",
@@ -163,7 +160,6 @@ export function ItemCard({
               </div>
             ) : null}
           </div>
-        </ViewTransition>
 
         {wall ? null : (
           <div className="p-3">

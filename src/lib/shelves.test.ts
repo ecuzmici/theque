@@ -7,7 +7,7 @@ import {
   type ShelfId,
 } from "./shelves";
 
-const ALWAYS_VISIBLE: ShelfId[] = ["all", "books", "watch", "read", "done"];
+const ALWAYS_VISIBLE: ShelfId[] = ["all", "books", "watch", "read"];
 
 describe("visibleShelves", () => {
   it("hides Other at zero items and shows it at one or more", () => {
@@ -45,10 +45,9 @@ describe("visibleShelves", () => {
       "watch",
       "read",
       "other",
-      "done",
       "inbox",
     ]);
-    expect(visibleShelves({})).toEqual(["all", "books", "watch", "read", "done"]);
+    expect(visibleShelves({})).toEqual(["all", "books", "watch", "read"]);
   });
 });
 

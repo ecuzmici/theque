@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function ItemLoading() {
+/** Loading fallback for the item detail route while its data loads. */
+export function ItemDetailSkeleton() {
   return (
     <article aria-busy="true" aria-live="polite" className="pb-12">
       <Skeleton className="h-11 w-24 rounded-md lg:h-5" />

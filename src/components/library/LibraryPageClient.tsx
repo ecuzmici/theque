@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Images, Layers } from "lucide-react";
+import { Eye, EyeOff, Images, Layers } from "lucide-react";
 
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
@@ -11,7 +11,6 @@ import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { RecommendButton } from "@/components/recommend/RecommendButton";
 import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBanner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,6 +73,7 @@ export function LibraryPageClient({
   const [otherCount, setOtherCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [wall, setWall] = useState(false);
+  const [hideDone, setHideDone] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
 
   // Only Other and Inbox are dynamic; both hide when empty. Prefer the live
@@ -101,6 +101,7 @@ export function LibraryPageClient({
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
   useEffect(() => {
     setWall(window.localStorage.getItem("theque_wall_mode") === "1");
+    setHideDone(window.localStorage.getItem("theque_hide_done") === "1");
     prefsLoaded.current = true;
   }, []);
 
@@ -108,6 +109,13 @@ export function LibraryPageClient({
     if (!prefsLoaded.current) return;
     window.localStorage.setItem("theque_wall_mode", wall ? "1" : "0");
   }, [wall]);
+
+  // "Hide done" is a client-side display filter (see LibraryItemsSection), so
+  // toggling it never refetches — it just re-renders the cached shelf.
+  useEffect(() => {
+    if (!prefsLoaded.current) return;
+    window.localStorage.setItem("theque_hide_done", hideDone ? "1" : "0");
+  }, [hideDone]);
 
   useEffect(() => {
     if (pendingShelf == null || pendingShelf !== urlShelf) return;
@@ -202,19 +210,18 @@ export function LibraryPageClient({
     <div>
       <PageHeader title="Library" />
 
-      {/* Spine band (band + counts caption) is a whole-library identity element —
-          landing shelf only, same gate as the "Made for you" banner below it.
-          Both reserve their settled height while loading to avoid initial CLS. */}
-      {activeShelf === "all" ? (
-        <>
-          <LibrarySpineBand />
-          <RecommendUnlockBanner
-            booksEnabled={recommendBooksEnabled}
-            watchEnabled={recommendWatchEnabled}
-            items={cachedItems ?? []}
-          />
-        </>
-      ) : null}
+      {/* Persistent masthead: the Spine Band (whole-library identity) and the
+          shelf-aware "Made for you" banner render above the keyed grid on every
+          shelf, so switching shelves never pops the top of the page. The band
+          stays whole-library; the banner adapts its featured category to the
+          active shelf. See docs/adr/0013-persistent-shelf-aware-library-header.md. */}
+      <LibrarySpineBand />
+      <RecommendUnlockBanner
+        booksEnabled={recommendBooksEnabled}
+        watchEnabled={recommendWatchEnabled}
+        activeShelf={activeShelf}
+        items={cachedItems ?? []}
+      />
 
       <ScrollArea className="w-full pb-4">
         {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
@@ -311,13 +318,24 @@ export function LibraryPageClient({
           </Button>
         )}
         <div className="flex items-center gap-2">
-          {((activeShelf === "books" && recommendBooksEnabled) ||
-            (activeShelf === "watch" && recommendWatchEnabled)) &&
-          cachedItems !== undefined ? (
-            <RecommendButton
-              shelfId={activeShelf as "books" | "watch"}
-              shelfItems={cachedItems}
-            />
+          {/* Recommend CTA lives in the persistent "Made for you" masthead banner
+              above (shelf-aware), so the toolbar no longer duplicates it. */}
+          {activeShelf !== "inbox" ? (
+            <Button
+              type="button"
+              variant={hideDone ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={hideDone}
+              className="min-h-11 gap-1.5 lg-fine:min-h-9"
+              onClick={() => setHideDone((v) => !v)}
+            >
+              {hideDone ? (
+                <Eye className="size-4" aria-hidden />
+              ) : (
+                <EyeOff className="size-4" aria-hidden />
+              )}
+              {hideDone ? "Show done" : "Hide done"}
+            </Button>
           ) : null}
           <Button
             type="button"
@@ -334,6 +352,10 @@ export function LibraryPageClient({
         </div>
       </div>
 
+      {/* Keyed by shelf so a shelf swap replays a soft fade; wall-mode and
+          triage toggles keep `activeShelf` stable, so they don't re-animate.
+          Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
+      <div key={activeShelf} className="ks-shelf-enter">
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
           {loadError}
@@ -375,9 +397,11 @@ export function LibraryPageClient({
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
           wall={wall}
+          hideDone={hideDone}
           onItemsChange={updateActiveShelfItems}
         />
       )}
+      </div>
     </div>
   );
 }

@@ -14,8 +14,8 @@ type ItemCardVerdictControlProps = {
 };
 
 // The dialog is intentionally NOT rendered here. It lives in LibraryItemsSection
-// so that a realtime event removing this item from the shelf list cannot unmount
-// the dialog mid-interaction (books/watch shelves have excludeDone:true).
+// so that a realtime event removing this item from the shelf list (e.g. with
+// "Hide done" on) cannot unmount the dialog mid-interaction.
 export function ItemCardVerdictControl({ item, onOpenMarkDone }: ItemCardVerdictControlProps) {
   const verb = doneVerb(item.category);
   const isDone = item.status === "done";

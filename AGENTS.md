@@ -1,11 +1,11 @@
 # Theque — Agent guide
 
-Personal **visual taste library**: capture URLs (Chrome extension, API, manual add) → enrich into category-aware cards → browse **shelves** (smart views) and **collections** (user context).
+Personal **visual taste library**: capture URLs (Chrome extension, API, manual add) → enrich into category-aware cards → browse **shelves** (smart views).
 
 ## Product constraints (PoC)
 
 - **Multi-user, open registration**, but **no social/sharing features** — each Profile is a private, RLS-isolated library (see `docs/adr/0010-login-code-otp-oauth-open-registration.md` and `docs/adr/0001-personal-taste-loop-no-grouping-no-sharing.md`). "Single-user" survives only as the per-Profile *feeling*, not a cap on accounts.
-- **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. **Collections** are user-created in Postgres.
+- **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. Collections and tags were removed (unused); the capture API still accepts `collection_ids` / `tag_names` from legacy clients as no-ops.
 - **Classification/enrichment**: deterministic domain map + schema.org + heuristics first; optional gated Gemini enrichment can fill sparse metadata and, when allowed, set `category_source = llm`.
 - **Web auth**: a hybrid login — **GitHub** / **Google** OAuth plus an **email code** (OTP) fallback. There is **no magic link** (see ADR 0010). Bot sign-ups are held off by Cloudflare Turnstile on the email-code request. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
 - **iOS Shortcut** is documented but lower priority than Chrome + web QA.
@@ -47,10 +47,9 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
 | `src/app/api/jobs/digest` | Weekly "saved and forgot" digest (needs `CRON_SECRET`; sends via Resend when configured) |
-| `src/app/share/[token]` | Public read-only collection page (unguessable `share_token`) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
-| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Done, Inbox) |
+| `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Inbox) |
 | `src/components/items/` | `ItemCard`, `ItemDetail`, `StructuredFields` |
 | `extension/` | MV3 popup + background; storage keys `theque_capture_token`, `theque_api_base_url` |
 | `supabase/migrations/` | Schema + RLS + `claim_pending_enrichment` RPC |
@@ -60,7 +59,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 
 `ItemCategory` enum (seven categories): `books`, `movies_and_tv`, `restaurants`, `products`, `travel`, `recipes`, `articles`. `music`, `apps`, and `videos` were retired (see `docs/adr/0004-fewer-shelves-retired-categories.md`); their URLs re-home to a survivor (video → `movies_and_tv`, music → `articles`, apps → `products`).
 
-The steady-state shelf strip is **All · Books · Watch · Articles · Done**. The long-tail categories (`restaurants`, `products`, `travel`, `recipes`) share one grouped **Other** shelf; **Other** and **Inbox** are shown only when non-empty.
+The steady-state shelf strip is **All · Books · Watch · Articles** (the Done shelf was removed; consumed items stay on their category shelf behind a **Hide done** toggle). The long-tail categories (`restaurants`, `products`, `travel`, `recipes`) share one grouped **Other** shelf; **Other** and **Inbox** are shown only when non-empty.
 
 | Category | Shelf tab | Parser / domain hints | Unit fixtures |
 |----------|-----------|----------------------|---------------|

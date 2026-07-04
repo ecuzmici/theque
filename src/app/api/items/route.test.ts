@@ -227,9 +227,10 @@ describe("GET /api/items?shelf=... (the client-direct read reroute, ADR 0013 iss
     expect(body.items[0].verdict).toBe("re-read after the breakup");
 
     // The "books" shelf filter (src/lib/shelves.ts): category "books",
-    // excludeDismissed + excludeDone, no explicit status filter.
+    // excludeDismissed. Done is no longer excluded — since the Done shelf was
+    // removed, consumed items stay on their shelf behind a Hide-done toggle
+    // (fetchLibraryItemsForShelf dropped the excludeDone status filter).
     expect(capturedQuery?.neq).toHaveBeenCalledWith("status", "dismissed");
-    expect(capturedQuery?.neq).toHaveBeenCalledWith("status", "done");
     expect(capturedQuery?.in).toHaveBeenCalledWith("category", ["books"]);
     // sort=title -> order by title ascending.
     expect(capturedQuery?.order).toHaveBeenCalledWith("title", {

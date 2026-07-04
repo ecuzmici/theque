@@ -35,14 +35,15 @@ _Avoid_: review; "rating" alone (the rating is only one half of a verdict)
 
 **Shelf**:
 A code-defined smart view over your items, sliced by category and/or status (Books,
-Watch, Articles, Other, Done, …). Not user-created and not stored in the database.
-The steady-state strip is **All · Books · Watch · Articles · Done**; **Inbox** and
+Watch, Articles, Other, …). Not user-created and not stored in the database.
+The steady-state strip is **All · Books · Watch · Articles**; **Inbox** and
 **Other** are shown only when they hold something (see _Dynamic shelf_).
 _Avoid_: filter, view, custom list; the old "Read" tab is now **Articles**
 
 **Backlog shelf**:
-A category shelf (Books, Watch, Articles, Other). Shows only items you have *not* yet
-consumed — done items drop out. Answers "what's left to consume?"
+A category shelf (Books, Watch, Articles, Other). Shows everything in the category —
+consumed items stay put with their Verdict, and the _Hide done_ toggle filters them
+out when you want only "what's left to consume?"
 
 **Other shelf**:
 The single grouped backlog shelf for the long-tail categories — `restaurants`,
@@ -59,10 +60,12 @@ viewing empties out, you fall back to **All**.
 as a count chip in the library insights and via the weekly "saved and forgot" digest.
 _Avoid_: a shelf you browse (it is a reminder, not a destination)
 
-**Done shelf**:
-The single archive of consumed items across all categories, each showing its
-Verdict. The browsable record of taste. Answers "what did I think?"
-_Avoid_: history, completed, archive (the shelf is named Done)
+**Hide done**:
+A library toolbar toggle that filters consumed items off the current shelf. The
+replacement for the retired **Done shelf**: consumed items now live on their
+category shelf (with their Verdict) instead of being exiled to a separate archive
+tab. Done is a *status*, not a place.
+_Avoid_: Done shelf (removed), archive view
 
 ## Sign-in
 

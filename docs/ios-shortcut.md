@@ -53,8 +53,6 @@ With optional fields:
   "url": "https://www.goodreads.com/book/show/123",
   "note": "Borrow from library",
   "category_hint": "books",
-  "tag_names": ["fiction", "queue"],
-  "collection_ids": ["00000000-0000-0000-0000-000000000000"],
   "source": "ios_shortcut"
 }
 ```
@@ -65,8 +63,8 @@ With optional fields:
 | `source` | yes | Use **`ios_shortcut`** for this flow. |
 | `note` | no | Max 2000 chars. |
 | `category_hint` | no | Enrichment hint only; deterministic classification can still override it. |
-| `tag_names` | no | Lowercase normalization on server. |
-| `collection_ids` | no | UUIDs must belong to your account or you get **403**. |
+
+(`tag_names` / `collection_ids` from older Shortcut recipes are accepted and ignored — tags and collections were removed from the product.)
 
 The Shortcut editor’s **Dictionary → JSON** action can build this object; map **Shortcut Input** into the `url` field.
 
@@ -82,7 +80,6 @@ The Shortcut editor’s **Dictionary → JSON** action can build this object; ma
 |-------|----------------|
 | **401 unauthorized** | Wrong token, missing `Bearer ` prefix, or revoked token. |
 | **400 invalid_url** | Shared payload wasn’t a valid absolute URL — coerce with **Get URLs from Input**. |
-| **403 forbidden** | A `collection_id` isn’t yours — remove collections from body or fix IDs. |
 | **Duplicate but wrong note** | Dedupe is by canonical URL fingerprint; notes don’t merge on duplicate capture — edit in the app. |
 | **Card stays “pending” / empty** | Enrichment runs asynchronously — wait for cron/job processing or trigger enrichment manually per app docs. |
 

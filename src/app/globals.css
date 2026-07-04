@@ -170,6 +170,99 @@
   }
 }
 
+/* ── Navigation motion ─────────────────────────────────────────────────────
+   A blur dissolve (via next-view-transitions): on every navigation the leaving
+   page defocuses — blurs + fades — and the arriving page focuses in from the
+   same blur. Subtle, quick, symmetric; no shared-element morph (a tiny grid
+   thumb zooming into a big hero fought the medium and, gated on the item fetch,
+   felt disconnected from the tap).
+
+   • Content only: the sidebar / mobile header / bottom nav are anchored (below)
+     so they stay sharp and still — one steady frame while the content swaps.
+   • Applies uniformly to open / back / sibling routes. Snapshot-based, so it
+     never remounts the page or discards the library's in-memory shelf cache.
+   • Shelf swaps aren't navigations (setState/query only), so they keep their own
+     CSS crossfade (.ks-shelf-enter).
+
+   Cosmetic only, never blocking interaction. Timing lives in vars — judge it on
+   a real phone, not a static mock. */
+:root {
+  --ks-page-out-duration: 190ms; /* leaving page defocuses (blur + fade out) */
+  --ks-page-in-duration: 240ms; /* arriving page focuses in */
+  --ks-blur-amount: 6px; /* subtle — enough to read as a focus pull, not a smear */
+  --ks-shelf-duration: 300ms;
+}
+
+/* Blur dissolve on every navigation (open / back / sibling). View transitions
+   snapshot each page as a flat image, so blurring it is a cheap GPU filter. */
+::view-transition-old(root) {
+  animation: var(--ks-page-out-duration) ease-in both ks-blur-out;
+}
+::view-transition-new(root) {
+  animation: var(--ks-page-in-duration) ease-out both ks-blur-in;
+}
+@keyframes ks-blur-out {
+  from {
+    opacity: 1;
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    filter: blur(var(--ks-blur-amount));
+  }
+}
+@keyframes ks-blur-in {
+  from {
+    opacity: 0;
+    filter: blur(var(--ks-blur-amount));
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Anchor the chrome: the sidebar / mobile header / bottom nav carry a stable
+   view-transition-name (AppShell), so they hold still while content transitions
+   — one fixed spatial reference, never a sliding frame. */
+::view-transition-group(app-sidebar),
+::view-transition-group(app-header),
+::view-transition-group(app-bottomnav) {
+  animation: none;
+}
+
+@keyframes ks-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Shelf-swap crossfade. `backwards` (not forwards) so nothing lingers after the
+   run — a resting transform would establish a containing block and could break
+   `position: sticky` descendants. */
+.ks-shelf-enter {
+  animation: ks-fade var(--ks-shelf-duration) ease backwards;
+}
+
+/* Directional slides were deliberately skipped (top motion-sickness trigger,
+   and a library has no natural forward/back order), so reduced-motion just needs
+   to neutralize the morph's scale/position and every crossfade. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+  }
+  .ks-shelf-enter {
+    animation: none;
+  }
+}
+
 .scrollbar-none {
   scrollbar-width: none;
 }

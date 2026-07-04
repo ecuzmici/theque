@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { LayoutGrid, Plus, Search, Settings } from "lucide-react";
+import { BarChart3, LayoutGrid, Plus, Search, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
@@ -15,6 +15,12 @@ const LIBRARY = {
   label: "Library",
   icon: LayoutGrid,
   match: (p: string) => p === "/library" || p.startsWith("/library"),
+} as const;
+const STATS = {
+  href: "/stats",
+  label: "Stats",
+  icon: BarChart3,
+  match: (p: string) => p === "/stats",
 } as const;
 const SEARCH = {
   href: "/search",
@@ -29,7 +35,7 @@ const SETTINGS = {
   match: (p: string) => p === "/settings",
 } as const;
 
-const DESKTOP_NAV = [LIBRARY, SEARCH, SETTINGS] as const;
+const DESKTOP_NAV = [LIBRARY, STATS, SEARCH, SETTINGS] as const;
 const MOBILE_NAV = [LIBRARY, SEARCH] as const;
 
 function NavLink({
@@ -100,7 +106,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-full flex-col lg:flex-row">
-      <aside className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6">
+      <aside
+        className="hidden border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-56 lg:shrink-0 lg:flex-col lg:px-4 lg:py-6"
+        style={{ viewTransitionName: "app-sidebar" }}
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <ThequeLogo size="lg" href="/library" />
@@ -139,9 +148,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-h-full min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
+        <header
+          className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden"
+          style={{ viewTransitionName: "app-header" }}
+        >
           <ThequeLogo size="md" href="/library" />
           <div className="flex items-center gap-1">
+            <Link
+              href="/stats"
+              onClick={() => markPending("/stats")}
+              className={cn(
+                "ks-pointer-coarse-min-hit inline-flex size-11 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                STATS.match(activePath) && "bg-accent text-accent-foreground",
+              )}
+              aria-label="Stats"
+              aria-current={STATS.match(activePath) ? "page" : undefined}
+            >
+              <BarChart3 className="size-5" aria-hidden />
+            </Link>
             <Link
               href="/settings"
               onClick={() => markPending("/settings")}
@@ -167,6 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "fixed bottom-0 left-0 right-0 z-30 flex h-[var(--ks-nav-height)] items-end border-t border-border bg-card/95 backdrop-blur lg:hidden",
             "px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5",
           )}
+          style={{ viewTransitionName: "app-bottomnav" }}
           aria-label="Primary"
         >
           <div className="flex min-w-0 flex-1 justify-center">

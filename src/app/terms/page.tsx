@@ -76,7 +76,7 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="font-heading text-xl text-foreground">5. Your content</h2>
             <p>
-              The notes, tags, collections, and saved items in your library are yours. You grant
+              The notes and saved items in your library are yours. You grant
               thèque permission to store and process them, and to fetch and process metadata from
               the pages you save, solely to operate the Service for you. Saved pages and their
               contents remain the property of their respective owners; thèque does not claim
