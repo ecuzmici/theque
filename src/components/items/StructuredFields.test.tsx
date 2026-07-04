@@ -29,6 +29,7 @@ describe("StructuredFields", () => {
     await act(async () => {
       root?.render(
         <StructuredFields
+          category={null}
           structured={{
             category: "movies_and_tv",
             status: "want",
