@@ -8,6 +8,7 @@ import {
   parseBearerToken,
 } from "@/lib/auth/capture-token";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { decryptItemFields, encryptField } from "@/lib/crypto/field-crypto";
 import type { CaptureItemPayload, CaptureRequestBody, CaptureResponseBody } from "@/lib/types/api";
 import {
   hasMaxLength,
@@ -33,6 +34,14 @@ const SOURCES = new Set<ItemSource>([
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return Response.json(body, init);
+}
+
+// Only non-null, non-empty strings are ciphertext candidates — mirrors
+// `decryptField`'s passthrough for `null`/`""` (never store `enc.` of an
+// empty string; see ADR 0013).
+function encryptIfPresent(value: string | null | undefined): string | null {
+  if (!value) return value ?? null;
+  return encryptField(value);
 }
 
 export async function POST(req: Request) {
@@ -168,7 +177,7 @@ export async function POST(req: Request) {
 
     const res: CaptureResponseBody = {
       created: false,
-      item: mapCaptureItem(existing),
+      item: mapCaptureItem(decryptItemFields(existing)),
     };
     return jsonResponse(res);
   }
@@ -190,7 +199,7 @@ export async function POST(req: Request) {
     url_fingerprint: fp,
     domain,
     source: body.source,
-    note: body.note ?? null,
+    note: encryptIfPresent(body.note),
     status: "inbox" as const,
     processing_status: "pending" as const,
     structured: (categoryHint ? { capture_category_hint: categoryHint } : {}) as Json,
@@ -216,7 +225,7 @@ export async function POST(req: Request) {
 
   const res: CaptureResponseBody = {
     created: true,
-    item: mapCaptureItem(createdRow),
+    item: mapCaptureItem(decryptItemFields(createdRow)),
   };
   return jsonResponse(res, { status: 201 });
 }

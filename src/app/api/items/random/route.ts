@@ -1,4 +1,5 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
 import { SHELVES, olderThanCutoff, parseShelfParam } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/server";
@@ -50,5 +51,7 @@ export async function GET(req: Request) {
     .single();
 
   if (itemErr || !item) return Response.json({ item: null });
-  return Response.json({ item });
+  // Single-item boundary: a tampered enc.* value throws into the normal
+  // error path (ADR 0013), same as GET /api/items/[id].
+  return Response.json({ item: decryptItemFields(item) });
 }
