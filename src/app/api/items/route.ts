@@ -1,4 +1,5 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import type { Database } from "@/lib/database.types";
 import { hasMaxLength, MAX_SEARCH_QUERY_LENGTH } from "@/lib/input-limits";
 import type { ItemSummaryPayload, ItemsListResponseBody } from "@/lib/types/api";
@@ -122,7 +123,20 @@ export async function GET(req: Request) {
   const hasMore = list.length > limit;
   const pageRows = hasMore ? list.slice(0, limit) : list;
 
-  const items: ItemSummaryPayload[] = pageRows.map((row) => mapSummary(row));
+  // Fail closed: a tampered/undecryptable enc.* value throws in
+  // `decryptField`. For this list endpoint one bad row fails the whole
+  // request (explicit 500) rather than rendering ciphertext or dropping the
+  // row silently — see ADR 0013 / issue #66.
+  let items: ItemSummaryPayload[];
+  try {
+    items = pageRows.map((row) => mapSummary(decryptItemFields(row)));
+  } catch (err) {
+    console.error(
+      "[api/items] decrypt_failed:",
+      err instanceof Error ? err.message : "unknown_error",
+    );
+    return Response.json({ code: "decrypt_failed" }, { status: 500 });
+  }
 
   const body: ItemsListResponseBody = {
     items,
