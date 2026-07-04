@@ -10,9 +10,9 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 
 ## Solution
 
-1. **Capture** — Chrome extension, iOS Shortcut, or paste URL (optional note/tags/collection).
+1. **Capture** — Chrome extension, iOS Shortcut, or paste URL (optional note).
 2. **Enrich** — Server fetches OG/schema.org metadata, classifies the item, and can optionally ask Gemini to fill sparse category-specific fields.
-3. **Library** — Image-forward shelves (smart views by category) plus user **collections** (trip, gifts, date night).
+3. **Library** — Image-forward shelves (smart views by category).
 4. **Inbox** — Secondary triage queue for low-confidence or unprocessed items.
 
 ## Target user (PoC)
@@ -29,19 +29,17 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 | **Category** | What kind of thing it is (system-guessed, user-overridable) | `movies_and_tv` |
 | **Status** | Lifecycle in your library | `inbox` → `want` → `done` |
 | **Shelf** (UI) | Fixed smart view over items | “Watch” = `movies_and_tv`, non-dismissed |
-| **Collection** | Why/where you saved it (user-created) | “Japan 2026”, “Birthday gifts” |
-| **Tag** | Freeform label | `sci-fi`, `for-mom` |
 
-**Important:** Shelves are **not** database entities in PoC (Option A). Collections are **not** categories.
+**Important:** Shelves are **not** database entities in PoC (Option A). Collections and tags were tried and **removed** (unused); the capture API still accepts their legacy fields as no-ops.
 
-> **Note on “Gifts”:** `gifts` was removed from the `ItemCategory` enum. Gift intent is a *context* (why you're saving something), not a kind of thing — it belongs as a **collection** (e.g. “Birthday gifts”, “Wishlist”) or a tag, not a shelf filter. Save products to the Other shelf and organise them into gift collections as needed.
+> **Note on “Gifts”:** `gifts` was removed from the `ItemCategory` enum. Gift intent is a *context* (why you're saving something), not a kind of thing — it does not get a shelf filter. Save products to the Other shelf.
 
 ## PoC success criteria
 
 - [ ] Share an IMDb link from iPhone via Shortcut → appears as a visual card.
 - [ ] Save a Goodreads page from Chrome extension → appears as a visual card.
 - [ ] Both start in inbox or land on the right shelf when confidence is high.
-- [ ] Process inbox items: set status, category, collections, tags.
+- [ ] Process inbox items: set status, category.
 - [ ] Browse and search library on phone and laptop (PWA).
 
 ## Non-goals (PoC)
@@ -56,7 +54,7 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 ## Experience principles
 
 1. **Library first** — Home feels like browsing your taste, not an admin dashboard.
-2. **Capture in one gesture** — Share or one click; note/tags optional.
+2. **Capture in one gesture** — Share or one click; note optional.
 3. **Instant feedback** — Card appears immediately; enrichment upgrades it in place.
 4. **Mobile-first polish** — Large imagery, clear typography, minimal chrome.
 5. **Fail gracefully** — Bad scrape still yields a usable card (title, domain, link).
