@@ -11,13 +11,13 @@ import { QuickLookDialog } from "@/components/items/QuickLookDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
-import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
+import type { LibrarySort } from "@/lib/library-items-for-shelf";
+import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import { doneVerb } from "@/lib/item-labels";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { ShelfId } from "@/lib/shelves";
-import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 const PENDING_REFRESH_INTERVAL_MS = 2000;
@@ -58,7 +58,7 @@ export function LibraryItemsSection({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const hasPendingItems = hasPendingEnrichment(items);
 
-  useItemRealtime(userId, shelfId, setItems);
+  useItemRealtime(userId, shelfId, items, setItems);
 
   useEffect(() => {
     onItemsChange?.(items);
@@ -69,13 +69,12 @@ export function LibraryItemsSection({
 
     let cancelled = false;
     let inFlight = false;
-    const supabase = createClient();
 
     const refreshPendingItems = async () => {
       if (inFlight) return;
       inFlight = true;
       try {
-        const { items: rows } = await fetchLibraryItemsForShelf(supabase, shelfId, 0, sort);
+        const { items: rows } = await fetchLibraryItemsPage(shelfId, 0, sort);
         if (!cancelled) {
           setItems((prev) => {
             // Merge: replace the first page with fresh data while preserving any extra pages
@@ -103,9 +102,7 @@ export function LibraryItemsSection({
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const supabase = createClient();
-      const { items: newRows, hasMore: more } = await fetchLibraryItemsForShelf(
-        supabase,
+      const { items: newRows, hasMore: more } = await fetchLibraryItemsPage(
         shelfId,
         offsetRef.current,
         sort,

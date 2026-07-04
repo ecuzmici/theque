@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { generateJsonWithFallback } from "@/lib/ai/gateway";
+import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import {
   RECOMMEND_COUNT,
@@ -126,7 +127,19 @@ export async function POST(req: Request) {
     return jsonResponse({ error: "Could not load library" }, { status: 500 });
   }
 
-  const libraryItems = (libraryRows ?? []) as LibraryItemRow[];
+  // Decrypt-on-read (ADR 0013): verdict text feeds the taste profile prompt.
+  // A tampered enc.* value throws; fail the whole request rather than risk
+  // ciphertext reaching the LLM prompt or the response.
+  let libraryItems: LibraryItemRow[];
+  try {
+    libraryItems = ((libraryRows ?? []) as LibraryItemRow[]).map((row) => decryptItemFields(row));
+  } catch (err) {
+    console.error(
+      "[api/recommend] decrypt_failed:",
+      err instanceof Error ? err.message : "unknown_error",
+    );
+    return jsonResponse({ error: "Could not load library" }, { status: 500 });
+  }
   const titledItems = libraryItems.filter((row) => row.title?.trim());
 
   if (titledItems.length < RECOMMEND_MIN_ITEMS) {

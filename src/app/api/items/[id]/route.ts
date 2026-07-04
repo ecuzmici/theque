@@ -1,4 +1,5 @@
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { decryptItemFields, encryptField } from "@/lib/crypto/field-crypto";
 import type { Database, ItemCategory, ItemStatus, Json } from "@/lib/database.types";
 import {
   hasMaxLength,
@@ -6,6 +7,13 @@ import {
   MAX_TITLE_LENGTH,
 } from "@/lib/input-limits";
 import { createClient } from "@/lib/supabase/server";
+
+// Only non-null, non-empty strings are ciphertext candidates — mirrors
+// `decryptField`'s passthrough for `null`/`""` (never store `enc.` of an
+// empty string; see ADR 0013).
+function encryptIfPresent(value: string | null): string | null {
+  return value ? encryptField(value) : value;
+}
 
 const STATUSES = new Set<ItemStatus>(["inbox", "want", "done", "dismissed"]);
 
@@ -48,7 +56,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  return Response.json(row);
+  return Response.json(decryptItemFields(row));
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -88,7 +96,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (typeof body.note === "string" && !hasMaxLength(body.note, MAX_NOTE_LENGTH)) {
       return Response.json({ code: "invalid_note" }, { status: 400 });
     }
-    patch.note = body.note === null ? null : body.note;
+    // Encrypt at rest (ADR 0013); the PATCH response decrypts before returning.
+    patch.note = encryptIfPresent(body.note === null ? null : body.note);
   }
 
   if (typeof body.title === "string" || body.title === null) {
@@ -131,7 +140,8 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (typeof body.verdict === "string" && !hasMaxLength(body.verdict, MAX_NOTE_LENGTH)) {
       return Response.json({ code: "invalid_verdict" }, { status: 400 });
     }
-    patch.verdict = body.verdict === null ? null : body.verdict;
+    // Encrypt at rest (ADR 0013); the PATCH response decrypts before returning.
+    patch.verdict = encryptIfPresent(body.verdict === null ? null : body.verdict);
   }
 
   if (patch.status && patch.status !== row.status) {
@@ -160,7 +170,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  return Response.json(updated);
+  return Response.json(decryptItemFields(updated));
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

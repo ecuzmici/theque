@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
+const TEST_FIELD_ENCRYPTION_KEY = Buffer.alloc(32, 7).toString("base64");
+
 const mocks = vi.hoisted(() => {
   const lookupCaptureTokenUser = vi.fn();
   const getSessionUserOrNull = vi.fn();
@@ -573,5 +577,201 @@ describe("POST /api/capture capture_snapshot", () => {
     expect(mocks.adminFrom).toHaveBeenCalledWith("items");
     expect(mocks.adminFrom.mock.calls.some(([table]) => table === "tags")).toBe(false);
     expect(mocks.adminFrom.mock.calls.some(([table]) => table === "collections")).toBe(false);
+  });
+});
+
+describe("POST /api/capture field encryption (ADR 0013)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.FIELD_ENCRYPTION_KEY = TEST_FIELD_ENCRYPTION_KEY;
+    mocks.lookupCaptureTokenUser.mockReset();
+    mocks.getSessionUserOrNull.mockReset();
+    mocks.enrichItem.mockReset();
+    mocks.afterResults.length = 0;
+    mocks.insertSpy.mockReset();
+    mocks.updateSpy.mockClear();
+    mocks.adminFrom.mockReset();
+  });
+
+  it("encrypts a note before insert and returns plaintext in the response", async () => {
+    const plaintext = "picked this up for the trip";
+    const { encryptField } = await import("@/lib/crypto/field-crypto");
+    const createdRow = {
+      id: "item-enc-1",
+      url: "https://example.com/enc-note",
+      canonical_url: "https://example.com/enc-note",
+      domain: "example.com",
+      title: null,
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: null,
+      category_confidence: null,
+      status: "inbox",
+      processing_status: "pending",
+      source: "manual",
+      // What the DB would actually hold after the encrypted insert.
+      note: encryptField(plaintext),
+      created_at: "2026-06-13T00:00:00.000Z",
+    };
+    const itemsTable = mocks.makeItemsTable(createdRow);
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/enc-note",
+          source: "manual",
+          note: plaintext,
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const insertedRow = mocks.insertSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(typeof insertedRow.note).toBe("string");
+    expect((insertedRow.note as string).startsWith("enc.")).toBe(true);
+    expect(insertedRow.note).not.toBe(plaintext);
+
+    const body = await res.json();
+    expect(body.item.note).toBe(plaintext);
+  });
+
+  it("leaves an empty note as an empty string (never stores enc. of empty)", async () => {
+    const createdRow = {
+      id: "item-enc-2",
+      url: "https://example.com/empty-note",
+      canonical_url: "https://example.com/empty-note",
+      domain: "example.com",
+      title: null,
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: null,
+      category_confidence: null,
+      status: "inbox",
+      processing_status: "pending",
+      source: "manual",
+      note: "",
+      created_at: "2026-06-13T00:00:00.000Z",
+    };
+    const itemsTable = mocks.makeItemsTable(createdRow);
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/empty-note",
+          source: "manual",
+          note: "",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const insertedRow = mocks.insertSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(insertedRow.note).toBe("");
+  });
+
+  it("leaves a null/absent note as null (never encrypted)", async () => {
+    const createdRow = {
+      id: "item-enc-3",
+      url: "https://example.com/no-note",
+      canonical_url: "https://example.com/no-note",
+      domain: "example.com",
+      title: null,
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: null,
+      category_confidence: null,
+      status: "inbox",
+      processing_status: "pending",
+      source: "manual",
+      note: null,
+      created_at: "2026-06-13T00:00:00.000Z",
+    };
+    const itemsTable = mocks.makeItemsTable(createdRow);
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/no-note",
+          source: "manual",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const insertedRow = mocks.insertSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(insertedRow.note).toBeNull();
+  });
+
+  it("decrypts a legacy plaintext note on the duplicate-URL (existing item) response", async () => {
+    const existingRow = {
+      id: "item-existing-legacy",
+      url: "https://example.com/legacy-dup",
+      canonical_url: "https://example.com/legacy-dup",
+      domain: "example.com",
+      title: "Existing",
+      subtitle: null,
+      description: null,
+      image_url: null,
+      category: "articles",
+      category_confidence: 0.9,
+      status: "want",
+      processing_status: "ready",
+      source: "manual",
+      // Legacy plaintext, written before field encryption shipped.
+      note: "an old plaintext note",
+      created_at: "2026-05-01T12:00:00.000Z",
+    };
+    const itemsTable = mocks.makeItemsTable(existingRow as Record<string, unknown>, {
+      existing: existingRow as Record<string, unknown>,
+    });
+    mocks.adminFrom.mockImplementation((table: string) => {
+      if (table !== "items") throw new Error(`Unexpected table ${table}`);
+      return itemsTable;
+    });
+    mocks.lookupCaptureTokenUser.mockResolvedValue({ userId: "user-1" });
+
+    const { POST } = await import("./route");
+    const res = await POST(
+      new Request("https://theque.app/api/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer bmly_t" },
+        body: JSON.stringify({
+          url: "https://example.com/legacy-dup",
+          source: "manual",
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.created).toBe(false);
+    expect(body.item.note).toBe("an old plaintext note");
   });
 });
