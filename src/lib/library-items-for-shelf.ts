@@ -22,11 +22,7 @@ export async function fetchLibraryItemsForShelf(
 
   let query = supabase.from("items").select(LIBRARY_ITEM_COLUMNS);
 
-  const doneShelf = shelfId === "done";
-
-  if (doneShelf) {
-    query = query.order("done_at", { ascending: false, nullsFirst: false });
-  } else if (sort === "color") {
+  if (sort === "color") {
     // Hue walk around the wheel; items without an extracted color sink to the end.
     query = query
       .order("dominant_hue", { ascending: true, nullsFirst: false })
@@ -46,10 +42,6 @@ export async function fetchLibraryItemsForShelf(
 
   if (shelf.filter.excludeInbox) {
     query = query.neq("status", "inbox");
-  }
-
-  if (shelf.filter.excludeDone) {
-    query = query.neq("status", "done");
   }
 
   if (shelf.filter.category) {

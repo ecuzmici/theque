@@ -15,7 +15,7 @@ describe("bannerModeForShelf", () => {
     expect(bannerModeForShelf("watch")).toEqual({ kind: "featured", shelfId: "watch" });
   });
 
-  it.each(["read", "other", "done", "inbox", "forgotten"] as const)(
+  it.each(["read", "other", "inbox", "forgotten"] as const)(
     "disables the banner on the %s shelf",
     (shelf) => {
       expect(bannerModeForShelf(shelf)).toEqual({ kind: "disabled" });

@@ -19,8 +19,8 @@ export type BannerMode =
 /**
  * Shelf-aware "Made for you" behaviour. The recommendation categories are Books
  * and Watch; the All shelf offers both (heuristic pick), each category shelf
- * features its own, and every other shelf (Articles, Done, Other, Inbox,
- * Forgotten) has no recommendation category so the banner is shown disabled.
+ * features its own, and every other shelf (Articles, Other, Inbox, Forgotten)
+ * has no recommendation category so the banner is shown disabled.
  */
 export function bannerModeForShelf(shelf: ShelfId): BannerMode {
   switch (shelf) {

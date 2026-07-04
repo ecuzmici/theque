@@ -22,11 +22,12 @@ function item(
 }
 
 describe("itemMatchesShelf", () => {
-  it("excludes done items from category backlog shelves", () => {
-    const doneMovie = item({ status: "done" });
-    expect(itemMatchesShelf(doneMovie, "watch")).toBe(false);
-    expect(itemMatchesShelf(doneMovie, "books")).toBe(false);
-    expect(itemMatchesShelf(doneMovie, "read")).toBe(false);
+  it("keeps done items on their category shelf (no separate Done shelf)", () => {
+    expect(itemMatchesShelf(item({ status: "done", category: "movies_and_tv" }), "watch")).toBe(
+      true,
+    );
+    expect(itemMatchesShelf(item({ status: "done", category: "books" }), "books")).toBe(true);
+    expect(itemMatchesShelf(item({ status: "done", category: "articles" }), "read")).toBe(true);
   });
 
   it("includes want items on their category shelf", () => {
@@ -43,19 +44,13 @@ describe("itemMatchesShelf", () => {
     }
   });
 
-  it("excludes non-grouped categories and done items from Other", () => {
+  it("excludes non-grouped categories from Other but keeps its done items", () => {
     expect(itemMatchesShelf(item({ status: "want", category: "books" }), "other")).toBe(false);
     expect(itemMatchesShelf(item({ status: "want", category: "movies_and_tv" }), "other")).toBe(
       false,
     );
     expect(itemMatchesShelf(item({ status: "want", category: "articles" }), "other")).toBe(false);
-    expect(itemMatchesShelf(item({ status: "done", category: "restaurants" }), "other")).toBe(false);
-  });
-
-  it("includes only done items on the Done shelf", () => {
-    expect(itemMatchesShelf(item({ status: "done" }), "done")).toBe(true);
-    expect(itemMatchesShelf(item({ status: "want" }), "done")).toBe(false);
-    expect(itemMatchesShelf(item({ status: "inbox" }), "done")).toBe(false);
+    expect(itemMatchesShelf(item({ status: "done", category: "restaurants" }), "other")).toBe(true);
   });
 
   it("keeps All showing done items", () => {

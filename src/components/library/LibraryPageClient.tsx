@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Images, Layers } from "lucide-react";
+import { Eye, EyeOff, Images, Layers } from "lucide-react";
 
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
@@ -73,6 +73,7 @@ export function LibraryPageClient({
   const [otherCount, setOtherCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [wall, setWall] = useState(false);
+  const [hideDone, setHideDone] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
 
   // Only Other and Inbox are dynamic; both hide when empty. Prefer the live
@@ -100,6 +101,7 @@ export function LibraryPageClient({
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
   useEffect(() => {
     setWall(window.localStorage.getItem("theque_wall_mode") === "1");
+    setHideDone(window.localStorage.getItem("theque_hide_done") === "1");
     prefsLoaded.current = true;
   }, []);
 
@@ -107,6 +109,13 @@ export function LibraryPageClient({
     if (!prefsLoaded.current) return;
     window.localStorage.setItem("theque_wall_mode", wall ? "1" : "0");
   }, [wall]);
+
+  // "Hide done" is a client-side display filter (see LibraryItemsSection), so
+  // toggling it never refetches — it just re-renders the cached shelf.
+  useEffect(() => {
+    if (!prefsLoaded.current) return;
+    window.localStorage.setItem("theque_hide_done", hideDone ? "1" : "0");
+  }, [hideDone]);
 
   useEffect(() => {
     if (pendingShelf == null || pendingShelf !== urlShelf) return;
@@ -312,6 +321,23 @@ export function LibraryPageClient({
         <div className="flex items-center gap-2">
           {/* Recommend CTA lives in the persistent "Made for you" masthead banner
               above (shelf-aware), so the toolbar no longer duplicates it. */}
+          {activeShelf !== "inbox" ? (
+            <Button
+              type="button"
+              variant={hideDone ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={hideDone}
+              className="min-h-11 gap-1.5 lg-fine:min-h-9"
+              onClick={() => setHideDone((v) => !v)}
+            >
+              {hideDone ? (
+                <Eye className="size-4" aria-hidden />
+              ) : (
+                <EyeOff className="size-4" aria-hidden />
+              )}
+              {hideDone ? "Show done" : "Hide done"}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant={wall ? "secondary" : "outline"}
@@ -372,6 +398,7 @@ export function LibraryPageClient({
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
           wall={wall}
+          hideDone={hideDone}
           onItemsChange={updateActiveShelfItems}
         />
       )}
