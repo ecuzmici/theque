@@ -2,7 +2,7 @@
 
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ExternalLink, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
@@ -20,6 +20,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
@@ -311,50 +318,51 @@ export function ItemDetail({
             <ExternalLink className="size-4" />
             Open original
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => setEditOpen(true)}
-          >
-            <Pencil className="size-4" />
-            Edit details
-          </Button>
-          {showRefreshMetadata ? (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={retryBusy}
-              className="min-h-11 gap-1.5 lg-fine:min-h-8"
-              onClick={() => void onRetry()}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 gap-1.5 px-3 lg-fine:min-h-8"
+                  aria-label="More actions"
+                  disabled={retryBusy || aiProposalBusy || aiApplyBusy || deleteBusy}
+                />
+              }
             >
-              <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
-              {retryBusy ? "Refreshing…" : refreshLabel}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="outline"
-            disabled={aiProposalBusy || aiApplyBusy}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => void onOpenAiReview()}
-          >
-            <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
-            {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={deleteBusy}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => {
-              setDeleteError(null);
-              setDeleteOpen(true);
-            }}
-          >
-            <Trash2 className="size-4" />
-            Delete item
-          </Button>
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Pencil className="size-4" />
+                Edit details
+              </DropdownMenuItem>
+              {showRefreshMetadata ? (
+                <DropdownMenuItem disabled={retryBusy} onClick={() => void onRetry()}>
+                  <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
+                  {retryBusy ? "Refreshing…" : refreshLabel}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                disabled={aiProposalBusy || aiApplyBusy}
+                onClick={() => void onOpenAiReview()}
+              >
+                <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
+                {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteOpen(true);
+                }}
+              >
+                <Trash2 className="size-4" />
+                Delete item
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
           {item.enrichment_error ? (
