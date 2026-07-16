@@ -28,6 +28,9 @@ export type ResolvedBook = {
   rating_count?: string | null;
   length?: string | null;
   genres?: string[];
+  /** The book's opening line (Open Library first_sentence), when present and
+   * short enough to show as a card quote (ADR 0015). */
+  opening_line?: string | null;
 };
 
 type OpenLibraryDoc = {
@@ -40,6 +43,7 @@ type OpenLibraryDoc = {
   ratings_count?: number;
   number_of_pages_median?: number;
   subject?: string[];
+  first_sentence?: string[] | string;
 };
 
 type OpenLibrarySearchResponse = {
@@ -84,6 +88,22 @@ function authorsOverlap(candidateCreator: string, docAuthors: string[]): boolean
   return false;
 }
 
+/** Longest opening line worth quoting on a card. */
+const OPENING_LINE_MAX_CHARS = 260;
+
+/**
+ * Pick a card-worthy opening line from the search doc's first_sentence
+ * (an array of edition sentences, occasionally a bare string). Null when
+ * absent or too long to read as a quote.
+ */
+export function pickOpeningLine(value: string[] | string | undefined): string | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (typeof first !== "string") return null;
+  const trimmed = first.trim();
+  if (trimmed.length === 0 || trimmed.length > OPENING_LINE_MAX_CHARS) return null;
+  return trimmed;
+}
+
 function formatRatingCount(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (count >= 1_000) return `${Math.round(count / 1_000)}k`;
@@ -113,6 +133,7 @@ function toResolvedBook(doc: OpenLibraryDoc): ResolvedBook {
       ? `${doc.number_of_pages_median} pages`
       : null,
     genres: genres.length > 0 ? genres : undefined,
+    opening_line: pickOpeningLine(doc.first_sentence),
   };
 }
 
@@ -136,7 +157,7 @@ export async function resolveBookWithOpenLibrary(
     language: "eng",
     limit: "5",
     fields:
-      "key,title,author_name,first_publish_year,cover_i,ratings_average,ratings_count,number_of_pages_median,subject",
+      "key,title,author_name,first_publish_year,cover_i,ratings_average,ratings_count,number_of_pages_median,subject,first_sentence",
   });
   if (candidate.creator) {
     params.set("author", candidate.creator);

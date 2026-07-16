@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, ChevronDown, Star, X } from "lucide-react";
+import { Bookmark, ChevronDown, Play, Star, Tv, X } from "lucide-react";
 
 import { CoverImage } from "@/components/recommend/CoverImage";
 import { LOADING_STATUS_LINES } from "@/components/recommend/recommend-deck-utils";
@@ -101,11 +101,44 @@ function RecommendCard({
                   {g}
                 </span>
               ))}
+              {card.trailer_url ? (
+                <a
+                  href={card.trailer_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ks-pointer-coarse-min-hit inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 transition-colors hover:bg-muted/70 hover:text-foreground"
+                >
+                  <Play className="size-3" aria-hidden /> Trailer
+                </a>
+              ) : null}
             </div>
+            {card.providers?.length ? (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Tv className="size-3.5 shrink-0" aria-hidden />
+                {card.providers_link ? (
+                  <a
+                    href={card.providers_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ks-pointer-coarse-min-hit underline-offset-2 hover:underline"
+                  >
+                    {card.providers.join(" · ")}
+                  </a>
+                ) : (
+                  <span>{card.providers.join(" · ")}</span>
+                )}
+              </p>
+            ) : null}
           </div>
         </div>
 
         <p className="mt-4 text-sm leading-relaxed text-foreground/90">{card.description}</p>
+
+        {card.opening_line ? (
+          <p className="mt-3 border-l-2 border-border pl-3 text-sm italic leading-relaxed text-muted-foreground">
+            &ldquo;{card.opening_line}&rdquo;
+          </p>
+        ) : null}
 
         <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600/80">
@@ -262,8 +295,9 @@ export function RecommendDeck({ run }: RecommendDeckProps) {
       {(runStatus === "ready" || runStatus === "loading") && (
         <div className="border-t border-border px-4 py-3">
           <p className="text-[11px] text-muted-foreground">
-            AI picks, checked against {shelfId === "books" ? "Open Library" : "TMDB"}. A few may
-            still be wrong.
+            {shelfId === "books"
+              ? "AI picks, checked against Open Library and Google Books. A few may still be wrong."
+              : "AI picks, checked against TMDB. Streaming data from JustWatch. A few may still be wrong."}
           </p>
         </div>
       )}

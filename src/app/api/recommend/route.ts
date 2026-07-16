@@ -17,11 +17,17 @@ import {
   RECOMMEND_TEMPERATURE,
   RECOMMEND_TIMEOUT_MS,
   isShelfRecommendEnabled,
+  pickWatchRegion,
 } from "@/lib/recommend/recommend-config";
 import { dedupRecommendations, normalizeTitle } from "@/lib/recommend/dedup";
 import { buildRecommendPrompt } from "@/lib/recommend/recommend-prompt";
+import { fetchBookDescription } from "@/lib/recommend/resolve/google-books";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
-import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
+import {
+  fetchTmdbCardExtras,
+  formatWatchLength,
+  resolveMovieWithTmdb,
+} from "@/lib/recommend/resolve/tmdb";
 import type {
   LlmCandidate,
   RecommendRequest,
@@ -207,6 +213,11 @@ export async function POST(req: Request) {
   type ResolvedCardDraft = ResolvedRecommendation & {
     external_id: string;
     title_norm: string;
+    /** Kept off the subtitle until after the extras pass — a verified
+     * director can replace the LLM's creator (ADR 0015). */
+    creator: string | null;
+    year: number | null;
+    media_type?: "movie" | "tv";
   };
 
   const settledResults = await Promise.allSettled(
@@ -217,18 +228,11 @@ export async function POST(req: Request) {
 
       if (!resolved) return null;
 
-      const subtitle = [
-        resolved.verified_author ?? candidate.creator,
-        resolved.confirmed_year ?? candidate.year,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-
       const card: ResolvedCardDraft = {
         id: randomUUID(),
         outcome_id: "",
         title: candidate.title,
-        subtitle,
+        subtitle: "",
         description: candidate.description,
         reason: candidate.reason,
         canonical_url: resolved.canonical_url,
@@ -241,6 +245,10 @@ export async function POST(req: Request) {
         rating_count: resolved.rating_count ?? null,
         length: resolved.length ?? null,
         genres: resolved.genres,
+        creator: resolved.verified_author ?? candidate.creator ?? null,
+        year: resolved.confirmed_year ?? candidate.year ?? null,
+        media_type: "media_type" in resolved ? resolved.media_type : undefined,
+        opening_line: "opening_line" in resolved ? resolved.opening_line ?? null : null,
       };
       return card;
     }),
@@ -261,7 +269,37 @@ export async function POST(req: Request) {
     return jsonResponse({ cards: [] } satisfies RecommendResponse, { status: 200 });
   }
 
-  const insertRows = finalCards.map((card) => ({
+  // Extras pass (ADR 0015): only the final cards get one details fetch each,
+  // in parallel — official synopsis, director, runtime, trailer, and
+  // streaming providers (watch) or a real description (books). Every fetch
+  // fails open; a miss keeps the LLM text and the search-pass fields.
+  const region = pickWatchRegion(req.headers.get("x-vercel-ip-country"));
+  const enrichedCards: ResolvedCardDraft[] = await Promise.all(
+    finalCards.map(async (card) => {
+      if (isWatch && card.media_type) {
+        const extras = await fetchTmdbCardExtras(card.media_type, card.external_id, region);
+        if (!extras) return card;
+        return {
+          ...card,
+          description: extras.overview ?? card.description,
+          creator:
+            extras.directors.length > 0
+              ? extras.directors.slice(0, 2).join(", ")
+              : card.creator,
+          length:
+            formatWatchLength(card.media_type, extras.runtime_minutes, extras.seasons) ??
+            card.length,
+          trailer_url: extras.trailer_url,
+          providers: extras.providers.length > 0 ? extras.providers : undefined,
+          providers_link: extras.providers_link,
+        };
+      }
+      const description = await fetchBookDescription(card.title, card.creator);
+      return description ? { ...card, description } : card;
+    }),
+  );
+
+  const insertRows = enrichedCards.map((card) => ({
     user_id: user.id,
     category: outcomeCategory,
     external_id: card.external_id,
@@ -283,12 +321,13 @@ export async function POST(req: Request) {
     insertedOutcomes.map((r) => [r.title_norm, r.id]),
   );
 
-  const cardsWithOutcomes: ResolvedRecommendation[] = finalCards
+  const cardsWithOutcomes: ResolvedRecommendation[] = enrichedCards
     .map((card) => {
       const outcomeId = outcomeByTitleNorm.get(card.title_norm);
       if (!outcomeId) return null;
-      const { external_id: _e, title_norm: _t, ...responseCard } = card;
-      return { ...responseCard, outcome_id: outcomeId };
+      const { external_id: _e, title_norm: _t, creator, year, media_type: _m, ...responseCard } = card;
+      const subtitle = [creator, year].filter(Boolean).join(" · ");
+      return { ...responseCard, subtitle, outcome_id: outcomeId };
     })
     .filter((c): c is ResolvedRecommendation => c !== null);
 

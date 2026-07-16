@@ -10,6 +10,7 @@ function resolved(partial: Partial<ResolvedMovie>): ResolvedMovie {
     confirmed_year: 1989,
     external_id: "2756",
     verified_author: null,
+    media_type: "movie",
     ...partial,
   };
 }

@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 
 import { normalizeTitle } from "@/lib/recommend/dedup";
 import {
+  pickOpeningLine,
   splitCreatorTokens,
   resolveBookWithOpenLibrary,
 } from "@/lib/recommend/resolve/open-library";
@@ -228,5 +229,51 @@ describe("resolveBookWithOpenLibrary", () => {
       year: 2020,
     });
     expect(result).toBeNull();
+  });
+});
+
+// ----- Opening line (ADR 0015) -----
+
+describe("pickOpeningLine", () => {
+  it("takes the first sentence from the array form", () => {
+    expect(pickOpeningLine(["The House is valuable.", "Other edition line."])).toBe(
+      "The House is valuable.",
+    );
+  });
+
+  it("accepts the bare string form and trims it", () => {
+    expect(pickOpeningLine("  Call me Ishmael. ")).toBe("Call me Ishmael.");
+  });
+
+  it("rejects missing, empty, and too-long values", () => {
+    expect(pickOpeningLine(undefined)).toBeNull();
+    expect(pickOpeningLine([])).toBeNull();
+    expect(pickOpeningLine("   ")).toBeNull();
+    expect(pickOpeningLine("x".repeat(300))).toBeNull();
+  });
+});
+
+describe("resolveBookWithOpenLibrary opening line", () => {
+  it("maps first_sentence onto the resolved book", async () => {
+    mockFetch([{ ...BASE_DOC, first_sentence: ["The House is valuable."] }]);
+    const result = await resolveBookWithOpenLibrary({
+      title: "Piranesi",
+      creator: "Susanna Clarke",
+      year: 2020,
+    });
+    expect(result!.opening_line).toBe("The House is valuable.");
+  });
+
+  it("requests the first_sentence field", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ docs: [BASE_DOC] }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await resolveBookWithOpenLibrary({ title: "Piranesi", creator: "Susanna Clarke", year: 2020 });
+
+    const requestedUrl = String(fetchMock.mock.calls[0][0]);
+    expect(requestedUrl).toContain("first_sentence");
   });
 });

@@ -7,7 +7,14 @@ vi.mock("@/lib/enrichment/fetch", () => ({
   assertSafeFetchUrl: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { resolveMovieWithTmdb, selectTmdbMatch } from "@/lib/recommend/resolve/tmdb";
+import {
+  fetchTmdbCardExtras,
+  formatWatchLength,
+  resolveMovieWithTmdb,
+  selectProviders,
+  selectTmdbMatch,
+  selectTrailerUrl,
+} from "@/lib/recommend/resolve/tmdb";
 
 const SEARCH_MOVIE = {
   results: [
@@ -291,5 +298,170 @@ describe("selectTmdbMatch", () => {
   it("still accepts a single yearless title-match", () => {
     const pastLives = { id: 52, media_type: "movie" as const, title: "Past Lives", release_date: "2023-06-02" };
     expect(selectTmdbMatch([pastLives], { title: "Past Lives", year: null })?.id).toBe(52);
+  });
+});
+
+// ----- Card extras (ADR 0015) -----
+
+const MOVIE_DETAILS_FULL = {
+  overview: "A thief who steals corporate secrets through dream-sharing technology.",
+  runtime: 148,
+  credits: {
+    crew: [
+      { job: "Producer", name: "Emma Thomas" },
+      { job: "Director", name: "Christopher Nolan" },
+    ],
+  },
+  videos: {
+    results: [
+      { site: "YouTube", type: "Featurette", official: true, key: "feat1" },
+      { site: "YouTube", type: "Trailer", official: false, key: "fan1" },
+      { site: "YouTube", type: "Trailer", official: true, key: "official1" },
+    ],
+  },
+  "watch/providers": {
+    results: {
+      US: {
+        link: "https://www.themoviedb.org/movie/27205/watch?locale=US",
+        flatrate: [
+          { provider_name: "Netflix", display_priority: 5 },
+          { provider_name: "Max", display_priority: 1 },
+        ],
+      },
+      RO: { link: "https://www.themoviedb.org/movie/27205/watch?locale=RO", flatrate: [] },
+    },
+  },
+};
+
+const TV_DETAILS_FULL = {
+  overview: "A chemistry teacher turns to a life of crime.",
+  episode_run_time: [47],
+  number_of_seasons: 5,
+  created_by: [{ name: "Vince Gilligan" }],
+  credits: { crew: [] },
+  videos: { results: [] },
+  "watch/providers": { results: {} },
+};
+
+describe("selectTrailerUrl", () => {
+  it("prefers the official YouTube trailer", () => {
+    expect(selectTrailerUrl(MOVIE_DETAILS_FULL.videos.results)).toBe(
+      "https://www.youtube.com/watch?v=official1",
+    );
+  });
+
+  it("falls back to any trailer, then a teaser", () => {
+    expect(
+      selectTrailerUrl([
+        { site: "YouTube", type: "Teaser", official: true, key: "tease1" },
+        { site: "YouTube", type: "Trailer", official: false, key: "fan1" },
+      ]),
+    ).toBe("https://www.youtube.com/watch?v=fan1");
+    expect(
+      selectTrailerUrl([{ site: "YouTube", type: "Teaser", official: true, key: "tease1" }]),
+    ).toBe("https://www.youtube.com/watch?v=tease1");
+  });
+
+  it("ignores non-YouTube videos and returns null when nothing qualifies", () => {
+    expect(selectTrailerUrl([{ site: "Vimeo", type: "Trailer", official: true, key: "v1" }])).toBeNull();
+    expect(selectTrailerUrl([])).toBeNull();
+  });
+});
+
+describe("selectProviders", () => {
+  const results = MOVIE_DETAILS_FULL["watch/providers"].results;
+
+  it("orders flatrate providers by display priority and keeps the region link", () => {
+    const picked = selectProviders(results, "US");
+    expect(picked.names).toEqual(["Max", "Netflix"]);
+    expect(picked.link).toBe("https://www.themoviedb.org/movie/27205/watch?locale=US");
+  });
+
+  it("is case-insensitive on the region code", () => {
+    expect(selectProviders(results, "us").names).toEqual(["Max", "Netflix"]);
+  });
+
+  it("returns empty names for a region without flatrate entries", () => {
+    const picked = selectProviders(results, "RO");
+    expect(picked.names).toEqual([]);
+    expect(picked.link).toContain("locale=RO");
+  });
+
+  it("returns empty for an unknown region or missing payload", () => {
+    expect(selectProviders(results, "GB")).toEqual({ names: [], link: null });
+    expect(selectProviders(undefined, "US")).toEqual({ names: [], link: null });
+  });
+
+  it("caps the provider list at four names", () => {
+    const many = {
+      US: {
+        flatrate: [1, 2, 3, 4, 5, 6].map((n) => ({ provider_name: `P${n}`, display_priority: n })),
+      },
+    };
+    expect(selectProviders(many, "US").names).toEqual(["P1", "P2", "P3", "P4"]);
+  });
+});
+
+describe("formatWatchLength", () => {
+  it("formats movie runtimes", () => {
+    expect(formatWatchLength("movie", 148, null)).toBe("2h 28m");
+    expect(formatWatchLength("movie", 120, null)).toBe("2h");
+    expect(formatWatchLength("movie", 52, null)).toBe("52m");
+  });
+
+  it("formats TV season counts", () => {
+    expect(formatWatchLength("tv", 47, 1)).toBe("TV · 1 season");
+    expect(formatWatchLength("tv", 47, 5)).toBe("TV · 5 seasons");
+  });
+
+  it("returns null when the data is missing (caller keeps its fallback)", () => {
+    expect(formatWatchLength("movie", null, null)).toBeNull();
+    expect(formatWatchLength("tv", 47, null)).toBeNull();
+  });
+});
+
+describe("fetchTmdbCardExtras", () => {
+  it("returns null without an API key", async () => {
+    delete process.env.TMDB_API_KEY;
+    const fetchMock = stubFetch([["/movie/27205", MOVIE_DETAILS_FULL]]);
+    expect(await fetchTmdbCardExtras("movie", "27205", "US")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("maps overview, director, runtime, trailer, and region providers for a movie", async () => {
+    stubFetch([["/movie/27205", MOVIE_DETAILS_FULL]]);
+    const extras = await fetchTmdbCardExtras("movie", "27205", "US");
+    expect(extras).toEqual({
+      overview: "A thief who steals corporate secrets through dream-sharing technology.",
+      directors: ["Christopher Nolan"],
+      runtime_minutes: 148,
+      seasons: null,
+      trailer_url: "https://www.youtube.com/watch?v=official1",
+      providers: ["Max", "Netflix"],
+      providers_link: "https://www.themoviedb.org/movie/27205/watch?locale=US",
+    });
+  });
+
+  it("maps TV seasons and creator, with empty providers for an uncovered region", async () => {
+    stubFetch([["/tv/1396", TV_DETAILS_FULL]]);
+    const extras = await fetchTmdbCardExtras("tv", "1396", "US");
+    expect(extras?.seasons).toBe(5);
+    expect(extras?.directors).toEqual(["Vince Gilligan"]);
+    expect(extras?.runtime_minutes).toBe(47);
+    expect(extras?.providers).toEqual([]);
+    expect(extras?.trailer_url).toBeNull();
+  });
+
+  it("fails open (null) on a fetch error", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network")));
+    expect(await fetchTmdbCardExtras("movie", "27205", "US")).toBeNull();
+  });
+});
+
+describe("resolveMovieWithTmdb media_type", () => {
+  it("keeps the media type on the resolved movie for the later extras fetch", async () => {
+    stubFetch([["/search/multi", SEARCH_MOVIE]]);
+    const r = await resolveMovieWithTmdb({ title: "Inception", creator: "", year: 2010 });
+    expect(r?.media_type).toBe("movie");
   });
 });

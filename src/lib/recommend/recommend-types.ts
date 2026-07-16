@@ -49,9 +49,18 @@ export type ResolvedRecommendation = {
   source_rating?: number | null;
   /** Human-readable rating count (e.g. "1.1M"). */
   rating_count?: string | null;
-  /** Human-readable length (e.g. "245 pages", "Film"). */
+  /** Human-readable length (e.g. "245 pages", "1h 58m", "TV · 2 seasons"). */
   length?: string | null;
   genres?: string[];
+  /** YouTube trailer link (watch shelf only). */
+  trailer_url?: string | null;
+  /** Streaming provider names for the viewer's region (watch shelf only,
+   * JustWatch-sourced via TMDB — the deck footer carries attribution). */
+  providers?: string[];
+  /** TMDB watch page for the region, for a "where to watch" link. */
+  providers_link?: string | null;
+  /** The book's opening line (books shelf only). */
+  opening_line?: string | null;
 };
 
 /** POST /api/recommend request body. */

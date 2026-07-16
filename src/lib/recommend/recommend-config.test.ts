@@ -79,3 +79,22 @@ describe("recommend-config", () => {
     });
   });
 });
+
+describe("pickWatchRegion", () => {
+  it("uses a valid geo header country code, uppercased", async () => {
+    const { pickWatchRegion } = await import("@/lib/recommend/recommend-config");
+    expect(pickWatchRegion("ro")).toBe("RO");
+    expect(pickWatchRegion("GB")).toBe("GB");
+  });
+
+  it("falls back to the env default for missing or malformed values", async () => {
+    const { pickWatchRegion, RECOMMEND_WATCH_REGION } = await import(
+      "@/lib/recommend/recommend-config"
+    );
+    expect(pickWatchRegion(null)).toBe(RECOMMEND_WATCH_REGION);
+    expect(pickWatchRegion(undefined)).toBe(RECOMMEND_WATCH_REGION);
+    expect(pickWatchRegion("")).toBe(RECOMMEND_WATCH_REGION);
+    expect(pickWatchRegion("USA")).toBe(RECOMMEND_WATCH_REGION);
+    expect(pickWatchRegion("1x")).toBe(RECOMMEND_WATCH_REGION);
+  });
+});

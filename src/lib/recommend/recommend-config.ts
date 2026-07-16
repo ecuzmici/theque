@@ -55,6 +55,23 @@ export const RECOMMEND_RATE_LIMIT_PER_DAY = Number.parseInt(
   10,
 );
 
+/** Fallback region for streaming availability when geo detection misses. */
+export const RECOMMEND_WATCH_REGION = (
+  process.env.RECOMMEND_WATCH_REGION ?? "US"
+).toUpperCase();
+
+/**
+ * Resolve the streaming-availability region for a request (ADR 0015):
+ * Vercel's x-vercel-ip-country header when it looks like an ISO country
+ * code, else the env fallback.
+ */
+export function pickWatchRegion(headerCountry: string | null | undefined): string {
+  const candidate = headerCountry?.trim().toUpperCase();
+  return candidate && /^[A-Z]{2}$/.test(candidate)
+    ? candidate
+    : RECOMMEND_WATCH_REGION;
+}
+
 /**
  * Ordered AI Gateway model fallback for recommendations.
  *
