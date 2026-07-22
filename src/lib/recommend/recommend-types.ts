@@ -22,6 +22,13 @@ export type TasteProfile = {
   disliked: TasteProfileItem[];
   backlog: TasteProfileItem[];
   never: string[];
+  /**
+   * Every titled library item, echoed to the LLM as an explicit "already have —
+   * do not suggest" list so it stops proposing owned titles the dedup pass would
+   * silently drop (ADR 0016). Capped at RECOMMEND_MAX_OWNED_TITLES. Optional so
+   * unit fixtures that only exercise the taste sections can omit it.
+   */
+  owned?: string[];
 };
 
 /** Raw candidate emitted by the LLM (identity only, no URLs). */
@@ -68,9 +75,20 @@ export type RecommendRequest = {
   shelfId: RecommendShelfId;
 };
 
+/**
+ * Why a recommendation run came back empty (ADR 0016), so the UI can tell an
+ * honest dead-end from a retryable miss:
+ * - `exhausted`: the LLM generated fine but everything it produced is already
+ *   owned or recently seen — the user is near the edge of their taste graph.
+ * - `transient`: the LLM under-produced or nothing resolved — retrying may help.
+ */
+export type RecommendEmptyReason = "exhausted" | "transient";
+
 /** POST /api/recommend success response. */
 export type RecommendResponse = {
   cards: ResolvedRecommendation[];
+  /** Present only when `cards` is empty; tells the deck which copy to show. */
+  reason?: RecommendEmptyReason;
 };
 
 /** Final outcome actions the deck can log (not `shown`). */

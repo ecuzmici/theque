@@ -8,6 +8,7 @@ import {
 } from "@/components/recommend/recommend-deck-utils";
 import type {
   RecommendDismissReason,
+  RecommendEmptyReason,
   RecommendResponse,
   RecommendShelfId,
   ResolvedRecommendation,
@@ -47,6 +48,11 @@ export type RecommendationRunState = {
   shelf: RecommendShelfId | null;
   cards: ResolvedRecommendation[];
   errorMessage: string | null;
+  /**
+   * Why a `ready` run has zero cards (ADR 0016): `exhausted` vs `transient`.
+   * Null when there are cards or no run. Drives the deck's empty-state copy.
+   */
+  emptyReason: RecommendEmptyReason | null;
   cursor: DeckCursor;
 };
 
@@ -56,6 +62,7 @@ const INITIAL_STATE: RecommendationRunState = {
   shelf: null,
   cards: [],
   errorMessage: null,
+  emptyReason: null,
   cursor: EMPTY_CURSOR,
 };
 
@@ -116,6 +123,7 @@ export function useRecommendationRun() {
         shelf,
         cards: [],
         errorMessage: null,
+        emptyReason: null,
         cursor: EMPTY_CURSOR,
       });
 
@@ -149,6 +157,7 @@ export function useRecommendationRun() {
           runStatus: "ready",
           cards: data.cards,
           errorMessage: null,
+          emptyReason: data.cards.length === 0 ? data.reason ?? "transient" : null,
           cursor: EMPTY_CURSOR,
         }));
       } catch {

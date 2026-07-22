@@ -74,6 +74,14 @@ export function buildRecommendPrompt(
     );
   }
 
+  if (profile.owned && profile.owned.length > 0) {
+    sections.push(
+      "",
+      `ALREADY IN THEIR LIBRARY (do not suggest any of these — they already have them):`,
+      profile.owned.map(formatNeverTitle).join("\n"),
+    );
+  }
+
   if (profile.never.length > 0) {
     sections.push(
       "",
@@ -82,13 +90,24 @@ export function buildRecommendPrompt(
     );
   }
 
+  const hasOwned = Boolean(profile.owned && profile.owned.length > 0);
+  const excludedLists = ["the NEVER list", hasOwned ? "the ALREADY IN THEIR LIBRARY list" : null]
+    .filter((v): v is string => v !== null)
+    .join(" or ");
+
+  // Freshness nudge (ADR 0016): the recommend path has no search grounding, so
+  // without an explicit ask even recent-knowledge models default to safe canon.
+  // Relative year keeps this current without a code change each year.
+  const recentFrom = new Date().getFullYear() - 1;
+
   sections.push(
     "",
     `Rules:`,
-    `- Never suggest any title from the NEVER list above.`,
+    `- Never suggest any title from ${excludedLists} above.`,
     `- Output identity only: title, ${creatorLabel} (as "creator"), year, a 1–2 sentence spoiler-free description, and one sentence on why it connects to their taste.`,
     `- Do NOT output URLs or links of any kind.`,
     `- Mix well-known and lesser-known titles.`,
+    `- Include a strong mix of recent releases: at least half your suggestions should be from roughly ${recentFrom} or later, and must genuinely exist. Avoid direct sequels to titles already listed above.`,
     ``,
     `Respond with ONLY a JSON object of exactly this shape (no other text):`,
     `{"candidates":[{"title":string,"creator":string,"year":number,"description":string,"reason":string}]}`,
@@ -120,7 +139,7 @@ export const RECOMMEND_RESPONSE_SCHEMA = {
         additionalProperties: false,
       },
       minItems: 1,
-      maxItems: 8,
+      maxItems: 50,
     },
   },
   required: ["candidates"],

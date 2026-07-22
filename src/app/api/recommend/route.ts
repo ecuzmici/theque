@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { generateJsonWithFallback } from "@/lib/ai/gateway";
+import { aiDailyLimitForUser } from "@/lib/ai/limits";
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { rateLimit } from "@/lib/rate-limit";
 import {
@@ -20,6 +21,7 @@ import {
   pickWatchRegion,
 } from "@/lib/recommend/recommend-config";
 import { dedupRecommendations, normalizeTitle } from "@/lib/recommend/dedup";
+import { isSuppressedOutcome } from "@/lib/recommend/suppression";
 import { buildRecommendPrompt } from "@/lib/recommend/recommend-prompt";
 import { fetchBookDescription } from "@/lib/recommend/resolve/google-books";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
@@ -55,14 +57,6 @@ function buildSearchQuery(candidate: LlmCandidate, shelfId: "books" | "watch"): 
   if (candidate.creator) parts.push(candidate.creator);
   parts.push(type);
   return parts.join(" ");
-}
-
-function isSuppressedOutcome(row: OutcomeRow, cutoffMs: number): boolean {
-  if (row.outcome === "dismissed" || row.outcome === "saved") return true;
-  if (row.outcome === "shown") {
-    return new Date(row.shown_at).getTime() > cutoffMs;
-  }
-  return false;
 }
 
 export async function POST(req: Request) {
@@ -105,7 +99,7 @@ export async function POST(req: Request) {
 
   const rl = await rateLimit(
     `recommend:${user.id}`,
-    RECOMMEND_RATE_LIMIT_PER_DAY,
+    aiDailyLimitForUser(user.id, RECOMMEND_RATE_LIMIT_PER_DAY),
     86400,
   );
   if (!rl.ok) {
@@ -265,8 +259,34 @@ export async function POST(req: Request) {
   const filteredCards = filterNeverTitles(dedupedCards, tasteProfile.never);
   const finalCards = filteredCards.slice(0, RECOMMEND_COUNT);
 
+  // Funnel telemetry (ADR 0016): where the candidate pool collapses is otherwise
+  // invisible. These counts also drive the empty-reason discriminant below.
+  const funnel = {
+    llm_returned: candidates.length,
+    resolved: resolvedCards.length,
+    after_dedup: dedupedCards.length,
+    after_never: filteredCards.length,
+    final: finalCards.length,
+  };
+  console.log(
+    `[api/recommend] funnel shelf=${shelfId} owned=${existingTitles.length} never=${tasteProfile.never.length} ` +
+      `llm_returned=${funnel.llm_returned} resolved=${funnel.resolved} ` +
+      `after_dedup=${funnel.after_dedup} after_never=${funnel.after_never} final=${funnel.final}`,
+  );
+
   if (finalCards.length === 0) {
-    return jsonResponse({ cards: [] } satisfies RecommendResponse, { status: 200 });
+    // Exhausted = the LLM generated a full batch and titles resolved, but every
+    // one was already owned or recently seen (the user is near the edge of their
+    // taste graph). Otherwise the miss is transient (LLM under-produced or
+    // nothing resolved) and retrying may help. See ADR 0016 / RecommendDeck.
+    const reason =
+      funnel.llm_returned >= RECOMMEND_COUNT && funnel.resolved > 0
+        ? "exhausted"
+        : "transient";
+    return jsonResponse(
+      { cards: [], reason } satisfies RecommendResponse,
+      { status: 200 },
+    );
   }
 
   // Extras pass (ADR 0015): only the final cards get one details fetch each,

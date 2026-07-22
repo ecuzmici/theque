@@ -277,17 +277,16 @@ describe("POST /api/recommend", () => {
       expect(call.prompt).toContain("dismissed pick");
     });
 
-    it("does not include shown outcomes older than 30 days in NEVER", async () => {
+    it("excludes shown outcomes past the cooldown but keeps recent ones (ADR 0016: 14d)", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
-      const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 31);
+      const staleShown = new Date();
+      staleShown.setDate(staleShown.getDate() - 20); // past the 14-day window
+      const recentShown = new Date();
+      recentShown.setDate(recentShown.getDate() - 5); // within the window
       mockSupabase({
         outcomes: [
-          {
-            title_norm: "old shown pick",
-            outcome: "shown",
-            shown_at: oldDate.toISOString(),
-          },
+          { title_norm: "stale shown pick", outcome: "shown", shown_at: staleShown.toISOString() },
+          { title_norm: "recent shown pick", outcome: "shown", shown_at: recentShown.toISOString() },
         ],
       });
       mockGatewaySuccess([]);
@@ -296,7 +295,8 @@ describe("POST /api/recommend", () => {
       await POST(makeRequest({ shelfId: "books" }));
 
       const call = vi.mocked(generateJsonWithFallback).mock.calls[0][0];
-      expect(call.prompt).not.toContain("old shown pick");
+      expect(call.prompt).not.toContain("stale shown pick");
+      expect(call.prompt).toContain("recent shown pick");
     });
   });
 
@@ -417,6 +417,55 @@ describe("POST /api/recommend", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.cards).toHaveLength(0);
+    });
+
+    it("reports reason=transient when nothing resolves (ADR 0016)", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({});
+      mockGatewaySuccess([
+        { title: "A Real Book", creator: "Real Author", year: 2020, description: "Desc", reason: "Reason" },
+      ]);
+      vi.mocked(resolveBookWithOpenLibrary).mockResolvedValue(null);
+
+      const res = await POST(makeRequest({ shelfId: "books" }));
+      const body = await res.json();
+      expect(body.cards).toHaveLength(0);
+      expect(body.reason).toBe("transient");
+    });
+
+    it("reports reason=exhausted when a full batch resolves but all are owned (ADR 0016)", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      // Library is Book 0..Book 4; the LLM proposes those same five titles, so
+      // every resolved candidate is deduped away — the taste-graph-edge case.
+      mockSupabase({});
+      mockGatewaySuccess(
+        Array.from({ length: 5 }, (_, i) => ({
+          title: `Book ${i}`,
+          creator: `Author ${i}`,
+          year: 2000 + i,
+          description: "Desc",
+          reason: "Reason",
+        })),
+      );
+      mockResolverSuccess();
+
+      const res = await POST(makeRequest({ shelfId: "books" }));
+      const body = await res.json();
+      expect(body.cards).toHaveLength(0);
+      expect(body.reason).toBe("exhausted");
+    });
+
+    it("echoes owned library titles into the prompt (ADR 0016)", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({});
+      mockGatewaySuccess([]);
+      mockResolverSuccess();
+
+      await POST(makeRequest({ shelfId: "books" }));
+
+      const call = vi.mocked(generateJsonWithFallback).mock.calls[0][0];
+      expect(call.prompt).toContain("ALREADY IN THEIR LIBRARY");
+      expect(call.prompt).toContain('- "Book 0"');
     });
   });
 });

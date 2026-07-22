@@ -8,6 +8,7 @@ import {
   RECOMMEND_DISLIKED_MAX,
   RECOMMEND_LOVED_MAX,
   RECOMMEND_MAX_INPUT_ITEMS,
+  RECOMMEND_MAX_OWNED_TITLES,
   RECOMMEND_VERDICT_NOTE_MAX,
 } from "@/lib/recommend/recommend-config";
 import type { RecommendShelfId, TasteProfile, TasteProfileItem } from "@/lib/recommend/recommend-types";
@@ -93,12 +94,14 @@ export function categoriesForShelf(shelfId: RecommendShelfId): ItemCategory[] {
  * DISLIKED: done + rating 1–2, up to RECOMMEND_DISLIKED_MAX.
  * BACKLOG: want + no rating, fills remaining budget up to RECOMMEND_MAX_INPUT_ITEMS.
  * NEVER: outcome titles + items dropped for empty structured.
+ * OWNED: every titled library item, capped — the LLM's full "already have" guard.
  */
 export function buildTasteProfile(
   items: LibraryItemRow[],
   suppressedTitles: string[],
 ): TasteProfile {
   const neverSet = new Set<string>();
+  const ownedTitles: string[] = [];
 
   for (const title of suppressedTitles) {
     if (title.trim()) neverSet.add(title.trim());
@@ -110,6 +113,12 @@ export function buildTasteProfile(
 
   for (const row of items) {
     if (!row.title?.trim()) continue;
+
+    // Every titled item is "owned" for the do-not-suggest guard, regardless of
+    // whether its structured metadata is rich enough to feed the taste signal.
+    if (ownedTitles.length < RECOMMEND_MAX_OWNED_TITLES) {
+      ownedTitles.push(row.title.trim());
+    }
 
     const structuredOk = hasStructuredData(row.structured);
     if (!structuredOk) {
@@ -143,6 +152,7 @@ export function buildTasteProfile(
     disliked,
     backlog,
     never: [...neverSet],
+    owned: ownedTitles,
   };
 }
 

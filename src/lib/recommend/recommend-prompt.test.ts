@@ -63,6 +63,21 @@ describe("buildRecommendPrompt", () => {
       expect(prompt).toContain('- "Recently Shown Pick"');
     });
 
+    it("includes an ALREADY IN THEIR LIBRARY block from owned titles (ADR 0016)", () => {
+      const prompt = buildRecommendPrompt("books", {
+        ...lovedProfile,
+        owned: ["Piranesi", "Some Backlog Book"],
+      });
+      expect(prompt).toContain("ALREADY IN THEIR LIBRARY");
+      expect(prompt).toContain('- "Some Backlog Book"');
+      expect(prompt).toContain("or the ALREADY IN THEIR LIBRARY list");
+    });
+
+    it("omits the ALREADY IN THEIR LIBRARY block when owned is absent", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile);
+      expect(prompt).not.toContain("ALREADY IN THEIR LIBRARY");
+    });
+
     it("instructs to output author as creator", () => {
       const prompt = buildRecommendPrompt("books", lovedProfile);
       expect(prompt).toContain("author");

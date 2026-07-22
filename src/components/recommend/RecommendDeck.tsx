@@ -203,7 +203,7 @@ type RecommendDeckProps = {
 };
 
 export function RecommendDeck({ run }: RecommendDeckProps) {
-  const { runStatus, cards, errorMessage, cursor } = run;
+  const { runStatus, cards, errorMessage, emptyReason, cursor } = run;
   const { index, outcomes, askReason } = cursor;
   const shelfId = run.shelf ?? "books";
 
@@ -247,11 +247,25 @@ export function RecommendDeck({ run }: RecommendDeckProps) {
               Try again
             </Button>
           </div>
-        ) : runStatus === "ready" && total === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+        ) : runStatus === "ready" && total === 0 && emptyReason === "exhausted" ? (
+          // Honest dead-end (ADR 0016): retrying won't help — the user has seen
+          // or owns everything close to their taste. Borrow the "all caught up"
+          // voice rather than the misleading "try again later".
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-16 text-center">
+            <h2 className="font-serif text-2xl text-foreground">You&rsquo;re near the edge of your taste</h2>
             <p className="text-sm text-muted-foreground">
-              No new recommendations right now. Try again later.
+              We&rsquo;ve suggested everything close to what&rsquo;s on this shelf. Rate or add a few
+              more titles and fresh picks will open up.
             </p>
+          </div>
+        ) : runStatus === "ready" && total === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+            <p className="text-sm text-muted-foreground">
+              Couldn&rsquo;t find picks right now.
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={run.retry}>
+              Try again
+            </Button>
           </div>
         ) : runStatus === "ready" && done ? (
           <div className="mx-auto flex max-w-md animate-in fade-in-0 zoom-in-95 flex-col items-center gap-4 px-4 py-16 text-center duration-300">

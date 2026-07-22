@@ -31,11 +31,41 @@ export const RECOMMEND_DISLIKED_MAX = 3;
 /** Max chars of verdict note included in the prompt. */
 export const RECOMMEND_VERDICT_NOTE_MAX = 200;
 
-/** Cooldown window for shown-but-not-acted outcomes (days). */
-export const RECOMMEND_SHOWN_COOLDOWN_DAYS = 30;
+/**
+ * Cooldown window for shown-but-not-acted outcomes (days).
+ *
+ * "Shown but you ignored it" is not rejection, so ignored titles cycle back
+ * after this window instead of being suppressed for a month (ADR 0016). Kept
+ * short so a heavy user's never-list stays bounded; `dismissed`/`saved` outcomes
+ * are still suppressed permanently (see isSuppressedOutcome in the route).
+ */
+export const RECOMMEND_SHOWN_COOLDOWN_DAYS = Number.parseInt(
+  process.env.RECOMMEND_SHOWN_COOLDOWN_DAYS ?? "14",
+  10,
+);
 
-/** Number of candidates requested from the LLM (buffer for dedup/resolve drops). */
-export const RECOMMEND_OVER_REQUEST = 8;
+/**
+ * Number of candidates requested from the LLM (buffer for dedup/resolve drops).
+ *
+ * Deliberately generous (ADR 0016): the funnel drops candidates at resolve,
+ * dedup-against-library, and never-filter, so a small pool collapses to empty
+ * for heavy users. Env-configurable so the yield eval can sweep it.
+ */
+export const RECOMMEND_OVER_REQUEST = Number.parseInt(
+  process.env.RECOMMEND_OVER_REQUEST ?? "24",
+  10,
+);
+
+/**
+ * Max owned/library titles echoed into the prompt as an explicit
+ * "already have — do not suggest" block (ADR 0016). Dedup still runs against the
+ * full library server-side; this only bounds prompt size so the LLM stops
+ * burning candidates on titles the user already owns.
+ */
+export const RECOMMEND_MAX_OWNED_TITLES = Number.parseInt(
+  process.env.RECOMMEND_MAX_OWNED_TITLES ?? "250",
+  10,
+);
 
 /** Number of resolved cards to keep and return. */
 export const RECOMMEND_COUNT = Number.parseInt(
@@ -75,21 +105,24 @@ export function pickWatchRegion(headerCountry: string | null | undefined): strin
 /**
  * Ordered AI Gateway model fallback for recommendations.
  *
- * Chosen from a repeatable benchmark (scripts/bench-recommend.ts, 2026-06-28):
- * 9 models × 2 trials on a 22-book fixture with the ADR 0002 redesign prompt.
- * Latency gate: p50 ≤ 15s. Sorted by resolve-rate among survivors.
+ * Chosen from the yield eval (scripts/eval-recommend.ts, ADR 0016, 2026-07-23):
+ * candidates run against the owner's real library at over_request=24, scored on
+ * JSON reliability, resolve rate, pick quality, and — critically — knowledge
+ * recency, since the recommend path has no search grounding so the model's
+ * training cutoff is a hard ceiling on how fresh a suggestion can be.
  *
- * gemini-3.1-flash-lite: primary — fastest (2.7s p50), 73% resolve, best era
- * diversity. gemini-2.5-flash-lite: highest resolve (88%) when stable, cheap.
- * claude-haiku-4.5: cross-provider fallback, best pick quality.
+ * gemini-3.6-flash: primary — newest knowledge, best on-taste picks, reliable
+ * JSON at 24. gpt-5.6-luna: recent cross-provider fallback. gemini-3.5-flash-lite:
+ * cheap recent-knowledge backstop.
  *
- * Note: openai/gpt-5-nano (former primary) was absent from the Gateway catalog
- * on the benchmark date and removed.
+ * Rejected: gemini-3.1-flash-lite (intermittent JSON truncation at 24),
+ * openai/gpt-5-nano (too slow, aborts), zai/glm-4.7-flash (JSON truncation),
+ * openai/gpt-4.1-mini (reliable but oldest cutoff, ~mid-2024).
  */
 export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
-  "google/gemini-3.1-flash-lite",
-  "google/gemini-2.5-flash-lite",
-  "anthropic/claude-haiku-4.5",
+  "google/gemini-3.6-flash",
+  "openai/gpt-5.6-luna",
+  "google/gemini-3.5-flash-lite",
 ]);
 
 /**

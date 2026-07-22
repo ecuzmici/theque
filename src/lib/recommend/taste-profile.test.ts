@@ -79,6 +79,19 @@ describe("buildTasteProfile", () => {
     expect(profile.disliked.map((i) => i.title)).toContain("Bad Book");
   });
 
+  it("lists every titled item in owned, including sparse ones (ADR 0016)", () => {
+    const profile = buildTasteProfile(
+      [
+        item({ title: "Great Book", status: "done", rating_personal: 5 }),
+        item({ title: "Backlog Book" }),
+        item({ title: "Sparse Book", structured: {} }),
+        item({ title: "   ", structured: {} }), // untitled → excluded
+      ],
+      [],
+    );
+    expect(profile.owned).toEqual(["Great Book", "Backlog Book", "Sparse Book"]);
+  });
+
   it("truncates verdict notes to ~200 chars", () => {
     const longNote = "x".repeat(250);
     const profile = buildTasteProfile(
