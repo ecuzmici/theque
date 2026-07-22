@@ -110,10 +110,22 @@ Two distinct failures are tangled here:
   - Gate: **≥ `RECOMMEND_COUNT` survivors across the early rounds**. Keep the
     blind taste-test for pick quality (manual; no LLM-as-judge for now).
 
-- **Model roster refresh is downstream of the eval, not this ADR.** The eval,
-  once it measures yield under a realistic never-list, decides the model list.
-  A model that aced the old resolve+novelty bench on a toy fixture can still
-  starve in production.
+- **Model roster chosen by the eval, weighted on knowledge recency.** Because
+  the recommend path has no search grounding, the model's training cutoff is a
+  hard ceiling on how fresh a suggestion can be. Ran candidates at
+  `over_request=24`; new roster: **`gemini-3.6-flash` → `gpt-5.6-luna` →
+  `gemini-3.5-flash-lite`** (recent knowledge + reliable JSON at 24). Rejected:
+  `gemini-3.1-flash-lite` (intermittent JSON truncation at 24), `gpt-5-nano`
+  (too slow), `glm-4.7-flash` (JSON truncation), `gpt-4.1-mini` (reliable but
+  oldest cutoff, ~mid-2024).
+
+- **Freshness is a prompt problem, not just a model one.** Confirmed across old
+  and new models: without an explicit ask, every model defaults to safe canon
+  (newest pick ~2022). A balanced recency rule in `buildRecommendPrompt` ("at
+  least half from roughly last-year-or-later, must genuinely exist, no direct
+  sequels to listed titles") flipped picks to real, resolvable 2024–2025 titles
+  (The Substance, Longlegs, Alien Clay, The Mercy of Gods, …). The year is
+  relative (`getFullYear() - 1`) so it stays current.
 
 ## Validation (2026-07-23)
 
