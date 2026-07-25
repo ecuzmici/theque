@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
         "/item/",
         "/search",
         "/add",
+        "/rate/",
         "/font-preview",
       ],
     },

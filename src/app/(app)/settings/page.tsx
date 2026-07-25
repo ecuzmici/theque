@@ -3,7 +3,9 @@ import { BarChart3, ChevronRight } from "lucide-react";
 
 import { CaptureTokens } from "@/components/settings/CaptureTokens";
 import { DangerZone } from "@/components/settings/DangerZone";
+import { EmailPreferences } from "@/components/settings/EmailPreferences";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { fetchDigestPreferences } from "@/lib/profiles/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -22,6 +24,8 @@ export default async function SettingsPage() {
     .select("id, name, token_prefix, created_at, last_used_at, revoked_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
+
+  const digestPreferences = await fetchDigestPreferences(supabase, user.id);
 
   return (
     <div>
@@ -45,6 +49,12 @@ export default async function SettingsPage() {
         <ChevronRight className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       </Link>
       <CaptureTokens initialTokens={tokens ?? []} userEmail={user.email ?? undefined} />
+      <div className="mt-6">
+        <EmailPreferences
+          initialPreferences={digestPreferences}
+          userEmail={user.email ?? undefined}
+        />
+      </div>
       <div className="mt-6">
         <DangerZone />
       </div>

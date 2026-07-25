@@ -178,6 +178,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      profiles: {
+        Row: {
+          user_id: string;
+          email: string | null;
+          digest_enabled: boolean;
+          digest_day: number;
+          unsubscribe_token: string;
+          last_digest_sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          email?: string | null;
+          digest_enabled?: boolean;
+          digest_day?: number;
+          unsubscribe_token?: string;
+          last_digest_sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          email?: string | null;
+          digest_enabled?: boolean;
+          digest_day?: number;
+          unsubscribe_token?: string;
+          last_digest_sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       capture_tokens: {
         Row: {
           id: string;
