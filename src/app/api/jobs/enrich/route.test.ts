@@ -29,6 +29,8 @@ vi.mock("@/lib/supabase/admin", () => ({
 
 describe("/api/jobs/enrich", () => {
   const originalCronSecret = process.env.CRON_SECRET;
+  const originalBatchSize = process.env.ENRICH_BATCH_SIZE;
+  const originalPerUserCap = process.env.ENRICH_PER_USER_CAP;
 
   beforeEach(() => {
     vi.resetModules();
@@ -44,6 +46,7 @@ describe("/api/jobs/enrich", () => {
         return chain;
       },
       eq: () => chain,
+      in: () => chain,
       lt: () => chain,
       gte: () => chain,
       then: (resolve: (value: { error: null }) => void) => resolve({ error: null }),
@@ -51,10 +54,16 @@ describe("/api/jobs/enrich", () => {
     mocks.from.mockReturnValue(chain);
 
     process.env.CRON_SECRET = "cron-test-secret";
+    delete process.env.ENRICH_BATCH_SIZE;
+    delete process.env.ENRICH_PER_USER_CAP;
   });
 
   afterEach(() => {
     process.env.CRON_SECRET = originalCronSecret;
+    if (originalBatchSize === undefined) delete process.env.ENRICH_BATCH_SIZE;
+    else process.env.ENRICH_BATCH_SIZE = originalBatchSize;
+    if (originalPerUserCap === undefined) delete process.env.ENRICH_PER_USER_CAP;
+    else process.env.ENRICH_PER_USER_CAP = originalPerUserCap;
   });
 
   it("allows Vercel cron GET requests to process pending items", async () => {
@@ -76,12 +85,32 @@ describe("/api/jobs/enrich", () => {
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ processed: 1, failed: 1 });
+    // No `target_user`: the cron claims across every library, capped per user.
     expect(mocks.rpc).toHaveBeenCalledWith("claim_pending_enrichment_items", {
-      batch_size: 10,
-      per_user_cap: 3,
+      batch_size: 60,
+      per_user_cap: 20,
     });
-    expect(mocks.enrichItem).toHaveBeenNthCalledWith(1, "item-1");
-    expect(mocks.enrichItem).toHaveBeenNthCalledWith(2, "item-2");
+    expect(mocks.enrichItem).toHaveBeenCalledWith("item-1");
+    expect(mocks.enrichItem).toHaveBeenCalledWith("item-2");
+  });
+
+  it("takes batch size and per-user cap from the environment", async () => {
+    process.env.ENRICH_BATCH_SIZE = "12";
+    process.env.ENRICH_PER_USER_CAP = "4";
+    mocks.rpc.mockResolvedValue({ data: [], error: null });
+
+    const { GET } = await import("./route");
+
+    await GET(
+      new Request("https://theque.app/api/jobs/enrich", {
+        headers: { Authorization: "Bearer cron-test-secret" },
+      }),
+    );
+
+    expect(mocks.rpc).toHaveBeenCalledWith("claim_pending_enrichment_items", {
+      batch_size: 12,
+      per_user_cap: 4,
+    });
   });
 
   it("requeues stale processing items before claiming", async () => {
@@ -103,5 +132,14 @@ describe("/api/jobs/enrich", () => {
       enrichment_error: "stale_processing",
     });
     expect(mocks.update).toHaveBeenCalledWith({ processing_status: "pending" });
+  });
+
+  it("rejects requests without the cron secret", async () => {
+    const { GET } = await import("./route");
+
+    const res = await GET(new Request("https://theque.app/api/jobs/enrich"));
+
+    expect(res.status).toBe(401);
+    expect(mocks.rpc).not.toHaveBeenCalled();
   });
 });

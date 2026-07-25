@@ -45,7 +45,8 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/app/login` + `src/app/auth/callback` | Hybrid login (GitHub/Google OAuth + email code); `/auth/callback` is the OAuth code-exchange route |
 | `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
-| `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
+| `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`); sizing via `ENRICH_BATCH_SIZE` / `ENRICH_PER_USER_CAP` / `ENRICH_CONCURRENCY` |
+| `src/app/api/items/enrich-pending` | Session-auth drain of your own backlog, looped by the import wizard |
 | `src/app/api/jobs/digest` | Weekly per-profile letter (needs `CRON_SECRET`; daily cron picks due profiles; `?dry=1` renders without sending) |
 | `src/app/unsubscribe/[token]` | Public one-click unsubscribe keyed on `profiles.unsubscribe_token` |
 | `src/app/rate/[token]` | Public one-tap star rating from the letter; HMAC-signed link, no session (needs `RATING_LINK_SECRET`) |

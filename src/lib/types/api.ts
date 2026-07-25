@@ -120,6 +120,26 @@ export type EnrichJobResponseBody = {
 };
 
 /**
+ * POST /api/items/enrich-pending — one bounded slice of the caller's own
+ * enrichment backlog, meant to be called in a loop by the import wizard.
+ *
+ * `remaining` is the whole point: it is the pending count *after* this slice,
+ * so a client loops while it is above zero and can render honest progress
+ * without tracking anything itself. A call that claims nothing (`claimed: 0`)
+ * means the queue is drained or another tab holds the rest — either way, stop.
+ */
+export type EnrichPendingResponseBody = {
+  /** Rows this call locked for itself. Never more than the per-request bound. */
+  claimed: number;
+  /** Claimed rows that came back enriched. */
+  processed: number;
+  /** Claimed rows that hit their final attempt and gave up. */
+  failed: number;
+  /** Rows still waiting in this library after the call. */
+  remaining: number;
+};
+
+/**
  * POST /api/import — one chunk of an already-parsed import file.
  *
  * Parsing happens in the browser (see `src/lib/import/`), so the wire format is

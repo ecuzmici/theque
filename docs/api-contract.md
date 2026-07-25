@@ -368,7 +368,11 @@ Errors: `401 unauthorized`, `400 invalid_body` / `batch_too_large`,
 
 **Auth:** Cron secret header `Authorization: Bearer <CRON_SECRET>`
 
-Claims up to 10 `pending` items, processes sequentially.
+Claims up to `ENRICH_BATCH_SIZE` (default 60) `pending` items, at most
+`ENRICH_PER_USER_CAP` (default 20) from any one library, and enriches them
+`ENRICH_CONCURRENCY` (default 3) at a time. Work stops ~50s in; anything claimed
+but not started is put back to `pending` before responding, so a run never
+strands rows in `processing`.
 
 **Response `200`**
 
@@ -377,6 +381,29 @@ Claims up to 10 `pending` items, processes sequentially.
 ```
 
 Returns `401 unauthorized` without the configured secret.
+
+---
+
+### `GET|POST /api/items/enrich-pending`
+
+**Auth:** session cookie.
+
+The user-driven drain, for the import wizard: `POST` enriches up to 6 of the
+**caller's own** pending rows and reports what is left; `GET` reports the count
+without doing any work (used to offer a resume after a closed tab). The claim is
+the same `claim_pending_enrichment_items` RPC the cron uses, with `target_user`
+bound to the session — atomic, so two tabs never claim the same row.
+
+Rate limits: 20 `POST` / 60s and 30 `GET` / 60s per user, on their own buckets.
+
+**Response `200`**
+
+```json
+{ "claimed": 6, "processed": 5, "failed": 1, "remaining": 394 }
+```
+
+`401 unauthorized` without a session, `429 rate_limited` with `Retry-After`,
+`500 claim_failed` if the claim itself errors.
 
 ## Internal: enrichment job
 

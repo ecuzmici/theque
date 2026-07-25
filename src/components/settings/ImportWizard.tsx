@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
-import { CheckCircle2, CircleAlert, FileUp, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckCircle2, CircleAlert, FileUp, ImageDown, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,6 +36,7 @@ import {
 import type { ItemCategory } from "@/lib/database.types";
 import { CATEGORY_LABELS, formatCategory } from "@/lib/item-labels";
 import type {
+  EnrichPendingResponseBody,
   ImportParseResponseBody,
   ImportRejection,
   ImportResponseBody,
@@ -43,6 +44,12 @@ import type {
 
 /** Rows per request to `/api/import`; the route's own cap is 500. */
 const UPLOAD_CHUNK_SIZE = 250;
+
+/**
+ * Mirrors `DRAIN_BATCH_SIZE` in `/api/items/enrich-pending`. Only used to size
+ * the loop's own safety cap, so drifting from the server is harmless.
+ */
+const DRAIN_BATCH_HINT = 6;
 
 const MARKUP_EXTENSIONS = [".html", ".htm", ".zip"];
 
@@ -89,6 +96,19 @@ type RunTotals = {
 };
 
 type Stage = "idle" | "mapping" | "preview" | "running" | "done";
+
+/**
+ * The cover drain is a second, independent progress track: it outlives the
+ * import stage it was started from and can be picked up on a later visit.
+ *
+ * - `idle` — nothing waiting, nothing to say.
+ * - `waiting` — rows are pending and nobody is draining them (a fresh visit
+ *   after a closed tab, or a loop the user stopped).
+ * - `running` — the loop is calling the endpoint.
+ * - `done` — the queue emptied.
+ * - `error` — the loop gave up; the backlog is intact and retryable.
+ */
+type DrainStatus = "idle" | "waiting" | "running" | "done" | "error";
 
 /**
  * Files the browser cannot parse itself: bookmark/Pocket HTML (jsdom) and
@@ -143,7 +163,15 @@ export function ImportWizard() {
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [totals, setTotals] = useState<RunTotals | null>(null);
 
+  const [drainStatus, setDrainStatus] = useState<DrainStatus>("idle");
+  const [drain, setDrain] = useState({ total: 0, remaining: 0 });
+
   const inputRef = useRef<HTMLInputElement>(null);
+  // The loop is a plain async function, not an effect: it must survive re-renders
+  // and be stoppable from a button. Refs, not state, so reading them mid-loop
+  // never sees a stale closure.
+  const drainStopRef = useRef(false);
+  const drainRunningRef = useRef(false);
   // Kept so the mapping step can re-parse without re-reading the file, and so
   // the server-parse fallback can upload the original bytes.
   const inputCache = useRef<{ file: File; input: ImportInput } | null>(null);
@@ -164,6 +192,119 @@ export function ImportWizard() {
     setTotals(null);
     inputCache.current = null;
     if (inputRef.current) inputRef.current.value = "";
+  }, []);
+
+  /** Pending count, or `null` if we could not ask. Never enriches anything. */
+  const fetchRemaining = useCallback(async (): Promise<number | null> => {
+    try {
+      const res = await fetch("/api/items/enrich-pending", { method: "GET" });
+      if (!res.ok) return null;
+      const body = (await res.json()) as EnrichPendingResponseBody;
+      return body.remaining;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /**
+   * Walk the backlog down, one bounded server-side slice per request.
+   *
+   * Everything that makes this safe lives on the server (the claim is atomic and
+   * user-scoped, unfinished rows are handed back). So the loop can stop at any
+   * point — a pressed button, a closed tab, a dropped connection — and the only
+   * consequence is that the count stops going down.
+   */
+  const startDrain = useCallback(async () => {
+    if (drainRunningRef.current) return;
+    drainRunningRef.current = true;
+    drainStopRef.current = false;
+    setDrainStatus("running");
+
+    try {
+      const initial = await fetchRemaining();
+      let remaining = initial ?? drain.remaining;
+      setDrain({ total: remaining, remaining });
+      if (remaining === 0) {
+        setDrainStatus("done");
+        return;
+      }
+
+      // A row that fails transiently returns to `pending` and is retried, up to
+      // its attempt cap — so the loop is bounded by roughly three passes, plus
+      // slack for rows added while it runs. Without a cap, a permanently
+      // unreachable site would keep it spinning.
+      const maxCalls = Math.ceil(remaining / DRAIN_BATCH_HINT) * 3 + 10;
+
+      for (let call = 0; call < maxCalls; call += 1) {
+        if (drainStopRef.current) {
+          setDrainStatus("waiting");
+          return;
+        }
+
+        let res: Response;
+        try {
+          res = await fetch("/api/items/enrich-pending", { method: "POST" });
+        } catch {
+          setDrainStatus("error");
+          return;
+        }
+
+        if (res.status === 429) {
+          const retryAfter = Number.parseInt(res.headers.get("Retry-After") ?? "10", 10);
+          await sleep(Math.min(Math.max(Number.isFinite(retryAfter) ? retryAfter : 10, 1), 60) * 1000);
+          continue;
+        }
+        if (!res.ok) {
+          setDrainStatus("error");
+          return;
+        }
+
+        const body = (await res.json()) as EnrichPendingResponseBody;
+        remaining = body.remaining;
+        // The total can only grow (a capture or a second import mid-drain), so
+        // the bar never jumps backwards.
+        setDrain((current) => ({
+          total: Math.max(current.total, remaining),
+          remaining,
+        }));
+
+        // `claimed: 0` means nothing was claimable — drained, or another tab
+        // holds the rest. Either way this loop has no work left.
+        if (remaining === 0 || body.claimed === 0) {
+          setDrainStatus("done");
+          return;
+        }
+      }
+
+      // Out of iterations with rows still pending: leave it resumable rather
+      // than pretending it finished.
+      setDrainStatus("waiting");
+    } finally {
+      drainRunningRef.current = false;
+    }
+  }, [drain.remaining, fetchRemaining]);
+
+  // A visit with rows already waiting — the tab was closed part-way through a
+  // previous drain, or an import ran on another device. Offer to continue
+  // rather than starting outbound fetches nobody asked for.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const remaining = await fetchRemaining();
+      if (cancelled || !remaining) return;
+      setDrain({ total: remaining, remaining });
+      setDrainStatus((current) => (current === "idle" ? "waiting" : current));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchRemaining]);
+
+  // Unmounting (navigating away from Settings) stops the loop at the next slice.
+  useEffect(() => {
+    return () => {
+      drainStopRef.current = true;
+    };
   }, []);
 
   async function parseOnServer(file: File) {
@@ -342,6 +483,10 @@ export function ImportWizard() {
 
     setTotals(running);
     setStage("done");
+
+    // The whole point of the import is a shelf that looks like a shelf. Start
+    // fetching covers immediately rather than leaving it to the nightly cron.
+    if (running.inserted > 0) void startDrain();
   }
 
   const previewStats = parsed
@@ -623,8 +768,8 @@ export function ImportWizard() {
             </dl>
 
             <p className="text-xs text-muted-foreground">
-              Covers and details fill in over the next few enrichment runs. Titles, ratings and
-              verdicts from your file are already there.
+              Titles, ratings and verdicts from your file are already on your shelves. Covers and
+              details are being fetched now.
             </p>
 
             <SkippedList
@@ -648,8 +793,106 @@ export function ImportWizard() {
             </div>
           </div>
         ) : null}
+
+        <CoverProgress
+          status={drainStatus}
+          total={drain.total}
+          remaining={drain.remaining}
+          onStart={() => void startDrain()}
+          onStop={() => {
+            drainStopRef.current = true;
+          }}
+        />
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * The second progress bar: covers arriving, after the rows have landed.
+ *
+ * Deliberately separate from the import stages — it survives "Import another
+ * file", and it is the thing still worth showing on a visit days later.
+ */
+function CoverProgress({
+  status,
+  total,
+  remaining,
+  onStart,
+  onStop,
+}: {
+  status: DrainStatus;
+  total: number;
+  remaining: number;
+  onStart: () => void;
+  onStop: () => void;
+}) {
+  if (status === "idle") return null;
+
+  const fetched = Math.max(total - remaining, 0);
+  const percent = total > 0 ? Math.round((fetched / total) * 100) : 100;
+
+  return (
+    <div
+      className="space-y-3 rounded-lg border border-border bg-muted/30 px-3 py-3"
+      aria-live="polite"
+    >
+      {status === "running" ? (
+        <>
+          <p className="flex items-center gap-2 text-sm text-foreground">
+            <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+            Fetching covers… {fetched.toLocaleString()} of {total.toLocaleString()}
+          </p>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground/70 transition-[width]"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" className="min-h-11" onClick={onStop}>
+              Stop
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              You can close this page — covers already fetched are saved, and the rest resume next
+              time.
+            </p>
+          </div>
+        </>
+      ) : null}
+
+      {status === "waiting" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="flex items-center gap-2 text-sm text-foreground">
+            <ImageDown className="size-4 text-muted-foreground" aria-hidden />
+            {remaining.toLocaleString()} {remaining === 1 ? "item is" : "items are"} still waiting
+            for covers.
+          </p>
+          <Button type="button" variant="outline" className="min-h-11" onClick={onStart}>
+            Fetch covers
+          </Button>
+        </div>
+      ) : null}
+
+      {status === "done" ? (
+        <p className="flex items-center gap-2 text-sm text-foreground">
+          <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
+          Covers are up to date.
+        </p>
+      ) : null}
+
+      {status === "error" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="flex items-center gap-2 text-sm text-foreground">
+            <CircleAlert className="size-4 text-destructive" aria-hidden />
+            Cover fetching stopped. Nothing was lost — {remaining.toLocaleString()} still to go.
+          </p>
+          <Button type="button" variant="outline" className="min-h-11" onClick={onStart}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
