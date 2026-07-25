@@ -253,9 +253,19 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
-      claim_pending_enrichment_items:
-        | { Args: { batch_size?: number }; Returns: string[] }
-        | { Args: { batch_size?: number; per_user_cap?: number }; Returns: string[] };
+      // The 1- and 2-argument overloads were dropped in
+      // 20260725180000_claim_enrichment_target_user.sql: `create or replace`
+      // with a different argument count adds an overload rather than replacing,
+      // which would make the cron's named-argument call ambiguous. One signature.
+      claim_pending_enrichment_items: {
+        Args: {
+          batch_size?: number;
+          per_user_cap?: number;
+          /** null/absent = the globally fair cron claim; set = drain one user. */
+          target_user?: string | null;
+        };
+        Returns: string[];
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

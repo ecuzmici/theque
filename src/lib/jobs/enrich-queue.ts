@@ -114,16 +114,14 @@ export async function claimPendingEnrichmentItems(
   admin: AdminClient,
   { batchSize, perUserCap, targetUser }: ClaimArgs,
 ): Promise<{ ids: string[]; error: string | null }> {
-  // `target_user` is the third argument added in
-  // 20260725180000_claim_enrichment_target_user.sql. `database.types.ts` is
-  // generated from the schema and still carries the two-argument overloads, so
-  // the argument object is widened here rather than hand-editing that file; it
-  // narrows again the next time the types are regenerated.
+  // Omitting `target_user` entirely (rather than passing null) keeps the call
+  // identical to the one the cron has always made, so a run against a database
+  // where the migration has not yet landed still resolves.
   const args = {
     batch_size: batchSize,
     per_user_cap: perUserCap,
     ...(targetUser ? { target_user: targetUser } : {}),
-  } as { batch_size?: number; per_user_cap?: number };
+  };
 
   const { data, error } = await admin.rpc("claim_pending_enrichment_items", args);
   if (error) return { ids: [], error: error.message };
