@@ -4,9 +4,11 @@ import { MAX_NOTE_LENGTH, MAX_TITLE_LENGTH } from "@/lib/input-limits";
 import {
   classifyUrl,
   cleanValue,
+  htmlToPlainText,
   parseBookmarkTimestamp,
   splitLabels,
   stripBom,
+  toIsoDate,
   truncateNote,
   truncateTitle,
   unixTimestampToIso,
@@ -64,6 +66,42 @@ describe("parseBookmarkTimestamp", () => {
     expect(parseBookmarkTimestamp("")).toEqual({ kind: "none" });
     expect(parseBookmarkTimestamp("0")).toEqual({ kind: "none" });
     expect(parseBookmarkTimestamp("nope")).toEqual({ kind: "none" });
+  });
+});
+
+describe("toIsoDate", () => {
+  it("reads slash dates as UTC, not in the server's local zone", () => {
+    // Goodreads and StoryGraph write YYYY/MM/DD; a file round-tripped through
+    // Excel writes M/D/YYYY. `new Date(...)` would parse both locally, so the
+    // same export would import different done_at values per deployment.
+    expect(toIsoDate("2023/07/14")).toBe("2023-07-14T00:00:00.000Z");
+    expect(toIsoDate("8/10/2023")).toBe("2023-08-10T00:00:00.000Z");
+    // 13 cannot be a month, so this one has to be D/M/YYYY.
+    expect(toIsoDate("13/8/2023")).toBe("2023-08-13T00:00:00.000Z");
+  });
+
+  it("still handles ISO dates, Unix seconds and junk", () => {
+    expect(toIsoDate("2023-04-01")).toBe("2023-04-01T00:00:00.000Z");
+    expect(toIsoDate("1600000000")).toBe("2020-09-13T12:26:40.000Z");
+    expect(toIsoDate("2024/01/01-2024/01/07")).toBeNull();
+    expect(toIsoDate("")).toBeNull();
+  });
+});
+
+describe("htmlToPlainText", () => {
+  it("flattens an exported review into text", () => {
+    // Goodreads' My Review and Letterboxd's Review are stored as HTML.
+    expect(htmlToPlainText("<p>Loved it, eventually.</p><br/>Slow start.")).toBe(
+      "Loved it, eventually.\nSlow start.",
+    );
+    expect(htmlToPlainText("A &quot;great&quot; time &amp; a half")).toBe(
+      'A "great" time & a half',
+    );
+    // `&amp;` decodes last, so an escaped entity does not become a tag.
+    expect(htmlToPlainText("&amp;lt;script&amp;gt;")).toBe("&lt;script&gt;");
+    expect(htmlToPlainText("<i>plain</i>")).toBe("plain");
+    expect(htmlToPlainText(null)).toBeNull();
+    expect(htmlToPlainText("<p></p>")).toBeNull();
   });
 });
 

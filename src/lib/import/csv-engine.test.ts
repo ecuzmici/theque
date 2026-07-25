@@ -209,6 +209,22 @@ describe("parseCsvWithMapping", () => {
     expect(result.rows[0].source_ref).toMatchObject({ importer: "example", line: 2 });
   });
 
+  it("rejects a row through skipRow with the preset's own reason", () => {
+    // For identifiers that are present but unusable — a StoryGraph ASIN, say —
+    // where reporting "missing_url" would send the user looking for a blank
+    // cell that is not there.
+    const text = ["uid,title", "9780765312181,Fine", "B08XYZ1234,Kindle edition"].join("\n");
+    const result = parseCsvWithMapping(
+      input(text),
+      { url: { columns: ["uid"], derive: (value) => `https://example.com/${value}` } },
+      { skipRow: (row) => (/^\d/.test(row.get("uid") ?? "") ? null : "identifier_not_an_isbn") },
+    );
+    expect(result.rows).toHaveLength(1);
+    expect(result.skipped).toEqual([
+      { line: 3, reason: "identifier_not_an_isbn", raw: "B08XYZ1234, Kindle edition" },
+    ]);
+  });
+
   it("ignores unrecognised category and status values with a warning", () => {
     const text = "url,category,status\nhttps://example.com/a,music,archived";
     const result = parseCsvWithMapping(input(text), {

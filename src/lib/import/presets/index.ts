@@ -16,12 +16,24 @@
  */
 
 import type { CsvPreset } from "@/lib/import/csv-engine";
+import { goodreadsPreset } from "@/lib/import/presets/goodreads";
+import { imdbListPreset, imdbRatingsPreset } from "@/lib/import/presets/imdb";
+import { instapaperPreset } from "@/lib/import/presets/instapaper";
 import { pocketCsvPreset } from "@/lib/import/presets/pocket-csv";
+import { raindropPreset } from "@/lib/import/presets/raindrop";
+import { storygraphPreset } from "@/lib/import/presets/storygraph";
 import { urlListPreset } from "@/lib/import/presets/url-list";
 
 export const CSV_PRESETS: readonly CsvPreset[] = [
+  goodreadsPreset,
+  storygraphPreset,
+  imdbRatingsPreset,
+  imdbListPreset,
+  instapaperPreset,
+  raindropPreset,
   pocketCsvPreset,
-  // Fallback: must stay last.
+  // Fallback: must stay last. Instapaper's four-column variant is exactly the
+  // shape this one claims, so every real preset has to precede it.
   urlListPreset,
 ];
 
@@ -29,4 +41,13 @@ export function getCsvPreset(id: string): CsvPreset | null {
   return CSV_PRESETS.find((preset) => preset.id === id) ?? null;
 }
 
-export { pocketCsvPreset, urlListPreset };
+export {
+  goodreadsPreset,
+  imdbListPreset,
+  imdbRatingsPreset,
+  instapaperPreset,
+  pocketCsvPreset,
+  raindropPreset,
+  storygraphPreset,
+  urlListPreset,
+};

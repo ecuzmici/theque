@@ -6,6 +6,7 @@
  */
 
 import { csvImporterFromPreset } from "@/lib/import/csv-engine";
+import { letterboxdZipImporter } from "@/lib/import/parsers/letterboxd-zip";
 import { netscapeBookmarksImporter } from "@/lib/import/parsers/netscape-bookmarks";
 import { pocketHtmlImporter } from "@/lib/import/parsers/pocket-html";
 import { CSV_PRESETS } from "@/lib/import/presets";
@@ -17,10 +18,15 @@ import { fileExtensionOf, type ImportInput, type Importer } from "@/lib/import/t
  * Pocket's HTML export comes before the Netscape parser: it is bookmark-shaped
  * but flat `<ul>`/`<li>`, and letting the broader bookmark detector see it first
  * would lose the Unread/Archive status split.
+ *
+ * The Letterboxd importer is the only one that reads `input.bytes` rather than
+ * `input.text`, so its position is immaterial — no text-based detector can
+ * claim a ZIP, and it cannot claim anything else.
  */
 export const IMPORTERS: readonly Importer[] = [
   pocketHtmlImporter,
   netscapeBookmarksImporter,
+  letterboxdZipImporter,
   ...CSV_PRESETS.map(csvImporterFromPreset),
 ];
 
@@ -79,8 +85,13 @@ export type {
   CsvPreset,
   CsvRatingSpec,
   CsvRowContext,
+  CsvRowSkipRule,
 } from "@/lib/import/csv-engine";
 export { CSV_PRESETS, getCsvPreset } from "@/lib/import/presets";
+export {
+  letterboxdZipImporter,
+  parseLetterboxdZip,
+} from "@/lib/import/parsers/letterboxd-zip";
 export { netscapeBookmarksImporter, parseNetscapeBookmarks } from "@/lib/import/parsers/netscape-bookmarks";
 export { parsePocketHtml, pocketHtmlImporter } from "@/lib/import/parsers/pocket-html";
 export * from "@/lib/import/rating";

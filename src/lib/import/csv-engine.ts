@@ -147,6 +147,19 @@ export type CsvRowDefaults = {
   status?: ItemStatus;
 };
 
+/**
+ * Reject a row before any field is read, with the reason shown to the user.
+ *
+ * Returning `null` keeps the row. This exists because some sources carry an
+ * identifier that is structurally unusable rather than absent — StoryGraph's
+ * `ISBN/UID` column holds an Amazon ASIN for Kindle editions, which would
+ * otherwise become `https://openlibrary.org/isbn/B08XYZ…`, a 404 for every such
+ * row. Letting the URL derivation return `null` would report those as
+ * `missing_url`, which sends the user looking for a blank cell that is not
+ * there; a rule states the real reason instead.
+ */
+export type CsvRowSkipRule = (row: CsvRowContext) => string | null;
+
 export type CsvPreset = {
   id: string;
   label: string;
@@ -161,6 +174,8 @@ export type CsvPreset = {
   detect?: (headers: string[], input: ImportInput) => boolean;
   header?: CsvHeaderOption;
   defaults?: CsvRowDefaults;
+  /** Optional pre-flight rejection rule (see `CsvRowSkipRule`). */
+  skipRow?: CsvRowSkipRule;
   mapping: CsvColumnMapping;
 };
 
@@ -169,6 +184,7 @@ export type CsvParseOptions = {
   importer?: string;
   header?: CsvHeaderOption;
   defaults?: CsvRowDefaults;
+  skipRow?: CsvRowSkipRule;
   /** Force a delimiter; omitted means papaparse auto-detects (`,`/`;`/tab). */
   delimiter?: string;
   maxRows?: number;
@@ -413,6 +429,12 @@ export function parseCsvWithMapping(
     const row = makeRowContext(table, i);
     const snippet = truncateRawSnippet(row.values.join(", "));
 
+    const ruledOut = options.skipRow?.(row) ?? null;
+    if (ruledOut) {
+      addSkip({ line: row.line, reason: ruledOut, raw: snippet });
+      continue;
+    }
+
     const rawUrl = readField<string>(urlSpec, row);
     const url = typeof rawUrl === "string" ? rawUrl.trim() : null;
     if (!url) {
@@ -532,6 +554,7 @@ export function csvImporterFromPreset(preset: CsvPreset): Importer {
         importer: preset.id,
         header: preset.header,
         defaults: preset.defaults,
+        skipRow: preset.skipRow,
         file: input.filename ?? null,
       }),
   };

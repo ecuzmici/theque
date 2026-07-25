@@ -1,0 +1,5 @@
+id,title,note,excerpt,url,folder,tags,created,cover,highlights,favorite
+812345678,Cast iron pan sauce,Try this with the shallots,A quick pan sauce built on fond,https://example.com/pan-sauce,Recipes/Weeknight,"cooking, sauces",2024-03-02T18:04:11.482Z,https://cdn.example.com/pan-sauce.jpg,,false
+812345679,Kettle review roundup,,Everything we know about electric kettles,https://example.com/kettles,Kitchen,"gear",2023-11-19T08:22:00.000Z,,,true
+812345680,Broken multiline row,,This excerpt has
+an unquoted newline in it,https://example.com/broken,Inbox,,2024-01-01T00:00:00.000Z,,,false

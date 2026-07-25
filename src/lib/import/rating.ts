@@ -95,7 +95,11 @@ export const fromCalibre: RatingNormalizer = (raw) => {
   return clamp(Math.round(Math.min(value, 10) / 2));
 };
 
-/** 1..5 in 0.25 steps (Untappd) → nearest whole star. */
+/**
+ * 1..5 in 0.25 steps (StoryGraph's `Star Rating`, Untappd) → nearest whole star.
+ * StoryGraph leaves the cell **empty** for an unrated book rather than writing
+ * `0`, which `toRatingNumber` already maps to `null`.
+ */
 export const fromQuarterStars: RatingNormalizer = (raw) => {
   const value = toRatingNumber(raw);
   if (value === null) return null;

@@ -120,19 +120,72 @@ export function unixTimestampToIso(raw: string | number | null | undefined): str
   return parsed.kind === "ok" ? parsed.iso : null;
 }
 
+function utcDate(year: number, month: number, day: number): string | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const ms = Date.UTC(year, month - 1, day);
+  if (Number.isNaN(ms)) return null;
+  return new Date(ms).toISOString();
+}
+
 /**
  * Parse a date-ish cell (`2023-04-01`, `2023/04/01`, `Apr 01, 2023`) to ISO.
  * Bare Unix timestamps are handled too, since some exports mix the two.
+ *
+ * Slash-separated dates are resolved here rather than by `new Date(...)`:
+ * `new Date("8/10/2023")` is parsed in the **local** zone, so the same export
+ * yields a different `done_at` depending on where the server runs. Goodreads and
+ * StoryGraph write `YYYY/MM/DD`; a file round-tripped through Excel writes
+ * `M/D/YYYY` (US order — the only order Excel's en-US locale emits), with
+ * `D/M/YYYY` accepted as a fallback when the first number cannot be a month.
  */
 export function toIsoDate(raw: string | null | undefined): string | null {
   const text = cleanValue(raw);
   if (text === null) return null;
   if (/^\d{9,}$/.test(text)) return unixTimestampToIso(text);
 
-  const normalized = /^\d{4}\/\d{2}\/\d{2}$/.test(text) ? text.replace(/\//g, "-") : text;
-  const parsed = new Date(normalized);
+  const isoish = /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/.exec(text);
+  if (isoish) {
+    return utcDate(Number(isoish[1]), Number(isoish[2]), Number(isoish[3]));
+  }
+
+  const slashed = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+  if (slashed) {
+    const first = Number(slashed[1]);
+    const second = Number(slashed[2]);
+    const year = Number(slashed[3]);
+    return first > 12 ? utcDate(year, second, first) : utcDate(year, first, second);
+  }
+
+  const parsed = new Date(text);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString();
+}
+
+/**
+ * Strip HTML from an exported review and decode the entities exporters emit.
+ *
+ * Goodreads' `My Review` and Letterboxd's `Review` are stored as HTML — a long
+ * review arrives as `<p>` blocks with `<br/>`, `<i>` and `&quot;` in it. Written
+ * to `verdict` unchanged it renders as visible markup, so tags are removed at
+ * the parser boundary. Block-level tags become newlines so paragraph breaks
+ * survive; inline runs of whitespace are collapsed.
+ */
+export function htmlToPlainText(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const text = raw
+    .replace(/<\s*(br|\/p|\/div|\/li|\/h[1-6])\s*\/?\s*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;|&rsquo;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    // `&amp;` last, so `&amp;lt;` does not decode twice into a tag.
+    .replace(/&amp;/gi, "&")
+    .replace(/[ \t ]+/g, " ")
+    .replace(/\s*\n\s*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n");
+  return cleanValue(text);
 }
 
 /** Split a tag-ish cell into distinct, trimmed labels (order preserved). */
