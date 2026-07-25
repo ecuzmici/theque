@@ -1,0 +1,4 @@
+title,url,time_added,tags,status
+"Hello, world","https://example.com/hello",1600000000,"tech|ai",unread
+"Archived piece","https://example.com/archived",1600000060,,archive
+"No tags","https://example.com/plain",1600000120,"",unread
