@@ -5,7 +5,9 @@ import { CaptureTokens } from "@/components/settings/CaptureTokens";
 import { DangerZone } from "@/components/settings/DangerZone";
 import { EmailPreferences } from "@/components/settings/EmailPreferences";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { fetchDigestPreferences } from "@/lib/profiles/profiles";
+import { toDigestPreferences } from "@/lib/profiles/digest-preferences";
+import { toDigestSuppression } from "@/lib/profiles/digest-suppression";
+import { fetchProfile } from "@/lib/profiles/profiles";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -25,7 +27,11 @@ export default async function SettingsPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const digestPreferences = await fetchDigestPreferences(supabase, user.id);
+  // One read for both: the client-writable preferences and the server-owned
+  // deliverability state that explains a letter which stopped arriving.
+  const profile = await fetchProfile(supabase, user.id);
+  const digestPreferences = toDigestPreferences(profile);
+  const digestSuppression = toDigestSuppression(profile);
 
   return (
     <div>
@@ -67,6 +73,7 @@ export default async function SettingsPage() {
       <div className="mt-6">
         <EmailPreferences
           initialPreferences={digestPreferences}
+          suppression={digestSuppression}
           userEmail={user.email ?? undefined}
         />
       </div>

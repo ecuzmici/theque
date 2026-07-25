@@ -141,15 +141,23 @@ export function toDigestPreferences(profile: ProfileRow | null): DigestPreferenc
 type DigestDueCandidate = Pick<
   ProfileRow,
   "digest_enabled" | "digest_day" | "email" | "last_digest_sent_at"
->;
+> &
+  Partial<Pick<ProfileRow, "digest_suppressed_at">>;
 
 /**
- * Whether a profile should receive the letter on `now` (UTC): enabled, has an
- * address, it is that profile's weekday, and it has not been sent inside the
- * minimum interval. The digest job (W2) narrows in SQL and then re-checks here.
+ * Whether a profile should receive the letter on `now` (UTC): enabled, not
+ * suppressed, has an address, it is that profile's weekday, and it has not been
+ * sent inside the minimum interval. The digest job (W2) narrows in SQL and then
+ * re-checks here.
+ *
+ * Suppression is checked *separately* from `digest_enabled` on purpose — one is
+ * the user's preference, the other is a server-owned deliverability fact (see
+ * `digest-suppression.ts`). A row from before that migration has no such column,
+ * which reads as "deliverable" rather than blocking the letter for everyone.
  */
 export function isDigestDue(profile: DigestDueCandidate, now: Date): boolean {
   if (!profile.digest_enabled) return false;
+  if (profile.digest_suppressed_at) return false;
   if (!profile.email) return false;
   if ((normalizeDigestDay(profile.digest_day) ?? DEFAULT_DIGEST_DAY) !== now.getUTCDay()) {
     return false;

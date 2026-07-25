@@ -23,6 +23,9 @@ function makeProfile(overrides: Partial<ProfileRow> = {}): ProfileRow {
     ai_personalization_enabled: false,
     unsubscribe_token: "token-1",
     last_digest_sent_at: null,
+    digest_suppressed_at: null,
+    digest_suppression_reason: null,
+    digest_soft_bounce_count: 0,
     created_at: "2026-07-01T00:00:00.000Z",
     updated_at: "2026-07-01T00:00:00.000Z",
     ...overrides,
@@ -173,6 +176,25 @@ describe("isDigestDue", () => {
 
   it("treats an unparsable last-sent timestamp as never sent", () => {
     expect(isDigestDue(makeProfile({ last_digest_sent_at: "not-a-date" }), SUNDAY)).toBe(true);
+  });
+
+  it("is not due for a suppressed address, whatever the preference says", () => {
+    expect(
+      isDigestDue(
+        makeProfile({
+          digest_enabled: true,
+          digest_suppressed_at: "2026-07-20T00:00:00.000Z",
+          digest_suppression_reason: "hard_bounce",
+        }),
+        SUNDAY,
+      ),
+    ).toBe(false);
+  });
+
+  it("stays due for a row from before the suppression migration", () => {
+    const legacy = makeProfile();
+    delete (legacy as Partial<ProfileRow>).digest_suppressed_at;
+    expect(isDigestDue(legacy, SUNDAY)).toBe(true);
   });
 });
 

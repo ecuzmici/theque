@@ -248,6 +248,81 @@ resolution (2026-07-25)**. In summary, as it affects this job:
   what it always should have been — a cost/fan-out ceiling — and now defaults to
   **2**, deliberately below the recipient cap of 5.
 
+### Deliverability is server-owned state, not a preference
+
+`POST /api/webhooks/resend` consumes Resend's `email.bounced`,
+`email.complained` and `email.delivered` events and stops the letter for an
+address that cannot receive it. The columns it writes —
+`digest_suppressed_at`, `digest_suppression_reason`,
+`digest_soft_bounce_count`, migration
+`20260725190000_profiles_digest_suppression.sql` — are deliberately **not**
+`digest_enabled`:
+
+- `digest_enabled` is the user's stated preference and is client-writable
+  through the column-level UPDATE grant. Suppression is a fact the server
+  learned about the address, and is absent from that grant — readable by the
+  owner (Settings explains it) but never writable by them.
+- Conflating them would make a bounce look like the user turned the letter off,
+  make the Settings toggle display a preference nobody set, and let a user
+  "re-enable" straight back into bouncing — at a shared sending domain's
+  expense, since `theque.app` is young and `p=quarantine`.
+
+Decisions inside the handler:
+
+- **An unclassifiable bounce is treated as hard.** Resend's `bounce.type` is
+  `Permanent` / `Transient` / `Undetermined` (SES-derived) and the field has
+  moved around between payload shapes, so only an explicit `Transient` (or the
+  older flat `soft`) takes the counted path. The asymmetry decides it:
+  over-suppressing costs one person a newsletter and is visible in Settings;
+  under-suppressing costs every profile their deliverability and is not
+  recoverable on a human timescale. It also matches Resend's own semantics —
+  transient trouble is `email.delivery_delayed`, which Resend retries itself, so
+  an `email.bounced` we cannot classify has most likely already exhausted them.
+  `email.delivery_delayed` is therefore *not* handled: counting it as well would
+  double-count the same failure.
+- **Soft bounces suppress at three**, and any `email.delivered` resets the
+  counter to zero. The letter is weekly, so three means roughly three weeks
+  during which the address never once accepted mail. Without the reset, stray
+  transient failures would accumulate across months and suppress a healthy
+  address.
+- **A complaint suppresses immediately and permanently, with no re-enable
+  anywhere in the product.** A spam report carries legal weight, the person
+  reading Settings is not necessarily the party (or the automated feedback loop)
+  that filed it, and re-subscribing an address that reported you is the fastest
+  route to a blocklist. Bounce suppressions have no one-click resume either —
+  the real fix is a correct address — so Settings explains the state and points
+  at that instead of offering a button that would write a column the schema
+  deliberately makes server-owned.
+- **Signature verification is hand-rolled** (`src/lib/email/resend-webhook.ts`)
+  rather than pulling in `svix`: it is ~30 lines of `node:crypto`, the repo
+  already hand-rolls HMAC link signing for `/rate` and already talks to Resend
+  over plain `fetch` rather than its SDK, and a dependency inside the trust
+  boundary of an unauthenticated public endpoint is worth avoiding at that
+  price. It verifies the **raw body** (a `JSON.parse` → `JSON.stringify` round
+  trip is not byte-identical, so every signature would fail), enforces Svix's
+  ±5 minute timestamp tolerance, accepts any entry in the space-delimited
+  `v1,…` list so key rotation works, compares in constant time, and fails
+  closed with a flat 401 that never says *why*.
+- **De-duplication and replay protection are separate mechanisms**, because
+  Svix retries carry the same `svix-id` with a *fresh* `svix-timestamp` — if the
+  timestamp were frozen no retry could ever pass a tolerance check. The
+  timestamp bounds replay; `public.email_webhook_events` (svix-id as primary
+  key, service-role only) bounds double-processing. It exists for exactly one
+  write: `digest_soft_bounce_count` is the only non-idempotent thing the handler
+  does, and a redelivery would count one failure twice against a threshold of
+  three. Cost is one extra round trip per handled event and one row per event
+  forever — a few hundred rows a year here, prunable on `received_at`. The claim
+  is *released* when the work it guarded fails, so a genuine error is retried
+  rather than swallowed by our own de-duplication.
+- **Suppressed profiles are excluded in `listProfilesDueForDigest`**, the single
+  chokepoint every letter passes through, rather than at the send site — and
+  `isDigestDue` re-checks in TypeScript, the same "SQL narrows, code decides"
+  discipline the cadence rule already follows.
+- **Everything past verification answers 2xx**, including unhandled event types
+  and addresses that match no profile, and the response body is identical either
+  way. A non-2xx has Svix retrying for hours, and a response that distinguished
+  known from unknown addresses would be an account-enumeration oracle.
+
 ## Considered and rejected
 
 - **A weekly cron expression** (`0 9 * * 0`). Not available on Vercel Hobby
@@ -282,6 +357,21 @@ resolution (2026-07-25)**. In summary, as it affects this job:
 - **Client-created profile rows.** Would let a client forge a profile for another
   user id or mint its own unsubscribe token. Trigger-only creation, no insert
   policy.
+- **Reusing `digest_enabled` as the suppression flag.** One column cheaper and
+  three ways wrong: a bounce would read as the user's own choice, the Settings
+  toggle would lie, and turning it back on would silently resume bouncing.
+- **Adding the `svix` package.** See above — the verifier is thirty auditable
+  lines of `node:crypto`, and this is an unauthenticated endpoint.
+- **Verifying a re-serialized JSON body.** `JSON.parse` → `JSON.stringify` does
+  not round-trip byte-identically; every signature would fail. The route reads
+  `req.text()` once and parses only after verifying.
+- **An in-memory de-duplication cache.** Serverless instances do not share one,
+  so a retry landing on a cold instance would double-count.
+- **Suppressing on `email.delivery_delayed`.** Resend retries those itself and
+  emits `email.bounced` if they ultimately fail; counting both double-counts.
+- **A one-click "resume" after a complaint.** Fastest known route to a
+  blocklist. Bounce suppressions get no button either, so nothing in the UI
+  writes a column the migration deliberately made server-owned.
 
 ## Consequences
 
@@ -312,14 +402,33 @@ behaviour:
 - **The letter has never sent.** Not once, in any environment. Every claim about
   deliverability, rendering across mail clients, spam placement and one-click
   unsubscribe recognition is untested against a real provider.
-- **Both profile migrations are written and deliberately not applied** —
-  `20260725120000_profiles_notification_preferences.sql` and
-  `20260725170000_profiles_ai_personalization_consent.sql`. Local development
-  shares the production Supabase project, so applying them is a production
-  change. Until the first runs there is no `profiles` table at all: the accessors
-  fail soft to defaults, `/settings` renders, `listProfilesDueForDigest` finds
-  nobody, and the job is a no-op. They must be applied **in order** — the second
-  re-issues the column grant that the first established.
+- **All three profile migrations are written and deliberately not applied** —
+  `20260725120000_profiles_notification_preferences.sql`,
+  `20260725170000_profiles_ai_personalization_consent.sql` and
+  `20260725190000_profiles_digest_suppression.sql`. Local development shares the
+  production Supabase project, so applying them is a production change. Until
+  the first runs there is no `profiles` table at all: the accessors fail soft to
+  defaults, `/settings` renders, `listProfilesDueForDigest` finds nobody, and the
+  job is a no-op. They must be applied **in order** — each one re-issues the
+  column-level UPDATE grant the previous established, and the third also creates
+  `public.email_webhook_events`.
+- **No Resend webhook is registered.** The endpoint exists and is tested, but
+  the live Resend account has zero webhooks configured, so nothing reaches it.
+  Bringing it up is three manual steps, in this order:
+  1. **Register the endpoint** at <https://resend.com/webhooks> (or
+     `POST https://api.resend.com/webhooks`) pointing at
+     `https://theque.app/api/webhooks/resend`.
+  2. **Subscribe exactly three events**: `email.bounced`, `email.complained`,
+     `email.delivered`. `email.delivered` is not optional — it is what resets
+     `digest_soft_bounce_count`, and without it transient failures accumulate
+     across months until a healthy address suppresses itself. Anything else
+     subscribed is acknowledged and ignored.
+  3. **Copy the signing secret** (`whsec_…`) into `RESEND_WEBHOOK_SECRET` in
+     Vercel. It is shown **once**, at creation — in the dashboard when the
+     webhook is created, or as `signing_secret` in the create-API response; a
+     later `GET` does not return it. Until it is set the route rejects every
+     request with 401 (fail closed), so registering the endpoint without setting
+     the secret means bounces are silently not processed.
 - **Env vars gate everything.** `RESEND_API_KEY` (without it the job reports what
   it *would* have sent), `DIGEST_EMAIL_FROM`, `RATING_LINK_SECRET` (without it
   every rating prompt is dropped from the letter and `/rate/*` refuses every
@@ -349,9 +458,10 @@ behaviour:
   guesses. There is no open/click instrumentation of any kind, so the only
   observable outcome today is whether verdicts start appearing without
   corresponding app sessions.
-- **Bounce and complaint handling.** Nothing consumes Resend webhooks; a hard
-  bounce will be retried every cycle forever, and `email` is only refreshed by
-  the `auth.users` trigger.
+- **Bounce and complaint handling** is implemented (see below), but the address
+  on a profile is still only refreshed by the `auth.users` trigger, and changing
+  it does **not** yet clear a suppression — a hard-bounced user who corrects
+  their address needs the suppression cleared by hand until that is wired up.
 - **`digest_day` is UTC** (`Date#getUTCDay()`), with no timezone stored on the
   profile. A recipient far enough east or west gets their "Sunday" letter on a
   neighbouring day. Acceptable for a weekly cadence; revisit if the cadence ever

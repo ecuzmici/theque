@@ -9,18 +9,33 @@ import {
   type DigestPreferences,
   type DigestPreferencesResponseBody,
 } from "@/lib/profiles/digest-preferences";
+import {
+  digestSuppressionCopy,
+  NOT_SUPPRESSED,
+  type DigestSuppression,
+} from "@/lib/profiles/digest-suppression";
 
 /**
  * Settings → "Email": the switches for the weekly shelf letter and for the
  * AI personalization consent that letter's recommendation card depends on.
  * Optimistic toggles with a rollback on failure, so a dead network never leaves
  * the UI claiming a preference the server did not take.
+ *
+ * `suppression` is read-only and separate from the toggle on purpose. It is a
+ * server-owned fact about the address (it bounced, or the provider filed a spam
+ * report), not a preference — folding it into the switch would show the user a
+ * setting they never chose, and let them "turn it back on" straight into the
+ * same failure. There is no re-enable control here for the same reason: the
+ * fixes are "correct the address" and, for a spam report, "talk to us" (see
+ * `digest-suppression.ts`).
  */
 export function EmailPreferences({
   initialPreferences,
+  suppression = NOT_SUPPRESSED,
   userEmail,
 }: {
   initialPreferences: DigestPreferences;
+  suppression?: DigestSuppression;
   userEmail?: string;
 }) {
   const [preferences, setPreferences] = useState(initialPreferences);
@@ -67,13 +82,29 @@ export function EmailPreferences({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {suppression.suppressed ? (
+          <div
+            role="status"
+            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-3"
+          >
+            <p className="text-sm font-medium text-destructive">
+              {digestSuppressionCopy(suppression.reason).heading}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              {digestSuppressionCopy(suppression.reason).body}
+            </p>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Weekly letter</p>
             <p className="text-xs text-muted-foreground">
-              {enabled
-                ? `On — arrives on ${digestDayLabel(preferences.digest_day)}s.`
-                : "Off — you will not get the weekly letter."}
+              {suppression.suppressed
+                ? "Paused — we cannot deliver to this address, so nothing is being sent."
+                : enabled
+                  ? `On — arrives on ${digestDayLabel(preferences.digest_day)}s.`
+                  : "Off — you will not get the weekly letter."}
             </p>
           </div>
           <Button

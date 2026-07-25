@@ -190,6 +190,13 @@ export type Database = {
           ai_personalization_enabled: boolean;
           unsubscribe_token: string;
           last_digest_sent_at: string | null;
+          // Server-owned deliverability state, written only by the Resend
+          // webhook handler (service role). Readable by the owner so Settings
+          // can explain why the letter stopped; never client-writable — see
+          // supabase/migrations/20260725190000_profiles_digest_suppression.sql.
+          digest_suppressed_at: string | null;
+          digest_suppression_reason: string | null;
+          digest_soft_bounce_count: number;
           created_at: string;
           updated_at: string;
         };
@@ -201,6 +208,9 @@ export type Database = {
           ai_personalization_enabled?: boolean;
           unsubscribe_token?: string;
           last_digest_sent_at?: string | null;
+          digest_suppressed_at?: string | null;
+          digest_suppression_reason?: string | null;
+          digest_soft_bounce_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -212,8 +222,29 @@ export type Database = {
           ai_personalization_enabled?: boolean;
           unsubscribe_token?: string;
           last_digest_sent_at?: string | null;
+          digest_suppressed_at?: string | null;
+          digest_suppression_reason?: string | null;
+          digest_soft_bounce_count?: number;
           created_at?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      email_webhook_events: {
+        Row: {
+          svix_id: string;
+          event_type: string;
+          received_at: string;
+        };
+        Insert: {
+          svix_id: string;
+          event_type: string;
+          received_at?: string;
+        };
+        Update: {
+          svix_id?: string;
+          event_type?: string;
+          received_at?: string;
         };
         Relationships: [];
       };

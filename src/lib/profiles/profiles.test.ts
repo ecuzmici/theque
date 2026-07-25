@@ -5,7 +5,9 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 
 import { DEFAULT_DIGEST_PREFERENCES, type ProfileRow } from "./digest-preferences";
+import { SOFT_BOUNCE_SUPPRESSION_THRESHOLD } from "./digest-suppression";
 import {
+  applyDeliverabilitySignal,
   disableDigestByUnsubscribeToken,
   fetchDigestPreferences,
   fetchProfile,
@@ -28,6 +30,9 @@ function makeProfile(overrides: Partial<ProfileRow> = {}): ProfileRow {
     ai_personalization_enabled: false,
     unsubscribe_token: "token-1",
     last_digest_sent_at: null,
+    digest_suppressed_at: null,
+    digest_suppression_reason: null,
+    digest_soft_bounce_count: 0,
     created_at: "2026-07-01T00:00:00.000Z",
     updated_at: "2026-07-01T00:00:00.000Z",
     ...overrides,
@@ -57,7 +62,19 @@ function makeFakeDb(result: QueryResult) {
     },
   };
 
-  for (const method of ["select", "update", "eq", "not", "or", "order", "limit"]) {
+  for (const method of [
+    "select",
+    "update",
+    "insert",
+    "delete",
+    "eq",
+    "is",
+    "ilike",
+    "not",
+    "or",
+    "order",
+    "limit",
+  ]) {
     chain[method] = (...args: unknown[]) => {
       record(method, args);
       return chain;
@@ -222,6 +239,245 @@ describe("listProfilesDueForDigest", () => {
 
     const [due] = await listProfilesDueForDigest(db, { now: SUNDAY });
     expect(due.ai_personalization_enabled).toBe(false);
+  });
+
+  it("asks SQL for unsuppressed profiles only", async () => {
+    const { db, calls } = makeFakeDb({ data: [], error: null });
+
+    await listProfilesDueForDigest(db, { now: SUNDAY });
+
+    const isCalls = calls.filter((call) => call.method === "is").map((call) => call.args);
+    expect(isCalls).toContainEqual(["digest_suppressed_at", null]);
+  });
+
+  it("drops suppressed profiles even if SQL returned them", async () => {
+    const rows = [
+      makeProfile({
+        user_id: "bounced",
+        digest_suppressed_at: "2026-07-20T00:00:00.000Z",
+        digest_suppression_reason: "hard_bounce",
+      }),
+      makeProfile({
+        user_id: "complained",
+        digest_suppressed_at: "2026-07-21T00:00:00.000Z",
+        digest_suppression_reason: "complaint",
+      }),
+      makeProfile({ user_id: "keep" }),
+    ];
+    const { db } = makeFakeDb({ data: rows, error: null });
+
+    const due = await listProfilesDueForDigest(db, { now: SUNDAY });
+
+    expect(due.map((recipient) => recipient.user_id)).toEqual(["keep"]);
+  });
+
+  it("keeps a row from before the suppression migration", async () => {
+    const legacy = makeProfile();
+    delete (legacy as Partial<ProfileRow>).digest_suppressed_at;
+    const { db } = makeFakeDb({ data: [legacy], error: null });
+
+    await expect(listProfilesDueForDigest(db, { now: SUNDAY })).resolves.toHaveLength(1);
+  });
+});
+
+describe("applyDeliverabilitySignal", () => {
+  const NOW = new Date("2026-07-25T12:00:00.000Z");
+
+  function deliverabilityDb(row: Partial<ProfileRow> | null) {
+    return makeFakeDb({ data: row ? [makeProfile(row)] : [], error: null });
+  }
+
+  it("matches the address case-insensitively and escapes LIKE wildcards", async () => {
+    const { db, argsFor } = deliverabilityDb({ email: "Reader@Example.com" });
+
+    await expect(
+      applyDeliverabilitySignal(db, {
+        email: " READER@Example.com ",
+        signal: "hard_bounce",
+        now: NOW,
+      }),
+    ).resolves.toBe("suppressed");
+
+    expect(argsFor("ilike")).toEqual(["email", "reader@example.com"]);
+  });
+
+  it("escapes underscores so a wildcard cannot widen the match", async () => {
+    const { db, argsFor } = deliverabilityDb({ email: "a_b@example.com" });
+
+    await applyDeliverabilitySignal(db, {
+      email: "a_b@example.com",
+      signal: "delivered",
+      now: NOW,
+    });
+
+    expect(argsFor("ilike")).toEqual(["email", "a\\_b@example.com"]);
+  });
+
+  it("never acts on a row whose address only looked like a match", async () => {
+    // Stands in for PostgREST's `*` → `%` rewrite: SQL over-returns, the
+    // TypeScript re-check is what decides.
+    const { db, calls } = deliverabilityDb({ email: "someone-else@example.com" });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "complaint", now: NOW }),
+    ).resolves.toBe("no_match");
+
+    expect(calls.some((call) => call.method === "update")).toBe(false);
+  });
+
+  it("reports no match for an unknown address without writing", async () => {
+    const { db, calls } = deliverabilityDb(null);
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "nobody@example.com", signal: "hard_bounce", now: NOW }),
+    ).resolves.toBe("no_match");
+    expect(calls.some((call) => call.method === "update")).toBe(false);
+  });
+
+  it("suppresses immediately on a hard bounce", async () => {
+    const { db, argsFor } = deliverabilityDb({});
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "hard_bounce", now: NOW }),
+    ).resolves.toBe("suppressed");
+
+    expect(argsFor("update")).toEqual([
+      { digest_suppressed_at: NOW.toISOString(), digest_suppression_reason: "hard_bounce" },
+    ]);
+  });
+
+  it("suppresses immediately on a complaint", async () => {
+    const { db, argsFor } = deliverabilityDb({});
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "complaint", now: NOW }),
+    ).resolves.toBe("suppressed");
+
+    expect(argsFor("update")).toEqual([
+      { digest_suppressed_at: NOW.toISOString(), digest_suppression_reason: "complaint" },
+    ]);
+  });
+
+  it("never touches digest_enabled — suppression is not a preference", async () => {
+    const { db, argsFor } = deliverabilityDb({});
+
+    await applyDeliverabilitySignal(db, {
+      email: "reader@example.com",
+      signal: "complaint",
+      now: NOW,
+    });
+
+    expect(Object.keys((argsFor("update") as [Record<string, unknown>])[0])).not.toContain(
+      "digest_enabled",
+    );
+  });
+
+  it("upgrades an existing bounce suppression to a complaint", async () => {
+    const { db, argsFor } = deliverabilityDb({
+      digest_suppressed_at: "2026-07-01T00:00:00.000Z",
+      digest_suppression_reason: "hard_bounce",
+    });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "complaint", now: NOW }),
+    ).resolves.toBe("suppressed");
+
+    // The original timestamp is kept; only the reason is escalated.
+    expect(argsFor("update")).toEqual([
+      {
+        digest_suppressed_at: "2026-07-01T00:00:00.000Z",
+        digest_suppression_reason: "complaint",
+      },
+    ]);
+  });
+
+  it("does not downgrade a complaint to a bounce", async () => {
+    const { db, calls } = deliverabilityDb({
+      digest_suppressed_at: "2026-07-01T00:00:00.000Z",
+      digest_suppression_reason: "complaint",
+    });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "hard_bounce", now: NOW }),
+    ).resolves.toBe("noop");
+    expect(calls.some((call) => call.method === "update")).toBe(false);
+  });
+
+  it("counts a soft bounce below the threshold", async () => {
+    const { db, argsFor } = deliverabilityDb({ digest_soft_bounce_count: 0 });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "soft_bounce", now: NOW }),
+    ).resolves.toBe("counted");
+
+    expect(argsFor("update")).toEqual([{ digest_soft_bounce_count: 1 }]);
+  });
+
+  it("suppresses when soft bounces reach the threshold", async () => {
+    const { db, argsFor } = deliverabilityDb({
+      digest_soft_bounce_count: SOFT_BOUNCE_SUPPRESSION_THRESHOLD - 1,
+    });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "soft_bounce", now: NOW }),
+    ).resolves.toBe("suppressed");
+
+    expect(argsFor("update")).toEqual([
+      {
+        digest_soft_bounce_count: SOFT_BOUNCE_SUPPRESSION_THRESHOLD,
+        digest_suppressed_at: NOW.toISOString(),
+        digest_suppression_reason: "repeated_soft_bounce",
+      },
+    ]);
+  });
+
+  it("resets the counter on a delivery, so transient failures cannot accumulate", async () => {
+    const { db, argsFor } = deliverabilityDb({ digest_soft_bounce_count: 2 });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "delivered", now: NOW }),
+    ).resolves.toBe("reset");
+
+    expect(argsFor("update")).toEqual([{ digest_soft_bounce_count: 0 }]);
+  });
+
+  it("skips the write when a delivery finds the counter already zero", async () => {
+    const { db, calls } = deliverabilityDb({ digest_soft_bounce_count: 0 });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "delivered", now: NOW }),
+    ).resolves.toBe("noop");
+    expect(calls.some((call) => call.method === "update")).toBe(false);
+  });
+
+  it("does not lift a suppression when a later delivery arrives", async () => {
+    const { db, calls } = deliverabilityDb({
+      digest_suppressed_at: "2026-07-01T00:00:00.000Z",
+      digest_suppression_reason: "complaint",
+      digest_soft_bounce_count: 0,
+    });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "delivered", now: NOW }),
+    ).resolves.toBe("noop");
+    expect(calls.some((call) => call.method === "update")).toBe(false);
+  });
+
+  it("reports failure when the lookup errors, so the provider retries", async () => {
+    const { db } = makeFakeDb({ data: null, error: { message: "boom" } });
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "reader@example.com", signal: "hard_bounce", now: NOW }),
+    ).resolves.toBe("failed");
+  });
+
+  it("ignores a blank address", async () => {
+    const { db, calls } = deliverabilityDb({});
+
+    await expect(
+      applyDeliverabilitySignal(db, { email: "   ", signal: "complaint", now: NOW }),
+    ).resolves.toBe("no_match");
+    expect(calls).toEqual([]);
   });
 });
 

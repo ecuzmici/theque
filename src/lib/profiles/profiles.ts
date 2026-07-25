@@ -3,8 +3,10 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
+import type { DeliverabilitySignal } from "@/lib/email/resend-webhook";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { SOFT_BOUNCE_SUPPRESSION_THRESHOLD } from "@/lib/profiles/digest-suppression";
 import {
   DEFAULT_DIGEST_PREFERENCES,
   digestSentCutoff,
@@ -30,7 +32,7 @@ import {
 export type ProfilesDb = SupabaseClient<Database>;
 
 const PROFILE_COLUMNS =
-  "user_id, email, digest_enabled, digest_day, ai_personalization_enabled, unsubscribe_token, last_digest_sent_at, created_at, updated_at";
+  "user_id, email, digest_enabled, digest_day, ai_personalization_enabled, unsubscribe_token, last_digest_sent_at, digest_suppressed_at, digest_suppression_reason, digest_soft_bounce_count, created_at, updated_at";
 
 /** A profile the digest job can actually mail to. */
 export type DigestRecipient = {
@@ -132,6 +134,12 @@ const DEFAULT_DIGEST_BATCH = 200;
  * weekday that have not been mailed inside the minimum interval. The SQL
  * narrows the scan; `isDigestDue` re-checks each row so the cadence rule lives
  * in one place.
+ *
+ * Suppressed profiles are excluded here rather than at the send site: this is
+ * the single chokepoint every letter passes through, so a bounced or
+ * complained-about address cannot be reached by any future caller that forgets
+ * to check (see `digest-suppression.ts` for why suppression is not folded into
+ * `digest_enabled`).
  */
 export async function listProfilesDueForDigest(
   admin: ProfilesDb,
@@ -142,6 +150,7 @@ export async function listProfilesDueForDigest(
     .select(PROFILE_COLUMNS)
     .eq("digest_enabled", true)
     .eq("digest_day", now.getUTCDay())
+    .is("digest_suppressed_at", null)
     .not("email", "is", null)
     .or(`last_digest_sent_at.is.null,last_digest_sent_at.lt.${digestSentCutoff(now)}`)
     .order("last_digest_sent_at", { ascending: true, nullsFirst: true })
@@ -206,6 +215,178 @@ export async function disableDigestByUnsubscribeToken(
     return false;
   }
   return Boolean(data);
+}
+
+/* ---------------------------------------------------------------------------
+ * Deliverability (Resend webhooks)
+ * ------------------------------------------------------------------------ */
+
+/** Columns the webhook handler reads and writes. Never selected with `*`. */
+const DELIVERABILITY_COLUMNS =
+  "user_id, email, digest_suppressed_at, digest_suppression_reason, digest_soft_bounce_count";
+
+type DeliverabilityRow = {
+  user_id: string;
+  email: string | null;
+  digest_suppressed_at: string | null;
+  digest_suppression_reason: string | null;
+  digest_soft_bounce_count: number | null;
+};
+
+export type DeliverabilityOutcome =
+  /** The address is now suppressed (or was upgraded to a stronger reason). */
+  | "suppressed"
+  /** A transient failure was counted, below the threshold. */
+  | "counted"
+  /** A delivery cleared an accumulated soft-bounce streak. */
+  | "reset"
+  /** Nothing to change — already suppressed, or the counter was already zero. */
+  | "noop"
+  /** No profile carries that address. */
+  | "no_match"
+  /** The read or write failed; the caller should let the provider retry. */
+  | "failed";
+
+/**
+ * Escape the wildcards PostgREST hands to `ILIKE`. Underscores are legal in
+ * email local parts and `_` is a single-character wildcard, so an unescaped
+ * lookup for `a_b@x.com` would also match `axb@x.com`.
+ */
+function escapeLikePattern(value: string): string {
+  return value.replace(/([\\%_])/g, "\\$1");
+}
+
+/**
+ * Find the profile for an address, case-insensitively — addresses are treated
+ * as case-insensitive in practice, and Resend echoes back whatever casing the
+ * envelope carried.
+ *
+ * The `ilike` is only a *narrowing* filter; the exact, lowercased comparison
+ * below is what decides. PostgREST also rewrites `*` in a `like`/`ilike`
+ * pattern into `%`, which cannot be escaped away, so re-checking in TypeScript
+ * is what guarantees a crafted address can never suppress somebody else's row.
+ */
+async function findProfileByEmail(
+  admin: ProfilesDb,
+  email: string,
+): Promise<DeliverabilityRow | null | "failed"> {
+  const target = email.trim().toLowerCase();
+  if (!target) return null;
+
+  const { data, error } = await admin
+    .from("profiles")
+    .select(DELIVERABILITY_COLUMNS)
+    .ilike("email", escapeLikePattern(target))
+    .limit(5);
+
+  if (error) {
+    console.error("[profiles] deliverability_lookup_failed:", error.message);
+    return "failed";
+  }
+
+  const rows = (data as DeliverabilityRow[] | null) ?? [];
+  return rows.find((row) => (row.email ?? "").trim().toLowerCase() === target) ?? null;
+}
+
+async function writeDeliverability(
+  admin: ProfilesDb,
+  userId: string,
+  patch: Database["public"]["Tables"]["profiles"]["Update"],
+): Promise<boolean> {
+  const { error } = await admin.from("profiles").update(patch).eq("user_id", userId);
+  if (error) {
+    console.error("[profiles] deliverability_write_failed:", error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Apply one verified Resend deliverability signal to the profile that owns the
+ * address.
+ *
+ * Rules, in the order they matter:
+ *
+ *  - **Complaint suppresses immediately and always wins.** A spam report is the
+ *    most damaging signal a sender can receive; it overwrites a weaker existing
+ *    reason so the Settings copy tells the truth.
+ *  - **Hard bounce suppresses immediately**, but never downgrades an existing
+ *    complaint.
+ *  - **Soft bounce counts**, and suppresses only at
+ *    `SOFT_BOUNCE_SUPPRESSION_THRESHOLD`, so a mailbox that fills up and then
+ *    clears does not permanently lose the letter.
+ *  - **Delivered resets the counter** and nothing else. It deliberately does not
+ *    lift a suppression: a hard bounce or a complaint is not undone by a later
+ *    delivery to the same address.
+ *
+ * Caller-side de-duplication (`email_webhook_events`) is what makes the counting
+ * branch exactly-once; everything else here is idempotent on its own.
+ */
+export async function applyDeliverabilitySignal(
+  admin: ProfilesDb,
+  {
+    email,
+    signal,
+    now = new Date(),
+  }: { email: string; signal: DeliverabilitySignal; now?: Date },
+): Promise<DeliverabilityOutcome> {
+  const profile = await findProfileByEmail(admin, email);
+  if (profile === "failed") return "failed";
+  if (!profile) return "no_match";
+
+  const alreadySuppressed = Boolean(profile.digest_suppressed_at);
+  const suppressedAt = now.toISOString();
+
+  if (signal === "complaint") {
+    // Always written, even when already suppressed: a complaint outranks any
+    // bounce reason already stored.
+    if (alreadySuppressed && profile.digest_suppression_reason === "complaint") return "noop";
+    return (await writeDeliverability(admin, profile.user_id, {
+      digest_suppressed_at: profile.digest_suppressed_at ?? suppressedAt,
+      digest_suppression_reason: "complaint",
+    }))
+      ? "suppressed"
+      : "failed";
+  }
+
+  if (signal === "hard_bounce") {
+    if (alreadySuppressed) return "noop";
+    return (await writeDeliverability(admin, profile.user_id, {
+      digest_suppressed_at: suppressedAt,
+      digest_suppression_reason: "hard_bounce",
+    }))
+      ? "suppressed"
+      : "failed";
+  }
+
+  const count = Number.isFinite(profile.digest_soft_bounce_count)
+    ? Number(profile.digest_soft_bounce_count)
+    : 0;
+
+  if (signal === "delivered") {
+    if (count === 0) return "noop";
+    return (await writeDeliverability(admin, profile.user_id, { digest_soft_bounce_count: 0 }))
+      ? "reset"
+      : "failed";
+  }
+
+  // signal === "soft_bounce"
+  if (alreadySuppressed) return "noop";
+
+  const next = count + 1;
+  if (next < SOFT_BOUNCE_SUPPRESSION_THRESHOLD) {
+    return (await writeDeliverability(admin, profile.user_id, { digest_soft_bounce_count: next }))
+      ? "counted"
+      : "failed";
+  }
+
+  return (await writeDeliverability(admin, profile.user_id, {
+    digest_soft_bounce_count: next,
+    digest_suppressed_at: suppressedAt,
+    digest_suppression_reason: "repeated_soft_bounce",
+  }))
+    ? "suppressed"
+    : "failed";
 }
 
 /** Admin client for the job-facing helpers above. */
