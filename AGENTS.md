@@ -46,7 +46,8 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
-| `src/app/api/jobs/digest` | Weekly "saved and forgot" digest (needs `CRON_SECRET`; sends via Resend when configured) |
+| `src/app/api/jobs/digest` | Weekly per-profile letter (needs `CRON_SECRET`; daily cron picks due profiles; `?dry=1` renders without sending) |
+| `src/app/unsubscribe/[token]` | Public one-click unsubscribe keyed on `profiles.unsubscribe_token` |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
 | `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Inbox) |

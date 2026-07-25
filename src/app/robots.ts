@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         "/search",
         "/add",
         "/rate/",
+        "/unsubscribe/",
         "/font-preview",
       ],
     },

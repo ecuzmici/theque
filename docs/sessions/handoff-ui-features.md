@@ -84,8 +84,9 @@ masonry layout survived. Do not reintroduce minimal/grayscale styling. See
 - `GET /api/items/random` (shelf-aware random want/planned pick)
 - `GET /api/items/check-url`
 - `POST|DELETE /api/collections/[id]/share`
-- `GET|POST /api/jobs/digest` — CRON_SECRET-gated weekly "saved and forgot" email;
-  sends via Resend when `RESEND_API_KEY`+`DIGEST_EMAIL_TO` set, otherwise returns the HTML.
+- `GET|POST /api/jobs/digest` — CRON_SECRET-gated weekly letter, one per due profile;
+  sends via Resend when `RESEND_API_KEY` is set. `?dry=1` renders without sending.
+  (Superseded the single-recipient `DIGEST_EMAIL_TO` version.)
 - PATCH `/api/items/[id]` now accepts `rating_personal`, `verdict`; manages `done_at`.
 
 ### Cross-cutting
@@ -112,8 +113,9 @@ masonry layout survived. Do not reintroduce minimal/grayscale styling. See
    no hue, so the sort looks like "recent" — not a bug.
 5. Realtime: `useItemRealtime` filters rows through `itemMatchesShelf`, which needs
    `created_at` for the Forgotten shelf (missing → treated as not matching).
-6. Single-user PoC: RLS scopes session-client queries; the digest route deliberately uses
-   the admin client with no user filter.
+6. RLS scopes session-client queries. The digest job runs on the admin client (a cron has
+   no session), so every one of its queries must filter `user_id` explicitly — it is
+   multi-user now, and an unfiltered read there is a cross-profile leak.
 
 ## Known deferred items (sensible next improvements)
 
