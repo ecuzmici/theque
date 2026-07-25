@@ -36,6 +36,7 @@ export const ITEM_SOURCE_LABELS: Record<ItemSource, string> = {
   ios_shortcut: "iOS shortcut",
   manual: "Manual",
   mobile_share_extension: "Mobile share extension",
+  import: "Bulk import",
 };
 
 export const PROCESSING_STATUS_LABELS: Record<ProcessingStatus, string> = {

@@ -1,4 +1,5 @@
 import type { ExtensionCategoryHint } from "@/lib/capture/category-hint";
+import type { ImportRow, ImportSkip } from "@/lib/import/types";
 import type {
   Database,
   ItemCategory,
@@ -116,6 +117,49 @@ export type AiEnrichmentApplyResponseBody = ItemDetailResponseBody;
 export type EnrichJobResponseBody = {
   processed: number;
   failed: number;
+};
+
+/**
+ * POST /api/import — one chunk of an already-parsed import file.
+ *
+ * Parsing happens in the browser (see `src/lib/import/`), so the wire format is
+ * `ImportRow`-shaped, not the file itself. The client posts several chunks per
+ * file; each is independent, which is what makes progress reporting and
+ * partial-failure recovery possible.
+ */
+export type ImportRequestBody = {
+  rows: unknown[];
+  /** Importer id (`"pocket-csv"`, `"csv-custom"`, …), recorded for support. */
+  importer?: string | null;
+};
+
+/** POST /api/import/parse — server-side parse for jsdom/byte-bound formats. */
+export type ImportParseResponseBody = {
+  importer: { id: string; label: string };
+  rows: ImportRow[];
+  skipped: ImportSkip[];
+  warnings: string[];
+};
+
+/** A row the server refused, with a reason the UI shows verbatim. */
+export type ImportRejection = {
+  /** 1-based record number in the source file, when the parser knew it. */
+  line?: number;
+  reason: string;
+  /** Truncated source text so the user can recognise the row. */
+  raw?: string;
+};
+
+export type ImportResponseBody = {
+  /** Rows that became new items. */
+  inserted: number;
+  /** Rows already in the library (same `url_fingerprint`) — the idempotency count. */
+  duplicates: number;
+  /** Rows lost to a failed insert chunk; retryable by re-running the import. */
+  failed: number;
+  rejected: ImportRejection[];
+  /** Item headroom left under `MAX_ITEMS_PER_USER` after this chunk. */
+  remaining_quota: number;
 };
 
 /** POST /api/capture-tokens */

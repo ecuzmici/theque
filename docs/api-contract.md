@@ -289,6 +289,81 @@ Lists capture tokens for the current user, including `token_prefix`, `created_at
 
 ---
 
+### `POST /api/import/parse`
+
+**Auth:** Session. `multipart/form-data` with a single `file` field, max 4 MB.
+
+Server-side parse for the formats the browser cannot read itself: bookmark and
+Pocket HTML (jsdom) and archives (raw bytes). CSV/TSV/plain-URL files are parsed
+in the browser and never uploaded. Read-only — nothing is written.
+
+**Response `200`**
+
+```json
+{
+  "importer": { "id": "pocket-html", "label": "Pocket (HTML export)" },
+  "rows": [{ "url": "https://example.com/a", "title": "A", "source_ref": {} }],
+  "skipped": [{ "line": 12, "reason": "missing_url" }],
+  "warnings": []
+}
+```
+
+Errors: `401 unauthorized`, `400 missing_file`, `413 file_too_large`,
+`422 unrecognized_file` / `parse_failed`, `429 rate_limited` (10/60s per user).
+
+---
+
+### `POST /api/import`
+
+**Auth:** Session. One chunk of an already-parsed import file (`ImportRow[]`,
+max 500 per request; the UI sends 250). Rate limited to 40 requests/60s per user
+on its own bucket — this is deliberately **not** a loop over `/api/capture`.
+
+**Request**
+
+```json
+{
+  "importer": "pocket-csv",
+  "rows": [
+    {
+      "url": "https://example.com/a",
+      "title": "A",
+      "category": "articles",
+      "status": "done",
+      "rating_personal": 4,
+      "verdict": "worth it",
+      "done_at": "2026-01-04T00:00:00.000Z",
+      "source_ref": { "importer": "pocket-csv", "line": 12 }
+    }
+  ]
+}
+```
+
+Rows are inserted with `source = 'import'` and `processing_status = 'pending'`,
+so they render immediately from the file's own data while enrichment backfills
+covers and structured fields. `verdict` is encrypted at rest (ADR 0013). Dedup
+is the `unique (user_id, url_fingerprint)` constraint via on-conflict-do-nothing,
+so re-posting the same file is a no-op.
+
+**Response `200`**
+
+```json
+{
+  "inserted": 240,
+  "duplicates": 8,
+  "failed": 0,
+  "rejected": [{ "line": 12, "reason": "invalid_url", "raw": "not a url" }],
+  "remaining_quota": 9752
+}
+```
+
+Errors: `401 unauthorized`, `400 invalid_body` / `batch_too_large`,
+`409 quota_exceeded` (at `MAX_ITEMS_PER_USER`), `429 rate_limited`,
+`503 import_source_unavailable` when the `import` value is missing from the
+`item_source` enum (migration `20260725160000_item_source_import.sql`).
+
+---
+
 ### `GET|POST /api/jobs/enrich`
 
 **Auth:** Cron secret header `Authorization: Bearer <CRON_SECRET>`

@@ -68,9 +68,15 @@ export function ItemCard({
   const ratioStyle =
     aw > 0 && ah > 0 ? ({ aspectRatio: `${aw} / ${ah}` } as const) : ({ aspectRatio: "2 / 3" } as const);
 
-  const processing =
-    item.processing_status === "pending" || item.processing_status === "processing";
   const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);
+  // A pending row that already knows what it is — a bulk-imported item carries
+  // the export's title — is a real card waiting on a cover, not an empty
+  // placeholder. Only a row with nothing to show gets the shimmer and the
+  // "Gathering details…" copy; otherwise an import would read as a wall of
+  // blanks despite having good data.
+  const awaitingFirstDetails =
+    (item.processing_status === "pending" || item.processing_status === "processing") &&
+    !item.title;
   const dusty =
     item.status === "want" &&
     Date.now() - new Date(item.created_at).getTime() > FORGOTTEN_AFTER_DAYS * 86_400_000;
@@ -117,7 +123,7 @@ export function ItemCard({
           <div
             className={cn(
               "relative w-full bg-muted",
-              processing && !imgSrc && "ks-shimmer",
+              awaitingFirstDetails && !imgSrc && "ks-shimmer",
               !imgSrc && !item.dominant_color && `bg-gradient-to-br ${categoryPlaceholderClass(item.category)}`,
             )}
             style={{
@@ -132,15 +138,18 @@ export function ItemCard({
                 <img
                   src={imgSrc}
                   alt=""
-                  className={cn("absolute inset-0 h-full w-full object-cover transition", processing && "opacity-75")}
+                  className={cn(
+                    "absolute inset-0 h-full w-full object-cover transition",
+                    awaitingFirstDetails && "opacity-75",
+                  )}
                 />
-                {processing ? (
+                {awaitingFirstDetails ? (
                   <div className="pointer-events-none absolute inset-0 ks-shimmer bg-transparent" />
                 ) : null}
               </>
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center">
-                {processing ? (
+                {awaitingFirstDetails ? (
                   <span className="text-xs text-white/80">Gathering details…</span>
                 ) : (
                   <>

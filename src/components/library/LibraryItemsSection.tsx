@@ -22,6 +22,17 @@ import type { LibraryItemRow } from "@/lib/types/library-item";
 
 const PENDING_REFRESH_INTERVAL_MS = 2000;
 
+/**
+ * Give up polling after this many refreshes (~3 minutes).
+ *
+ * A capture or two resolves in seconds, but a bulk import leaves hundreds of
+ * rows pending for as long as the enrichment cron takes to drain them — an
+ * unbounded 2s poll would then hammer the API from any open tab for hours.
+ * `useItemRealtime` still pushes each row's enriched state as it lands, so
+ * stopping the poll costs freshness only if the socket is down.
+ */
+const PENDING_REFRESH_MAX_POLLS = 90;
+
 type LibraryItemsSectionProps = {
   userId: string;
   shelfId: ShelfId;
@@ -97,7 +108,15 @@ export function LibraryItemsSection({
     };
 
     void refreshPendingItems();
-    const intervalId = window.setInterval(() => void refreshPendingItems(), PENDING_REFRESH_INTERVAL_MS);
+    let polls = 0;
+    const intervalId = window.setInterval(() => {
+      polls += 1;
+      if (polls > PENDING_REFRESH_MAX_POLLS) {
+        window.clearInterval(intervalId);
+        return;
+      }
+      void refreshPendingItems();
+    }, PENDING_REFRESH_INTERVAL_MS);
 
     return () => {
       cancelled = true;

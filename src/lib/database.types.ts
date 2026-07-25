@@ -25,7 +25,10 @@ export type ItemSource =
   | "chrome_extension"
   | "ios_shortcut"
   | "manual"
-  | "mobile_share_extension";
+  | "mobile_share_extension"
+  // Bulk file import (POST /api/import). Requires the enum value added in
+  // supabase/migrations/20260725160000_item_source_import.sql.
+  | "import";
 
 export type ProcessingStatus = "pending" | "processing" | "ready" | "failed";
 

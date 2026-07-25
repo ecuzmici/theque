@@ -64,7 +64,9 @@ describe("LibraryItemsSection", () => {
   });
 
   it("refreshes visible pending items to their enriched state", async () => {
-    const pendingItem = makeItem();
+    // Titleless: a pending row with nothing to show is the one that gets the
+    // "Gathering details…" placeholder (see the imported-row case below).
+    const pendingItem = makeItem({ title: null });
     const readyItem = makeItem({
       title: "Artificial Wisdom",
       subtitle: "Thomas R. Weaver · 2023",
@@ -96,6 +98,27 @@ describe("LibraryItemsSection", () => {
 
     expect(mocks.fetchLibraryItemsPage).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("Artificial Wisdom");
+    expect(container.textContent).not.toContain("Gathering details");
+  });
+
+  it("renders a pending item that already has a title as a real card", async () => {
+    // Bulk-imported rows land `pending` (so enrichment still claims them) but
+    // carry the export's title. They must read as items, not as a wall of
+    // placeholders waiting on a crawl.
+    const importedItem = makeItem({ title: "Piranesi", processing_status: "pending" });
+    mocks.fetchLibraryItemsPage.mockReturnValueOnce(new Promise(() => {}));
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        <LibraryItemsSection userId="user-1" shelfId="all" initialItems={[importedItem]} />,
+      );
+    });
+
+    expect(container.textContent).toContain("Piranesi");
     expect(container.textContent).not.toContain("Gathering details");
   });
 });

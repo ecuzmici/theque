@@ -347,7 +347,12 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         category: mergedCategory,
         category_confidence: mergedCategoryConfidence,
         category_source: mergedCategorySource,
-        status: mergedCategorySource === "manual" ? row.status : nextStatus,
+        // Enrichment never un-dones an item. A consumed row carries
+        // rating/verdict/done_at, and bulk-imported rows can arrive already
+        // done (a Pocket archive, a "read" shelf) while still pending
+        // enrichment — resetting those to want/inbox would strand that data.
+        status:
+          mergedCategorySource === "manual" || row.status === "done" ? row.status : nextStatus,
         structured: mergedStructured as Json,
         raw_metadata: mergedRawMetadata as Json,
         display: display as Json,
