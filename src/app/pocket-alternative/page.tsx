@@ -38,7 +38,7 @@ const FAQ = [
   },
   {
     q: "Can I import my Pocket saves?",
-    a: "There's no one-click Pocket importer yet. For now you can paste any URL into thèque to save it, or use the Chrome extension to re-save pages as you revisit them.",
+    a: "Yes. Go to Settings → Import and drop in your Pocket export — both the ril_export.html file and the newer CSV work, and your unread and archived items keep their status. Bookmarks exported from Chrome, Firefox, Safari or Edge work too, as do Instapaper and Raindrop CSVs.",
   },
   {
     q: "Is thèque free?",

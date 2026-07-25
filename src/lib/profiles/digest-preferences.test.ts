@@ -20,6 +20,7 @@ function makeProfile(overrides: Partial<ProfileRow> = {}): ProfileRow {
     email: "reader@example.com",
     digest_enabled: true,
     digest_day: 0,
+    ai_personalization_enabled: false,
     unsubscribe_token: "token-1",
     last_digest_sent_at: null,
     created_at: "2026-07-01T00:00:00.000Z",
@@ -89,6 +90,23 @@ describe("parseDigestPreferencesPatch", () => {
     });
   });
 
+  it("takes AI consent only from an explicit boolean", () => {
+    expect(parseDigestPreferencesPatch({ ai_personalization_enabled: true })).toEqual({
+      ok: true,
+      patch: { ai_personalization_enabled: true },
+    });
+    expect(parseDigestPreferencesPatch({ ai_personalization_enabled: false })).toEqual({
+      ok: true,
+      patch: { ai_personalization_enabled: false },
+    });
+    for (const truthy of ["true", 1, "on"]) {
+      expect(parseDigestPreferencesPatch({ ai_personalization_enabled: truthy })).toEqual({
+        ok: false,
+        code: "invalid_ai_personalization_enabled",
+      });
+    }
+  });
+
   it("ignores unknown fields rather than smuggling them into the patch", () => {
     expect(
       parseDigestPreferencesPatch({
@@ -106,10 +124,24 @@ describe("toDigestPreferences", () => {
     expect(toDigestPreferences(null)).toEqual(DEFAULT_DIGEST_PREFERENCES);
   });
 
+  it("never infers AI consent from a missing row or a missing column", () => {
+    expect(DEFAULT_DIGEST_PREFERENCES.ai_personalization_enabled).toBe(false);
+    expect(toDigestPreferences(null).ai_personalization_enabled).toBe(false);
+
+    const legacy = makeProfile();
+    delete (legacy as Partial<ProfileRow>).ai_personalization_enabled;
+    expect(toDigestPreferences(legacy).ai_personalization_enabled).toBe(false);
+  });
+
   it("reads the stored preferences and repairs an out-of-range day", () => {
-    expect(toDigestPreferences(makeProfile({ digest_enabled: false, digest_day: 4 }))).toEqual({
+    expect(
+      toDigestPreferences(
+        makeProfile({ digest_enabled: false, digest_day: 4, ai_personalization_enabled: true }),
+      ),
+    ).toEqual({
       digest_enabled: false,
       digest_day: 4,
+      ai_personalization_enabled: true,
     });
     expect(toDigestPreferences(makeProfile({ digest_day: 42 })).digest_day).toBe(0);
   });

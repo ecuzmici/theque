@@ -108,7 +108,38 @@ Provider options updated: Google `thinkingBudget: 0`; OpenAI `reasoningEffort` e
 
 ## Open questions
 
-- **Consent for sending verdict notes to the LLM.** Already live, not
-  hypothetical: other profiles' notes would leave for the Gateway the moment this
-  ships. Needs privacy-policy disclosure or an explicit opt-in before it is no
-  longer just the owner's data.
+- ~~**Consent for sending verdict notes to the LLM.**~~ **Resolved 2026-07-25**
+  — see below.
+
+## Consent resolution (2026-07-25)
+
+The open question came due when the weekly letter gained a recommendation card:
+the interactive deck is *user-initiated* (someone presses "Get my picks" and
+their own notes go out as a direct result), but a cron would have sent every due
+profile's titles and verdict notes to the Gateway on a schedule none of them
+triggered. Resolved by splitting those two cases rather than treating them alike:
+
+- **Explicit opt-in for the scheduled path.** `profiles.ai_personalization_enabled`
+  (`boolean not null default false`, migration
+  `20260725170000_profiles_ai_personalization_consent.sql`, client-writable via
+  the column-level UPDATE grant). The digest job checks it *before* calling
+  `generateRecommendations`, so a non-consenting profile is never read for a
+  prompt and no LLM call is made on their behalf — the gate is on the call, not
+  on the rendered card. Consent is checked in addition to
+  `DIGEST_RECOMMEND_MAX_USERS`, which stays as the cost/fan-out ceiling and now
+  defaults to 2 instead of 0.
+- **The rest of the letter is unaffected.** Shelf items and one-tap star links
+  involve no provider, so declining costs a user nothing but the suggestion.
+- **Disclosure for both paths.** `/privacy` now names what leaves (item titles,
+  creators, years, the saved-titles "don't suggest" list, and verdict notes),
+  where it goes (Vercel AI Gateway for recommendations; Google's Gemini API for
+  page enrichment), and what it is for — covering the interactive deck and
+  enrichment, which already send on user action, as well as the opt-in letter
+  card.
+- **Toggle lives in Settings → Email** next to the letter switch, default off,
+  no pre-checked state and no "recommended" nudge.
+
+Not covered by the flag, deliberately: the interactive deck and LLM enrichment
+remain user-initiated and disclosed rather than gated on it — turning the flag
+off must not silently disable a feature the user just asked for by pressing a
+button.

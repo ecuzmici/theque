@@ -48,6 +48,13 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
 | `src/app/api/jobs/digest` | Weekly per-profile letter (needs `CRON_SECRET`; daily cron picks due profiles; `?dry=1` renders without sending) |
 | `src/app/unsubscribe/[token]` | Public one-click unsubscribe keyed on `profiles.unsubscribe_token` |
+| `src/app/rate/[token]` | Public one-tap star rating from the letter; HMAC-signed link, no session (needs `RATING_LINK_SECRET`) |
+| `src/app/api/import` + `/api/import/parse` | Bulk import: batched insert, plus a read-only parse endpoint for jsdom/ZIP formats |
+| `src/app/api/items/enrich-pending` | Session-scoped interactive drain of your own enrichment backlog (`src/lib/jobs/enrich-queue.ts`) |
+| `src/lib/import/` | CSV engine + preset registry, bookmark/Pocket/Letterboxd parsers, rating normalizers |
+| `src/lib/email/` | Letter content + HTML, rating-link mint/verify, `applyRatingFromLink` |
+| `src/lib/profiles/` | `public.profiles` accessors and weekly-letter preferences |
+| `src/lib/recommend/generate.ts` | Request-free recommendation pipeline shared by the deck route and the letter cron |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
 | `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Inbox) |
@@ -124,6 +131,9 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - Taste loop: marking an item done goes through the category-aware verb (`doneVerb`) and stores `rating_personal` / `verdict` / `done_at`; enrichment extracts `dominant_color` / `dominant_hue` (sharp) for palette sort and placeholder tinting.
 - Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
+- New import source: add a preset (column *names* only) under `src/lib/import/presets/` + a real export fixture + a test; register it in `presets/index.ts` before the `url-list` fallback. Never touch `csv-engine.ts`, never detect by filename, never map by column position. See ADR 0018.
+- Client code must import import-parsing from **leaf** modules (`@/lib/import/csv-engine`, `.../presets`, `.../types`), never `@/lib/import` — the index pulls in jsdom.
+- The weekly letter (`/api/jobs/digest`) is per-profile and service-role: every query must name `user_id` explicitly. Review with `?dry=1` before any real send; `markDigestSent` only after a 2xx. See ADR 0017.
 - LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus `GEMINI_API_KEY`; deterministic extraction must still work without it.
 - Free category resolvers live in `src/lib/enrichment/resolvers/` (TMDB, Google Books, iTunes, YouTube oEmbed, GitHub); they run after classify when important fields are sparse and rank above LLM output. Add a new source by adding a `CategoryResolver` and registering it in `resolvers/index.ts`.
 - Blocked/sparse, snapshot-less pages can fall back to Jina Reader (`JINA_READER_ENABLED`) and Gemini Google Search grounding (`LLM_GROUNDING_ENABLED`); both opt-in, default off, fail-open. Grounding is skipped when the URL already contains a canonical entity id (`src/lib/enrichment/url-identity.ts`).

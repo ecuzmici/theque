@@ -2,10 +2,17 @@ import type { Database } from "@/lib/database.types";
 
 export type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 
-/** The only two profile columns a signed-in client may change (see the RLS grants). */
+/** The only profile columns a signed-in client may change (see the RLS grants). */
 export type DigestPreferences = {
   digest_enabled: boolean;
   digest_day: number;
+  /**
+   * Consent to send this profile's item titles and verdict notes to the LLM
+   * provider so the weekly letter can carry a recommendation card. Opt-in:
+   * everything else about the letter works without it, and no LLM call is made
+   * for a profile that has not turned it on (ADR 0002).
+   */
+  ai_personalization_enabled: boolean;
 };
 
 /** 0 = Sunday … 6 = Saturday, matching `Date#getUTCDay()` and the DB check constraint. */
@@ -25,10 +32,15 @@ export const DEFAULT_DIGEST_DAY = 0;
  * What Settings shows (and what the API returns) when a profile row is missing
  * or unreadable — opt-out, not opt-in, so the letter never silently stops for a
  * user whose row lags behind the migration.
+ *
+ * `ai_personalization_enabled` is the deliberate exception: it defaults to
+ * `false`, so an unreadable row can never be mistaken for consent to send that
+ * profile's verdict notes to the LLM.
  */
 export const DEFAULT_DIGEST_PREFERENCES: DigestPreferences = {
   digest_enabled: true,
   digest_day: DEFAULT_DIGEST_DAY,
+  ai_personalization_enabled: false,
 };
 
 /**
@@ -60,10 +72,17 @@ export type DigestPreferencesPatch = Partial<DigestPreferences>;
 
 export type ParsedDigestPreferencesPatch =
   | { ok: true; patch: DigestPreferencesPatch }
-  | { ok: false; code: "invalid_body" | "invalid_digest_enabled" | "invalid_digest_day" };
+  | {
+      ok: false;
+      code:
+        | "invalid_body"
+        | "invalid_digest_enabled"
+        | "invalid_digest_day"
+        | "invalid_ai_personalization_enabled";
+    };
 
 /**
- * Validates a PATCH body for the digest preferences. Both fields are optional,
+ * Validates a PATCH body for the digest preferences. Every field is optional,
  * but an empty patch is rejected so a no-op write never looks like a success.
  */
 export function parseDigestPreferencesPatch(body: unknown): ParsedDigestPreferencesPatch {
@@ -87,6 +106,15 @@ export function parseDigestPreferencesPatch(body: unknown): ParsedDigestPreferen
     patch.digest_day = day;
   }
 
+  if (raw.ai_personalization_enabled !== undefined) {
+    // Consent is only ever set by an explicit boolean — no truthy strings, no
+    // coercion, so a malformed client can neither grant nor forge it.
+    if (typeof raw.ai_personalization_enabled !== "boolean") {
+      return { ok: false, code: "invalid_ai_personalization_enabled" };
+    }
+    patch.ai_personalization_enabled = raw.ai_personalization_enabled;
+  }
+
   if (Object.keys(patch).length === 0) {
     return { ok: false, code: "invalid_body" };
   }
@@ -104,6 +132,9 @@ export function toDigestPreferences(profile: ProfileRow | null): DigestPreferenc
   return {
     digest_enabled: profile.digest_enabled,
     digest_day: normalizeDigestDay(profile.digest_day) ?? DEFAULT_DIGEST_DAY,
+    // Strict `=== true`: a row read before the consent migration landed has no
+    // such column, and "absent" must read as "not consented", never as consent.
+    ai_personalization_enabled: profile.ai_personalization_enabled === true,
   };
 }
 

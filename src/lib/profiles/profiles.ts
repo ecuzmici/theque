@@ -30,7 +30,7 @@ import {
 export type ProfilesDb = SupabaseClient<Database>;
 
 const PROFILE_COLUMNS =
-  "user_id, email, digest_enabled, digest_day, unsubscribe_token, last_digest_sent_at, created_at, updated_at";
+  "user_id, email, digest_enabled, digest_day, ai_personalization_enabled, unsubscribe_token, last_digest_sent_at, created_at, updated_at";
 
 /** A profile the digest job can actually mail to. */
 export type DigestRecipient = {
@@ -39,6 +39,13 @@ export type DigestRecipient = {
   unsubscribe_token: string;
   digest_day: number;
   last_digest_sent_at: string | null;
+  /**
+   * Whether this profile consented to LLM personalization. Carried on the
+   * recipient so the job can decide *before* calling the recommender — the
+   * point of the flag is that a non-consenting profile's titles and verdict
+   * notes never leave for the provider at all.
+   */
+  ai_personalization_enabled: boolean;
 };
 
 export async function fetchProfile(db: ProfilesDb, userId: string): Promise<ProfileRow | null> {
@@ -153,6 +160,9 @@ export async function listProfilesDueForDigest(
       unsubscribe_token: profile.unsubscribe_token,
       digest_day: profile.digest_day,
       last_digest_sent_at: profile.last_digest_sent_at,
+      // Same strict check as toDigestPreferences: anything other than a stored
+      // `true` — including a row from before the consent migration — is "no".
+      ai_personalization_enabled: profile.ai_personalization_enabled === true,
     }));
 }
 

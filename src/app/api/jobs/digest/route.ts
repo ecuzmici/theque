@@ -38,15 +38,19 @@ const DEFAULT_MAX_RECIPIENTS = 5;
 /**
  * How many recipients per run may get a generated recommendation card.
  *
- * Defaults to 0 — off — for two independent reasons:
- *   1. Cost/fan-out: each card is an LLM call plus resolver fetches, and a cron
- *      must not be able to spend unboundedly.
- *   2. Consent: `generateRecommendations` builds its taste profile from verdict
- *      notes, which ADR 0002 lists as an open question — sending other people's
- *      notes to the Gateway needs disclosure or opt-in first. Keeping the
- *      default at 0 means shipping this job sends nobody's notes anywhere.
+ * Consent is no longer what this number is holding back: a card is generated
+ * only for a profile whose `ai_personalization_enabled` is true (opt-in,
+ * default false, disclosed on /privacy — ADR 0002), so a non-consenting user's
+ * titles and verdict notes are never sent anywhere no matter what this is set
+ * to. What remains is the cost/fan-out ceiling: each card is an LLM call plus
+ * resolver fetches, and a cron must not be able to spend unboundedly.
+ *
+ * 2 is deliberately below the recipient cap (5): the opted-in population is
+ * small, one card per run per user is enough to keep a weekly cadence, and a
+ * runaway job can waste at most two generations before anyone notices. Raise it
+ * once a real send has been reviewed with `?dry=1&recommend=1`.
  */
-const DEFAULT_RECOMMEND_MAX_USERS = 0;
+const DEFAULT_RECOMMEND_MAX_USERS = 2;
 
 /** Hard stop for one card, so a slow model cannot eat the whole cron budget. */
 const DEFAULT_RECOMMEND_TIMEOUT_MS = 25_000;
@@ -274,7 +278,15 @@ async function handleDigestJob(req: Request) {
     });
 
     let recommendation: DigestRecommendation | null = null;
-    if (recommendationsUsed < recommendBudget && (!dry || previewRecommendations)) {
+    // Consent first, budget second. A profile that has not opted in never
+    // reaches buildRecommendation, so nothing of theirs is read for a prompt and
+    // no LLM call is made on their behalf; they still get the rest of the
+    // letter, which involves no provider at all.
+    if (
+      recipient.ai_personalization_enabled &&
+      recommendationsUsed < recommendBudget &&
+      (!dry || previewRecommendations)
+    ) {
       recommendation = await buildRecommendation(admin, recipient.user_id);
       if (recommendation) recommendationsUsed += 1;
     }

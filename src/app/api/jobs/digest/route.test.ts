@@ -36,13 +36,19 @@ type Library = {
   categories?: string[];
 };
 
-function recipient(userId: string, token: string): DigestRecipient {
+/** Recipients are non-consenting unless a test opts them in, like real rows. */
+function recipient(
+  userId: string,
+  token: string,
+  aiPersonalizationEnabled = false,
+): DigestRecipient {
   return {
     user_id: userId,
     email: `${userId}@example.com`,
     unsubscribe_token: token,
     digest_day: 0,
     last_digest_sent_at: null,
+    ai_personalization_enabled: aiPersonalizationEnabled,
   };
 }
 
@@ -297,7 +303,7 @@ describe("/api/jobs/digest dry run", () => {
     mocks.createProfilesAdminClient.mockReturnValue(
       makeAdminDb({ [USER_A]: { want: [wantRow(ITEM_A_WANT, "The Dispossessed")] } }),
     );
-    mocks.listProfilesDueForDigest.mockResolvedValue([recipient(USER_A, "token-a")]);
+    mocks.listProfilesDueForDigest.mockResolvedValue([recipient(USER_A, "token-a", true)]);
 
     const { GET } = await import("./route");
     await GET(cronRequest("/api/jobs/digest?dry=1"));
@@ -324,11 +330,12 @@ describe("/api/jobs/digest nothing to say", () => {
 });
 
 describe("/api/jobs/digest recommendations", () => {
+  /** Gateway configured and USER_A opted in — the happy path for a card. */
   const withGateway = (library: Library) => {
     process.env.AI_GATEWAY_API_KEY = "gw_test";
     process.env.TMDB_API_KEY = "tmdb_test";
     mocks.createProfilesAdminClient.mockReturnValue(makeAdminDb({ [USER_A]: library }));
-    mocks.listProfilesDueForDigest.mockResolvedValue([recipient(USER_A, "token-a")]);
+    mocks.listProfilesDueForDigest.mockResolvedValue([recipient(USER_A, "token-a", true)]);
   };
 
   const card = {
@@ -344,8 +351,21 @@ describe("/api/jobs/digest recommendations", () => {
     source: "open_library" as const,
   };
 
-  it("is off by default: no card, no LLM call, letter still sent", async () => {
-    withGateway({ want: [wantRow(ITEM_A_WANT, "The Dispossessed")], categories: ["books", "books", "books"] });
+  it("never calls the LLM for a profile that has not consented, and still sends the letter", async () => {
+    process.env.DIGEST_RECOMMEND_MAX_USERS = "5";
+    process.env.AI_GATEWAY_API_KEY = "gw_test";
+    process.env.TMDB_API_KEY = "tmdb_test";
+    mocks.createProfilesAdminClient.mockReturnValue(
+      makeAdminDb({
+        [USER_A]: {
+          want: [wantRow(ITEM_A_WANT, "The Dispossessed")],
+          categories: ["books", "books", "books"],
+        },
+      }),
+    );
+    // Budget to spare, a big enough library, gateway configured — the only thing
+    // missing is consent, and that alone must stop the request from being made.
+    mocks.listProfilesDueForDigest.mockResolvedValue([recipient(USER_A, "token-a", false)]);
 
     const { GET } = await import("./route");
     const res = await GET(cronRequest());
@@ -354,7 +374,34 @@ describe("/api/jobs/digest recommendations", () => {
     expect(mocks.generateRecommendations).not.toHaveBeenCalled();
   });
 
-  it("caps how many recipients get a generated card in one run", async () => {
+  it("spends the card on the consenting recipient and skips the other one", async () => {
+    process.env.DIGEST_RECOMMEND_MAX_USERS = "5";
+    process.env.AI_GATEWAY_API_KEY = "gw_test";
+    process.env.TMDB_API_KEY = "tmdb_test";
+    const library: Library = {
+      want: [wantRow(ITEM_A_WANT, "A title")],
+      categories: ["books", "books", "books"],
+    };
+    mocks.createProfilesAdminClient.mockReturnValue(
+      makeAdminDb({
+        [USER_A]: library,
+        [USER_B]: { ...library, want: [wantRow(ITEM_B_WANT, "B title")] },
+      }),
+    );
+    mocks.listProfilesDueForDigest.mockResolvedValue([
+      recipient(USER_A, "token-a", false),
+      recipient(USER_B, "token-b", true),
+    ]);
+    mocks.generateRecommendations.mockResolvedValue({ ok: true, cards: [card], funnel: {} });
+
+    const { GET } = await import("./route");
+    await expect((await GET(cronRequest())).json()).resolves.toMatchObject({ sent: 2 });
+
+    expect(mocks.generateRecommendations).toHaveBeenCalledTimes(1);
+    expect(mocks.generateRecommendations.mock.calls[0][0]).toMatchObject({ userId: USER_B });
+  });
+
+  it("caps how many consenting recipients get a generated card in one run", async () => {
     process.env.DIGEST_RECOMMEND_MAX_USERS = "1";
     process.env.AI_GATEWAY_API_KEY = "gw_test";
     process.env.TMDB_API_KEY = "tmdb_test";
@@ -365,9 +412,11 @@ describe("/api/jobs/digest recommendations", () => {
     mocks.createProfilesAdminClient.mockReturnValue(
       makeAdminDb({ [USER_A]: library, [USER_B]: { ...library, want: [wantRow(ITEM_B_WANT, "B title")] } }),
     );
+    // Both consented: the cap is an independent ceiling on top of consent, not a
+    // substitute for it.
     mocks.listProfilesDueForDigest.mockResolvedValue([
-      recipient(USER_A, "token-a"),
-      recipient(USER_B, "token-b"),
+      recipient(USER_A, "token-a", true),
+      recipient(USER_B, "token-b", true),
     ]);
     mocks.generateRecommendations.mockResolvedValue({ ok: true, cards: [card], funnel: {} });
 

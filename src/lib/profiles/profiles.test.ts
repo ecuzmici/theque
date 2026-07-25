@@ -25,6 +25,7 @@ function makeProfile(overrides: Partial<ProfileRow> = {}): ProfileRow {
     email: "reader@example.com",
     digest_enabled: true,
     digest_day: 0,
+    ai_personalization_enabled: false,
     unsubscribe_token: "token-1",
     last_digest_sent_at: null,
     created_at: "2026-07-01T00:00:00.000Z",
@@ -98,12 +99,27 @@ describe("fetchProfile", () => {
 describe("fetchDigestPreferences", () => {
   it("reads the stored preferences", async () => {
     const { db } = makeFakeDb({
-      data: makeProfile({ digest_enabled: false, digest_day: 3 }),
+      data: makeProfile({
+        digest_enabled: false,
+        digest_day: 3,
+        ai_personalization_enabled: true,
+      }),
       error: null,
     });
     await expect(fetchDigestPreferences(db, "user-1")).resolves.toEqual({
       digest_enabled: false,
       digest_day: 3,
+      ai_personalization_enabled: true,
+    });
+  });
+
+  it("reports no AI consent when the row predates the consent column", async () => {
+    const legacy = makeProfile();
+    delete (legacy as Partial<ProfileRow>).ai_personalization_enabled;
+    const { db } = makeFakeDb({ data: legacy, error: null });
+
+    await expect(fetchDigestPreferences(db, "user-1")).resolves.toMatchObject({
+      ai_personalization_enabled: false,
     });
   });
 
@@ -126,7 +142,7 @@ describe("updateDigestPreferences", () => {
 
     expect(result).toEqual({
       ok: true,
-      preferences: { digest_enabled: false, digest_day: 0 },
+      preferences: { digest_enabled: false, digest_day: 0, ai_personalization_enabled: false },
     });
     expect(argsFor("update")).toEqual([{ digest_enabled: false }]);
     expect(argsFor("eq")).toEqual(["user_id", "user-1"]);
@@ -147,7 +163,10 @@ describe("updateDigestPreferences", () => {
 
 describe("listProfilesDueForDigest", () => {
   it("queries only enabled profiles for today's weekday and maps them to recipients", async () => {
-    const rows = [makeProfile(), makeProfile({ user_id: "user-2", email: "b@example.com" })];
+    const rows = [
+      makeProfile({ ai_personalization_enabled: true }),
+      makeProfile({ user_id: "user-2", email: "b@example.com" }),
+    ];
     const { db, calls } = makeFakeDb({ data: rows, error: null });
 
     const due = await listProfilesDueForDigest(db, { now: SUNDAY });
@@ -159,6 +178,7 @@ describe("listProfilesDueForDigest", () => {
         unsubscribe_token: "token-1",
         digest_day: 0,
         last_digest_sent_at: null,
+        ai_personalization_enabled: true,
       },
       {
         user_id: "user-2",
@@ -166,6 +186,7 @@ describe("listProfilesDueForDigest", () => {
         unsubscribe_token: "token-1",
         digest_day: 0,
         last_digest_sent_at: null,
+        ai_personalization_enabled: false,
       },
     ]);
 
@@ -192,6 +213,15 @@ describe("listProfilesDueForDigest", () => {
   it("returns an empty list when the query fails", async () => {
     const { db } = makeFakeDb({ data: null, error: { message: "boom" } });
     await expect(listProfilesDueForDigest(db, { now: SUNDAY })).resolves.toEqual([]);
+  });
+
+  it("treats a row without the consent column as not consented", async () => {
+    const legacy = makeProfile();
+    delete (legacy as Partial<ProfileRow>).ai_personalization_enabled;
+    const { db } = makeFakeDb({ data: [legacy], error: null });
+
+    const [due] = await listProfilesDueForDigest(db, { now: SUNDAY });
+    expect(due.ai_personalization_enabled).toBe(false);
   });
 });
 

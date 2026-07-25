@@ -187,6 +187,7 @@ export type Database = {
           email: string | null;
           digest_enabled: boolean;
           digest_day: number;
+          ai_personalization_enabled: boolean;
           unsubscribe_token: string;
           last_digest_sent_at: string | null;
           created_at: string;
@@ -197,6 +198,7 @@ export type Database = {
           email?: string | null;
           digest_enabled?: boolean;
           digest_day?: number;
+          ai_personalization_enabled?: boolean;
           unsubscribe_token?: string;
           last_digest_sent_at?: string | null;
           created_at?: string;
@@ -207,6 +209,7 @@ export type Database = {
           email?: string | null;
           digest_enabled?: boolean;
           digest_day?: number;
+          ai_personalization_enabled?: boolean;
           unsubscribe_token?: string;
           last_digest_sent_at?: string | null;
           created_at?: string;

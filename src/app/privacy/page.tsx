@@ -49,7 +49,52 @@ export default function PrivacyPage() {
             Some browser pages, such as chrome:// pages or extension pages, cannot be captured
             because browsers restrict extension access to those pages.
           </p>
+
+          <h2 className="pt-4 font-heading text-2xl tracking-[0.02em] text-foreground">
+            AI features
+          </h2>
           <p>
+            thèque uses AI models for two things: filling in details about a page you saved,
+            and suggesting something you might like next. These models are run by third-party
+            providers. Recommendation requests are sent through the Vercel AI Gateway, which
+            routes them to the model providers behind it (currently Google and OpenAI models);
+            page enrichment is sent to Google&rsquo;s Gemini API. Providers process this data to
+            return a response; thèque does not use it to train models, and does not send your
+            email address or account identifiers with it.
+          </p>
+          <p>
+            <strong className="font-medium text-foreground">
+              When you ask for recommendations
+            </strong>{" "}
+            in the app, thèque builds the request from your own library: the titles, authors or
+            directors and years of items you saved, and the free-text verdict notes you wrote
+            about the ones you rated. Your saved titles are also included as a
+            &ldquo;don&rsquo;t suggest these&rdquo; list. This happens each time you ask for
+            picks, as a direct result of that request.
+          </p>
+          <p>
+            <strong className="font-medium text-foreground">
+              When you save a link and enrichment is enabled
+            </strong>
+            , the URL and the text of that public page may be sent to the model so it can fill
+            in a title, description or category. This is about the page you saved, not about
+            your library or your notes.
+          </p>
+          <p>
+            <strong className="font-medium text-foreground">The weekly letter is different</strong>{" "}
+            — nobody presses a button for it. So the recommendation it can include is off unless
+            you switch it on in Settings &rarr; Email. While it is off, no part of your library
+            and none of your notes are sent to an AI provider for the letter, and you still get
+            the letter itself. You can turn it back off at any time; it applies from the next
+            letter onwards.
+          </p>
+          <p>
+            Your notes and verdicts are encrypted in the thèque database, and deleting your
+            account removes your library. Data already sent to a model provider is handled under
+            that provider&rsquo;s own retention terms and cannot be recalled by thèque.
+          </p>
+
+          <p className="pt-4">
             For questions or support, contact the site owner at hello@theque.app.
           </p>
         </div>
