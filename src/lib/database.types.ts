@@ -70,6 +70,11 @@ export type Database = {
           rating_personal: number | null;
           verdict: string | null;
           done_at: string | null;
+          file_drive_id: string | null;
+          file_name: string | null;
+          file_bytes: number | null;
+          file_sha256: string | null;
+          file_uploaded_at: string | null;
           search_vector: unknown;
           created_at: string;
           updated_at: string;
@@ -104,6 +109,11 @@ export type Database = {
           rating_personal?: number | null;
           verdict?: string | null;
           done_at?: string | null;
+          file_drive_id?: string | null;
+          file_name?: string | null;
+          file_bytes?: number | null;
+          file_sha256?: string | null;
+          file_uploaded_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -137,6 +147,11 @@ export type Database = {
           rating_personal?: number | null;
           verdict?: string | null;
           done_at?: string | null;
+          file_drive_id?: string | null;
+          file_name?: string | null;
+          file_bytes?: number | null;
+          file_sha256?: string | null;
+          file_uploaded_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
