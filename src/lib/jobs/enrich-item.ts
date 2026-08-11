@@ -34,9 +34,12 @@ function hasUsefulValue(value: unknown): boolean {
   return false;
 }
 
+// `series` counts as important for books. The Kobo displays a series name, and
+// the EPUB upload path writes it into the file. Only Hardcover supplies it, so
+// a book without it must still reach the resolvers.
 const RESOLVER_IMPORTANT_FIELDS: Partial<Record<ItemCategory, string[]>> = {
   movies_and_tv: ["year", "directors"],
-  books: ["authors", "published_year"],
+  books: ["authors", "published_year", "series"],
 };
 
 function resolverFieldsSparse(

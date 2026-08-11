@@ -37,10 +37,57 @@ export function isBotBlockPage(html: string, statusCode: number): boolean {
   return false;
 }
 
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: "\u00a0",
+};
+
+/**
+ * Decode HTML character references in a short text field. A model sometimes
+ * returns `&apos;` inside a title, and a page sometimes double-encodes one.
+ * The value goes into a file name and into EPUB metadata, so it must be plain
+ * text. Two passes clear a double encoding such as `&amp;apos;`.
+ */
+export function decodeHtmlEntities(value: string): string {
+  let out = value;
+  for (let pass = 0; pass < 2; pass += 1) {
+    const next = out.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, body: string) => {
+      const token = body.toLowerCase();
+      if (token.startsWith("#x")) {
+        const code = Number.parseInt(body.slice(2), 16);
+        return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : match;
+      }
+      if (token.startsWith("#")) {
+        const code = Number.parseInt(body.slice(1), 10);
+        return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : match;
+      }
+      return NAMED_ENTITIES[token] ?? match;
+    });
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+/**
+ * A title that ends in an ellipsis is cut short by the source page. Goodreads
+ * truncates a long title in its `og:title`, sometimes in the middle of a word.
+ * A resolver or a hint gives the full title, so treat the cut one as weak.
+ */
+export function isTruncatedTitle(title: string | null | undefined): boolean {
+  if (!title?.trim()) return false;
+  return /(\u2026|\.\.\.)$/.test(title.trim());
+}
+
 export function isWeakTitle(title: string | null | undefined, siteName?: string): boolean {
   if (!title?.trim()) return true;
   const t = title.trim();
   if (isErrorPageTitle(t)) return true;
+  if (isTruncatedTitle(t)) return true;
   if (siteName && t.toLowerCase() === siteName.toLowerCase()) return true;
   if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(t)) return true;
   const generic = new Set([

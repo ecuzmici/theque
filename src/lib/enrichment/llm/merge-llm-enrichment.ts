@@ -1,4 +1,4 @@
-import { isJunkDescription, isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { decodeHtmlEntities, isJunkDescription, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import type { FieldSource } from "@/lib/enrichment/llm/category-schemas";
 import type { GeminiCategoryResult } from "@/lib/enrichment/llm/gemini-category-enhancer";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
@@ -86,8 +86,12 @@ export function mergeLlmEnrichment(input: MergeLlmInput): MergeLlmOutput {
     categorySuggestionConfidence !== undefined;
   const structured = { ...current.structured };
   const returnedFields: string[] = [];
+  // A model can return an HTML character reference inside a title. The value
+  // reaches an EPUB file name, so decode it here.
   const nextTitle =
-    isWeakTitle(current.title) && enhancement.title?.trim() ? enhancement.title.trim() : current.title;
+    isWeakTitle(current.title) && enhancement.title?.trim()
+      ? decodeHtmlEntities(enhancement.title.trim())
+      : current.title;
 
   if (!categorySuggestion || shouldApplyCategorySuggestion) {
     for (const [key, value] of Object.entries(enhancement.structured ?? {})) {
