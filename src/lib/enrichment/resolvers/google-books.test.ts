@@ -70,4 +70,25 @@ describe("resolveBooks", () => {
     fetchMock.mockRejectedValue(new Error("network"));
     expect(await resolveBooks({ canonicalUrl: "https://x", title: "Dune", structured: {} })).toBeNull();
   });
+
+  it("sends the API key when GOOGLE_BOOKS_API_KEY is set", async () => {
+    process.env.GOOGLE_BOOKS_API_KEY = "test-key";
+    fetchMock.mockResolvedValue(volumeResponse({ authors: ["Frank Herbert"] }));
+
+    await resolveBooks({ canonicalUrl: "https://x", title: "Dune", structured: {} });
+
+    const calledUrl = new URL(fetchMock.mock.calls[0][0].toString());
+    expect(calledUrl.searchParams.get("key")).toBe("test-key");
+    delete process.env.GOOGLE_BOOKS_API_KEY;
+  });
+
+  it("omits the key parameter when no key is configured", async () => {
+    delete process.env.GOOGLE_BOOKS_API_KEY;
+    fetchMock.mockResolvedValue(volumeResponse({ authors: ["Frank Herbert"] }));
+
+    await resolveBooks({ canonicalUrl: "https://x", title: "Dune", structured: {} });
+
+    const calledUrl = new URL(fetchMock.mock.calls[0][0].toString());
+    expect(calledUrl.searchParams.has("key")).toBe(false);
+  });
 });

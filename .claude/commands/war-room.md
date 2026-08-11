@@ -5,6 +5,12 @@ description: One launch-day production health pass — traffic, errors, signups,
 Run ONE read-only health pass over production theque and report. This is designed
 to be looped on launch day: `/loop 25m /war-room`.
 
+**First, read `.claude/war-room.md`** — the persistent war-room log. It carries the
+infra constants (Vercel project/team ids, Supabase project, schema gotchas), the
+running totals, the previous pass numbers to diff against, the known error clusters,
+open issues, and the watch list. Use it instead of re-deriving any of that. If the
+file is missing, proceed from scratch and create it at the end.
+
 1. **Traffic** — Vercel Web Analytics REST API. Requires `VERCEL_TOKEN` in
    `.env.local` (grep for it; never print it). If the token is missing, skip this
    step and say so in the report.
@@ -33,11 +39,21 @@ to be looped on launch day: `/loop 25m /war-room`.
    (`gh issue list --state open --search "created:>=<date>"`).
 5. Report with the verdict first: **🟢 all quiet / 🟡 watch / 🔴 action needed** plus a
    one-line reason, then a small delta table (visitors, top referrer, signups,
-   captures, runtime errors, new issues) against the numbers from your previous
-   pass in this conversation (first pass = baseline). Escalate to 🔴 for: any 5xx
+   captures, runtime errors, new issues) against the **previous pass numbers from
+   `.claude/war-room.md`** (first-ever pass = baseline). Escalate to 🔴 for: any 5xx
    spike, capture failure rate over ~10%, login/Turnstile errors, an issue
    reporting data loss — or traffic arriving with zero signups over several
    passes (funnel broken).
+6. **Update `.claude/war-room.md`** before finishing:
+   - overwrite the **Running totals** "As of" values,
+   - append one terse row to the **Pass log**,
+   - at/after UTC midnight, append the closed day to the **Daily rollup**,
+   - adjust **error clusters / open issues / watch list** on any status change
+     (new cluster, recurrence, a watched user returning, an issue filed/closed),
+   - note any cadence change under **Loop cadence history**.
+   Keep edits minimal and in the existing table shapes — this file is the memory the
+   next pass depends on.
 
-Strictly read-only: never write to prod, never redeploy, never restart anything —
-report and let the owner decide.
+Strictly read-only **against production**: never write to prod, never redeploy, never
+restart anything — report and let the owner decide. (Updating `.claude/war-room.md`
+locally is expected and is not a prod write.)

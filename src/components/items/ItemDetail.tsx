@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { BookFileField } from "@/components/items/BookFileField";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
@@ -80,9 +81,12 @@ async function applyAiProposal(
 export function ItemDetail({
   initial,
   related = [],
+  showBookFile,
 }: {
   initial: ItemDetailModel;
   related?: LibraryItemRow[];
+  /** Server-computed reveal gate; see src/lib/book-file-reveal.ts. */
+  showBookFile: boolean;
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -439,6 +443,22 @@ export function ItemDetail({
             structured={item.structured}
             omitKeys={item.description ? ["description"] : undefined}
           />
+
+          {showBookFile ? (
+            <BookFileField
+              itemId={item.id}
+              category={item.category}
+              initialFile={
+                item.file_name && item.file_bytes != null && item.file_uploaded_at
+                  ? {
+                      name: item.file_name,
+                      bytes: item.file_bytes,
+                      uploaded_at: item.file_uploaded_at,
+                    }
+                  : null
+              }
+            />
+          ) : null}
         </header>
       </div>
 

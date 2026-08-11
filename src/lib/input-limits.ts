@@ -8,6 +8,7 @@ export const MAX_COLLECTION_NAME_LENGTH = 100;
 export const MAX_COLLECTION_DESCRIPTION_LENGTH = 1000;
 export const MAX_CAPTURE_TOKEN_NAME_LENGTH = 100;
 export const MAX_SEARCH_QUERY_LENGTH = 200;
+export const MAX_BOOK_FILE_BYTES = 30 * 1024 * 1024;
 
 export function hasMaxLength(value: string, maxLength: number): boolean {
   return value.length <= maxLength;

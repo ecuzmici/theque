@@ -27,7 +27,11 @@ function stringArray(value: unknown): string[] | null {
   return out.length ? out : null;
 }
 
-/** Books resolver — Google Books API (no key). Query by ISBN, else by title. */
+/**
+ * Books resolver — Google Books API. Query by ISBN, else by title.
+ * The keyless endpoint shares one anonymous quota and now answers 429 most of
+ * the day, so set GOOGLE_BOOKS_API_KEY to get a per-project quota.
+ */
 export const resolveBooks: CategoryResolver = async (input) => {
   const isbn = typeof input.structured.isbn === "string" ? input.structured.isbn.trim() : "";
   const title = input.title?.trim() ?? "";
@@ -37,6 +41,8 @@ export const resolveBooks: CategoryResolver = async (input) => {
   const url = new URL(SEARCH_BASE);
   url.searchParams.set("q", query);
   url.searchParams.set("maxResults", "1");
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY?.trim();
+  if (apiKey) url.searchParams.set("key", apiKey);
 
   try {
     await assertSafeFetchUrl(url);
