@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ItemDetail } from "@/components/items/ItemDetail";
 import { ItemDetailSkeleton } from "@/components/items/ItemDetailSkeleton";
+import { isBookFileRevealed } from "@/lib/book-file-reveal";
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
 import { createClient } from "@/lib/supabase/server";
@@ -61,5 +62,13 @@ async function ItemDetailContent({ id }: { id: string }) {
       .slice(0, 8);
   }
 
-  return <ItemDetail key={id} initial={decryptedRow} related={related} />;
+  // The clock check stays on the server (see src/lib/book-file-reveal.ts).
+  return (
+    <ItemDetail
+      key={id}
+      initial={decryptedRow}
+      related={related}
+      showBookFile={isBookFileRevealed(user.email)}
+    />
+  );
 }

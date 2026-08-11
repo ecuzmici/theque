@@ -81,9 +81,12 @@ async function applyAiProposal(
 export function ItemDetail({
   initial,
   related = [],
+  showBookFile,
 }: {
   initial: ItemDetailModel;
   related?: LibraryItemRow[];
+  /** Server-computed reveal gate; see src/lib/book-file-reveal.ts. */
+  showBookFile: boolean;
 }) {
   const router = useRouter();
   const [item, setItem] = useState(initial);
@@ -441,19 +444,21 @@ export function ItemDetail({
             omitKeys={item.description ? ["description"] : undefined}
           />
 
-          <BookFileField
-            itemId={item.id}
-            category={item.category}
-            initialFile={
-              item.file_name && item.file_bytes != null && item.file_uploaded_at
-                ? {
-                    name: item.file_name,
-                    bytes: item.file_bytes,
-                    uploaded_at: item.file_uploaded_at,
-                  }
-                : null
-            }
-          />
+          {showBookFile ? (
+            <BookFileField
+              itemId={item.id}
+              category={item.category}
+              initialFile={
+                item.file_name && item.file_bytes != null && item.file_uploaded_at
+                  ? {
+                      name: item.file_name,
+                      bytes: item.file_bytes,
+                      uploaded_at: item.file_uploaded_at,
+                    }
+                  : null
+              }
+            />
+          ) : null}
         </header>
       </div>
 
