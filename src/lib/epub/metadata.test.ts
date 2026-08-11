@@ -89,6 +89,21 @@ describe("readEpubMetadata", () => {
     expect((await readEpubMetadata(bytes)).creators).toEqual(["A", "B"]);
   });
 
+  it("reads the main title when the OPF holds a title and a subtitle", async () => {
+    // Publishers write the subtitle as a second `dc:title` and mark the pair
+    // with `refines`. A Penguin Random House EPUB does this.
+    const bytes = await buildEpub(`
+      <dc:title id="maintitle">A Short History of Nearly Everything</dc:title>
+      <meta property="title-type" refines="#maintitle">main</meta>
+      <dc:title id="subtitle">2.0</dc:title>
+      <meta property="title-type" refines="#subtitle">subtitle</meta>
+      <dc:creator>Bill Bryson</dc:creator>
+    `);
+    const meta = await readEpubMetadata(bytes);
+    expect(meta.title).toBe("A Short History of Nearly Everything");
+    expect(meta.creators).toEqual(["Bill Bryson"]);
+  });
+
   it("rejects a file that is not a zip", async () => {
     await expect(readEpubMetadata(new Uint8Array([1, 2, 3, 4]))).rejects.toBeInstanceOf(EpubFormatError);
   });

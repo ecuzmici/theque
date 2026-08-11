@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { Json } from "@/lib/database.types";
 import { deleteDriveFile, DriveError, isDriveConfigured, uploadEpub } from "@/lib/drive/client";
-import { buildKoboFilename } from "@/lib/epub/filename";
+import { buildKoboFilename, KEPUB_EXTENSION } from "@/lib/epub/filename";
 import { epubPatchFromItem } from "@/lib/epub/from-item";
+import { convertEpubToKepub, KepubConversionError } from "@/lib/epub/kepub";
 import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "@/lib/epub/metadata";
 import { MAX_BOOK_FILE_BYTES } from "@/lib/input-limits";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +26,7 @@ function fail(code: string, status: number): Response {
 /** Keep the Drive message and the Drive status in the log only. */
 function reason(error: unknown): string {
   if (error instanceof DriveError) return `${error.code} (status ${error.status ?? "none"})`;
+  if (error instanceof KepubConversionError) return error.message;
   if (error instanceof Error) return error.name;
   return "unknown error";
 }
@@ -104,14 +106,47 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     throw error;
   }
 
+  // Convert to KEPUB. A Kobo shows a placeholder tile instead of the cover for
+  // a plain EPUB. The converter skips a document that already holds Kobo spans,
+  // so a second upload of the same book never wraps the text twice.
+  //
+  // The route does not test the size again here. MAX_BOOK_FILE_BYTES states what
+  // a person may upload, and the conversion adds about one percent. A rejection
+  // after a file that met the stated limit would confuse the user.
+  let converted: Awaited<ReturnType<typeof convertEpubToKepub>>;
+  try {
+    converted = await convertEpubToKepub(bytes);
+  } catch (error) {
+    if (error instanceof EpubFormatError || error instanceof KepubConversionError) {
+      console.error("[api/items/:id/file] conversion_failed:", reason(error));
+      return fail("conversion_failed", 422);
+    }
+    throw error;
+  }
+  bytes = converted.bytes;
+
+  if (converted.skipped.length > 0) {
+    // Name the documents that keep no Kobo spans. The book still opens.
+    console.warn(
+      "[api/items/:id/file] conversion_partial:",
+      converted.skipped.map((entry) => `${entry.path} (${entry.reason})`).join(", "),
+    );
+  }
+
   // Build the file name from the same item data as the metadata patch, so the
-  // name and the metadata agree.
-  const name = buildKoboFilename({
-    title: row.title,
-    authors: patch.creators ?? null,
-    series: patch.series ?? null,
-    seriesIndex: patch.seriesIndex ?? null,
-  });
+  // name and the metadata agree. The name must carry `.kepub.epub`, because the
+  // device reads a `.epub` name as a plain EPUB whatever the file holds.
+  const name = buildKoboFilename(
+    {
+      // Take the title from the patch, not the row. The patch drops a series
+      // the title repeats, so the name and the EPUB metadata agree.
+      title: patch.title ?? null,
+      authors: patch.creators ?? null,
+      series: patch.series ?? null,
+      seriesIndex: patch.seriesIndex ?? null,
+    },
+    KEPUB_EXTENSION,
+  );
 
   // Hash the bytes that go to Drive, not the bytes that came from the browser.
   // The metadata rewrite changes the file, so the digest must run after it.

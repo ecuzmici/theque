@@ -34,6 +34,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   missing_file: "No file arrived. Choose the EPUB again.",
   file_too_large: `That file is bigger than ${MAX_MEGABYTES} MB. Pick a smaller EPUB.`,
   invalid_epub: "That file is not a readable EPUB, so your Kobo cannot open it. Try a different copy of the book.",
+  conversion_failed:
+    "That EPUB did not convert into the format a Kobo needs for cover art. Try a different copy of the book.",
   drive_not_configured: "Kobo sync is not set up on this server yet, so uploads are off for now. Nothing is wrong with your file.",
   upload_failed: "The file did not reach Google Drive. Try again in a moment.",
   delete_failed: "The file is still on Google Drive. Try removing it again in a moment.",

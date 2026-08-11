@@ -1,4 +1,8 @@
-const EXTENSION = ".epub";
+/** A plain EPUB. A Kobo opens it, but it shows a placeholder instead of the cover. */
+export const EPUB_EXTENSION = ".epub";
+/** A converted EPUB. The device reads the cover only from this format. */
+export const KEPUB_EXTENSION = ".kepub.epub";
+
 const MAX_LENGTH = 120;
 const FALLBACK_TITLE = "Untitled";
 const PLACEHOLDER = "_";
@@ -124,32 +128,39 @@ function truncate(value: string, max: number): string {
   return trimEnd(space >= Math.ceil(max / 2) ? cut.slice(0, space) : cut);
 }
 
-function build(input: KoboFilenameInput): string {
+function build(input: KoboFilenameInput, extension: string): string {
   const author = firstAuthor(input.authors);
   const suffix = buildSuffix(clean(input.series), formatIndex(input.seriesIndex));
   const title = clean(input.title) || FALLBACK_TITLE;
 
   const head = author ? `${author} - ` : "";
-  const budget = MAX_LENGTH - EXTENSION.length - head.length - suffix.length;
+  // The extension eats into the 120 characters, and `.kepub.epub` is six
+  // characters longer than `.epub`. Cut the title first, as before.
+  const budget = MAX_LENGTH - extension.length - head.length - suffix.length;
   const body =
     budget >= MIN_TITLE_LENGTH
       ? `${head}${truncate(title, budget)}${suffix}`
-      : trimEnd(`${head}${title}${suffix}`.slice(0, MAX_LENGTH - EXTENSION.length));
+      : trimEnd(`${head}${title}${suffix}`.slice(0, MAX_LENGTH - extension.length));
 
-  return `${trimEnd(body) || FALLBACK_TITLE}${EXTENSION}`;
+  return `${trimEnd(body) || FALLBACK_TITLE}${extension}`;
 }
 
 /**
- * Build the filename for one EPUB in the flat Drive folder that a Kobo syncs.
- * The shape is `Author - Title (Series 02).epub`. The author part and the
+ * Build the filename for one book in the flat Drive folder that a Kobo syncs.
+ * The shape is `Author - Title (Series 02).kepub.epub`. The author part and the
  * series part drop out when the book has no such value.
  * The result holds 120 characters at most, and the function never throws.
+ *
+ * Pass KEPUB_EXTENSION for a converted file. The device reads a `.epub` name as
+ * a plain EPUB, whatever the file holds, so the name must match the format.
  */
-export function buildKoboFilename(input: KoboFilenameInput): string {
+export function buildKoboFilename(input: KoboFilenameInput, extension: string = EPUB_EXTENSION): string {
+  // A caller with a bad extension must still get a name a Kobo can open.
+  const safe = typeof extension === "string" && extension.startsWith(".") ? extension : EPUB_EXTENSION;
   try {
-    return build(input);
+    return build(input, safe);
   } catch {
     // The caller uploads a file with this name. One bad field must not stop it.
-    return `${FALLBACK_TITLE}${EXTENSION}`;
+    return `${FALLBACK_TITLE}${safe}`;
   }
 }

@@ -26,6 +26,25 @@ function stringArray(value: unknown, limit: number): string[] | null {
   return out.length ? out : null;
 }
 
+/**
+ * A book database writes the series into the title, as
+ * `The Tainted Cup (Ana and Din Mysteries, #1)`. The suffix always holds a `#`
+ * and a number, which a title does not.
+ */
+const TITLE_SERIES_SUFFIX = /\s*\([^()]*#\d+(\.\d+)?\)\s*$/;
+
+/**
+ * Remove the series from the end of the title. A Kobo prints the series field
+ * on its own line, so the suffix shows the series two times.
+ *
+ * The function keeps the suffix when the item has no series, because the suffix
+ * is then the only record of it. It also keeps a title that holds nothing else.
+ */
+function stripSeriesSuffix(title: string, series: string | null): string {
+  if (!series) return title;
+  return title.replace(TITLE_SERIES_SUFFIX, "").trim() || title;
+}
+
 /** A jsonb round trip can turn the index into a string, so accept both. */
 function positiveNumber(value: unknown): number | null {
   let parsed: number;
@@ -43,8 +62,11 @@ function positiveNumber(value: unknown): number | null {
 export function epubPatchFromItem(item: BookItemFields): EpubMetadataPatch {
   const patch: EpubMetadataPatch = {};
 
+  // Read the series first. The title drops a series it repeats.
+  const series = text(item.structured.series);
+
   const title = text(item.title);
-  if (title) patch.title = title;
+  if (title) patch.title = stripSeriesSuffix(title, series);
 
   const description = text(item.description);
   if (description) patch.description = description;
@@ -52,7 +74,6 @@ export function epubPatchFromItem(item: BookItemFields): EpubMetadataPatch {
   const creators = stringArray(item.structured.authors, MAX_CREATORS);
   if (creators) patch.creators = creators;
 
-  const series = text(item.structured.series);
   if (series) {
     patch.series = series;
     // An index without a series name is meaningless, so write the pair only.

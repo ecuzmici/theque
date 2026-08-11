@@ -266,6 +266,29 @@ describe("POST /api/items/[id]/file", () => {
     expect(mocks.uploadEpub).not.toHaveBeenCalled();
   });
 
+  it("writes the series one time when the title repeats it", async () => {
+    // Hardcover titles arrive as `Title (Series, #N)`. The name and the EPUB
+    // title must each hold the series one time, because a Kobo prints the
+    // series field on its own line.
+    useRow({
+      row: {
+        ...ROW,
+        title: "The Tainted Cup (Ana and Din Mysteries, #1)",
+        structured: { authors: ["Robert Jackson Bennett"], series: "Ana and Din Mysteries", series_index: 1 },
+      },
+    });
+    const { POST } = await loadRoute();
+
+    const res = await POST(uploadRequest(fileForm(await buildEpub())), params);
+
+    expect(res.status).toBe(200);
+    const upload = mocks.uploadEpub.mock.calls[0][0] as { name: string; bytes: Uint8Array };
+    expect(upload.name).toBe(
+      "Robert Jackson Bennett - The Tainted Cup (Ana and Din Mysteries 01).kepub.epub",
+    );
+    expect((await readEpubMetadata(upload.bytes)).title).toBe("The Tainted Cup");
+  });
+
   it("writes the item metadata into the file, uploads it, and records five columns", async () => {
     useRow({ row: ROW });
     const source = await buildEpub();
@@ -276,7 +299,9 @@ describe("POST /api/items/[id]/file", () => {
     expect(res.status).toBe(200);
 
     const upload = mocks.uploadEpub.mock.calls[0][0] as { name: string; bytes: Uint8Array };
-    expect(upload.name).toBe("James S. A. Corey - Leviathan Wakes (The Expanse 01).epub");
+    // The name must carry `.kepub.epub`, or the device treats the file as a
+    // plain EPUB and shows a placeholder instead of the cover.
+    expect(upload.name).toBe("James S. A. Corey - Leviathan Wakes (The Expanse 01).kepub.epub");
 
     const written = await readEpubMetadata(upload.bytes);
     expect(written.title).toBe("Leviathan Wakes");
@@ -304,6 +329,39 @@ describe("POST /api/items/[id]/file", () => {
       },
     });
     expect(new Date(patch.file_uploaded_at as string).toISOString()).toBe(patch.file_uploaded_at);
+  });
+
+  it("converts the file to a KEPUB before it hashes and uploads it", async () => {
+    useRow({ row: ROW });
+    const { POST } = await loadRoute();
+
+    const res = await POST(uploadRequest(fileForm(await buildEpub())), params);
+    expect(res.status).toBe(200);
+
+    const upload = mocks.uploadEpub.mock.calls[0][0] as { name: string; bytes: Uint8Array };
+    const chapter = await (await JSZip.loadAsync(upload.bytes)).file("OEBPS/ch1.xhtml")!.async("string");
+
+    // The Kobo spans are what makes the device read the cover.
+    expect(chapter).toContain('<span class="koboSpan" id="kobo.1.1">');
+    expect(chapter).toContain('<div id="book-columns"><div id="book-inner">');
+  });
+
+  it("converts a book only once when the same file arrives again", async () => {
+    useRow({ row: ROW });
+    const { POST } = await loadRoute();
+
+    await POST(uploadRequest(fileForm(await buildEpub())), params);
+    const first = (mocks.uploadEpub.mock.calls[0][0] as { bytes: Uint8Array }).bytes;
+
+    mocks.uploadEpub.mockClear();
+    useRow({ row: ROW });
+    await POST(uploadRequest(fileForm(first)), params);
+    const second = (mocks.uploadEpub.mock.calls[0][0] as { bytes: Uint8Array }).bytes;
+
+    const read = async (bytes: Uint8Array): Promise<string> =>
+      (await JSZip.loadAsync(bytes)).file("OEBPS/ch1.xhtml")!.async("string");
+
+    expect((await read(second)).match(/koboSpan/g)?.length).toBe((await read(first)).match(/koboSpan/g)?.length);
   });
 
   it("uploads the replacement before it deletes the old Drive file", async () => {

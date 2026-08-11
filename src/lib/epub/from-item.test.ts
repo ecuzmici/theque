@@ -33,6 +33,68 @@ describe("epubPatchFromItem", () => {
     });
   });
 
+  it("drops a series the title repeats", () => {
+    // Goodreads and Hardcover write `Title (Series, #N)`. A Kobo prints the
+    // series field on its own line, so the suffix would show it two times.
+    const patch = epubPatchFromItem(
+      item({
+        title: "The Tainted Cup (Ana and Din Mysteries, #1)",
+        structured: { series: "Ana and Din Mysteries", series_index: 1 },
+      }),
+    );
+
+    expect(patch).toEqual({
+      title: "The Tainted Cup",
+      series: "Ana and Din Mysteries",
+      seriesIndex: 1,
+    });
+  });
+
+  it("drops the suffix whatever the series name inside it says", () => {
+    // The title names one series and the field names another. The field wins,
+    // because a Kobo groups on the field.
+    expect(
+      epubPatchFromItem(
+        item({
+          title: "Mistborn: The Final Empire (Mistborn, #1)",
+          structured: { series: "The Mistborn Saga", series_index: 1 },
+        }),
+      ).title,
+    ).toBe("Mistborn: The Final Empire");
+
+    // A fractional number appears in a novella.
+    expect(
+      epubPatchFromItem(
+        item({ title: "Edgedancer (The Stormlight Archive, #2.5)", structured: { series: "The Stormlight Archive" } }),
+      ).title,
+    ).toBe("Edgedancer");
+  });
+
+  it("keeps the suffix when the item has no series", () => {
+    // Without the field the suffix is the only record of the series.
+    expect(epubPatchFromItem(item({ title: "The Tainted Cup (Ana and Din Mysteries, #1)" })).title).toBe(
+      "The Tainted Cup (Ana and Din Mysteries, #1)",
+    );
+  });
+
+  it("keeps a parenthesis that carries no number", () => {
+    for (const title of [
+      "Circe",
+      "Piranesi (a novel)",
+      "Foundryside",
+      "Book #1",
+      "Jade City (The Green Bone Saga)",
+    ]) {
+      expect(epubPatchFromItem(item({ title, structured: { series: "Any Series" } })).title).toBe(title);
+    }
+  });
+
+  it("keeps a title that holds nothing but the suffix", () => {
+    expect(epubPatchFromItem(item({ title: "(Hierarchy, #2)", structured: { series: "Hierarchy" } })).title).toBe(
+      "(Hierarchy, #2)",
+    );
+  });
+
   it("returns an empty patch for an empty item", () => {
     expect(epubPatchFromItem(item())).toEqual({});
   });
