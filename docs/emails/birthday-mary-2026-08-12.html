@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Happy birthday, Mary</title>
+<!--
+  One-off birthday email, sent once via Resend on 2026-08-12 15:30 UTC
+  (17:30 Warsaw), timed to the BOOK_FILE_REVEAL_AT gate in
+  src/lib/book-file-reveal.ts so the email and the Kobo file field land together.
+
+  Design notes, in case this gets reused:
+  - No images anywhere. The wrapping paper, ribbons, bow and punched hole are all
+    table cells and background colours, so nothing breaks with images switched off
+    and there is nothing for Gmail to block.
+  - The crossed ribbon is a 3x3 table. The middle column and middle row are the
+    ribbon; the bow emoji sits in the centre cell.
+  - The repeating-linear-gradient stripe degrades to flat #fde68a in Outlook.
+    That is expected and still looks deliberate.
+  - Light mode is asserted three ways: color-scheme meta + CSS, a
+    prefers-color-scheme override that restates every colour, and [data-ogsc]
+    rules for Outlook.com. None of this defeats the Gmail mobile app, which
+    force-inverts light emails with no opt-out.
+-->
+<style>
+  :root { color-scheme: light only; supported-color-schemes: light only; }
+  @media (prefers-color-scheme: dark) {
+    .ks-paper   { background-color: #fde68a !important; }
+    .ks-ribbon  { background-color: #b45309 !important; }
+    .ks-knot    { background-color: #92400e !important; }
+    .ks-tag     { background-color: #fffefb !important; }
+    .ks-hole    { background-color: #fde68a !important; }
+    .ks-h1      { color: #1c1917 !important; }
+    .ks-body    { color: #44403c !important; }
+    .ks-mark    { color: #b9a274 !important; }
+    .ks-gift    { color: #78350f !important; }
+    .ks-label   { color: #92400e !important; }
+    .ks-soft    { color: #57534e !important; }
+    .ks-foot    { color: #8a6d3f !important; }
+    .ks-btn     { background-color: #b45309 !important; }
+    .ks-btn a   { color: #fffefb !important; }
+  }
+  [data-ogsc] .ks-paper  { background-color: #fde68a !important; }
+  [data-ogsc] .ks-tag    { background-color: #fffefb !important; }
+  [data-ogsc] .ks-h1     { color: #1c1917 !important; }
+  [data-ogsc] .ks-body   { color: #44403c !important; }
+  [data-ogsc] .ks-soft   { color: #57534e !important; }
+  [data-ogsc] .ks-gift   { color: #78350f !important; }
+</style>
+</head>
+<body style="margin:0;padding:0;background-color:#fde68a;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fde68a" class="ks-paper" style="background-color:#fde68a;background-image:repeating-linear-gradient(135deg,#fef3c7 0px,#fef3c7 14px,#fcd9a0 14px,#fcd9a0 28px);">
+  <tr><td align="center" style="padding:0;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;">
+
+      <!-- Box lid: two ribbons crossing, bow on the join -->
+      <tr><td style="padding:0;font-size:0;line-height:0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+          <tr>
+            <td width="38%" height="38" style="height:38px;font-size:0;line-height:0;">&nbsp;</td>
+            <td width="24%" height="38" bgcolor="#b45309" class="ks-ribbon" style="height:38px;font-size:0;line-height:0;background-color:#b45309;">&nbsp;</td>
+            <td width="38%" height="38" style="height:38px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td bgcolor="#b45309" class="ks-ribbon" align="center" style="background-color:#b45309;padding:0;">&nbsp;</td>
+            <td bgcolor="#92400e" class="ks-knot" align="center" style="background-color:#92400e;padding:6px 0;">
+              <span style="font-size:30px;line-height:1;">&#127872;</span>
+            </td>
+            <td bgcolor="#b45309" class="ks-ribbon" align="center" style="background-color:#b45309;padding:0;">&nbsp;</td>
+          </tr>
+          <tr>
+            <td width="38%" height="38" style="height:38px;font-size:0;line-height:0;">&nbsp;</td>
+            <td width="24%" height="38" bgcolor="#b45309" class="ks-ribbon" style="height:38px;font-size:0;line-height:0;background-color:#b45309;">&nbsp;</td>
+            <td width="38%" height="38" style="height:38px;font-size:0;line-height:0;">&nbsp;</td>
+          </tr>
+        </table>
+      </td></tr>
+
+      <!-- Gift tag -->
+      <tr><td align="center" style="padding:30px 14px 34px 14px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#fffefb" class="ks-tag" style="max-width:452px;width:100%;background-color:#fffefb;border-radius:14px;border:1px solid #e6d5b8;">
+
+          <tr><td align="center" style="padding:20px 0 2px 0;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr><td width="20" height="20" bgcolor="#fde68a" class="ks-hole" style="width:20px;height:20px;line-height:20px;font-size:0;background-color:#fde68a;border:2px solid #d6c3a0;border-radius:50%;">&nbsp;</td></tr>
+            </table>
+          </td></tr>
+
+          <tr><td align="center" style="padding:14px 28px 0 28px;">
+            <p class="ks-mark" style="margin:0 0 22px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.16em;text-transform:uppercase;color:#b9a274;">th&egrave;que</p>
+            <h1 class="ks-h1" style="margin:0 0 20px 0;font-family:Georgia,'Times New Roman',serif;font-size:36px;line-height:1.1;font-weight:normal;color:#1c1917;">Happy birthday,<br>Mary.</h1>
+          </td></tr>
+
+          <tr><td style="padding:0 28px;">
+            <p class="ks-body" style="margin:0 0 16px 0;font-family:Georgia,'Times New Roman',serif;font-size:16.5px;line-height:1.7;color:#44403c;">We know how much you love reading (and Emil) (hopefully not in that order).</p>
+            <p class="ks-body" style="margin:0 0 24px 0;font-family:Georgia,'Times New Roman',serif;font-size:16.5px;line-height:1.7;color:#44403c;">The team at th&egrave;que (still just Emil btw) made you something. Payment only in kisses and hugs. No refunds.</p>
+          </td></tr>
+
+          <tr><td style="padding:0 28px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-top:2px dotted #e0cfae;border-bottom:2px dotted #e0cfae;">
+              <tr><td align="center" style="padding:20px 6px;">
+                <p style="margin:0 0 8px 0;font-size:30px;line-height:1;">&#127873;</p>
+                <p class="ks-label" style="margin:0 0 8px 0;font-family:Georgia,'Times New Roman',serif;font-size:11.5px;letter-spacing:0.18em;text-transform:uppercase;color:#92400e;">Your gift</p>
+                <p class="ks-h1" style="margin:0 0 11px 0;font-family:Georgia,'Times New Roman',serif;font-size:19px;line-height:1.4;color:#1c1917;">A new field on every book you own</p>
+                <p class="ks-gift" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.6;color:#78350f;">Open any book and scroll to the bottom. There&rsquo;s something new down there, and it knows how to talk to your Kobo. &#128214;</p>
+              </td></tr>
+            </table>
+          </td></tr>
+
+          <tr><td align="center" style="padding:24px 28px 0 28px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr><td align="center" bgcolor="#b45309" class="ks-btn" style="background-color:#b45309;border-radius:8px;">
+                <a href="https://theque.app/library" style="display:inline-block;padding:14px 32px;font-family:Georgia,'Times New Roman',serif;font-size:16.5px;line-height:1;color:#fffefb;text-decoration:none;border-radius:8px;">Go find it &rarr;</a>
+              </td></tr>
+            </table>
+          </td></tr>
+
+          <tr><td align="center" style="padding:20px 28px 30px 28px;">
+            <p class="ks-soft" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:15px;line-height:1.65;color:#57534e;">Now go and get ready. There&rsquo;s another surprise waiting later. &#10084;&#65039;</p>
+          </td></tr>
+
+        </table>
+      </td></tr>
+
+      <tr><td align="center" style="padding:0 20px 30px 20px;">
+        <p class="ks-foot" style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:12px;line-height:1.6;color:#8a6d3f;">Sent from th&egrave;que, your private shelf of things worth keeping.</p>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>
+
+</body>
+</html>
