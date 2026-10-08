@@ -28,7 +28,7 @@ Read this tracker first in every session and after every context summary. Update
 Baseline: tests 875 (88 files), tsc errors 16, eslint errors in src 16, start time 2026-10-09 01:15 CEST.
 
 - [x] WS0 Setup and first message to theque-6c (shipped 14a4e22, message A sent)
-- [ ] WS1 Search matches the index
+- [x] WS1 Search matches the index (shipped b3be30e, deploy READY, misses 157 -> 3 of 350)
 - [ ] WS2 Enrichment keeps the user's status
 - [ ] WS3 No ciphertext in the UI, no double encryption
 - [ ] WS4 Book file allow-list on the server
