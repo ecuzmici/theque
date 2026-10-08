@@ -288,3 +288,51 @@ describe("GET /api/items?shelf=... (the client-direct read reroute, ADR 0013 iss
     expect(JSON.stringify(body)).not.toContain("enc.v1");
   });
 });
+
+describe("GET /api/items?q=... (prefix search on the simple index)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.FIELD_ENCRYPTION_KEY = TEST_FIELD_ENCRYPTION_KEY;
+    mocks.getSessionUserOrNull.mockReset();
+    mocks.from.mockReset();
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+  });
+
+  async function search(q: string) {
+    const query = makeQuery([]);
+    mocks.from.mockImplementation(() => query);
+    const { GET } = await import("./route");
+    const res = await GET(
+      new Request(`https://theque.app/api/items?q=${encodeURIComponent(q)}`),
+    );
+    return { res, query };
+  }
+
+  it("builds a prefix query with the simple config", async () => {
+    const { query } = await search("foun");
+    expect(query.textSearch).toHaveBeenCalledWith("search_vector", "foun:*", {
+      config: "simple",
+    });
+  });
+
+  it("joins two words with &", async () => {
+    const { query } = await search("Dark City");
+    expect(query.textSearch).toHaveBeenCalledWith("search_vector", "dark:* & city:*", {
+      config: "simple",
+    });
+  });
+
+  it("returns an empty list for a query with only punctuation", async () => {
+    const { res, query } = await search("!!! | & :");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ items: [], next_cursor: null });
+    expect(query.textSearch).not.toHaveBeenCalled();
+  });
+
+  it("never passes tsquery operators to the database", async () => {
+    const { query } = await search("a!b|c&d:e(f)");
+    const [, tsquery] = (query.textSearch as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(tsquery).toBe("a:* & b:* & c:* & d:* & e:* & f:*");
+    expect(tsquery).not.toMatch(/[!|()]/);
+  });
+});

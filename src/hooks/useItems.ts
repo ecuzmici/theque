@@ -33,6 +33,7 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
   const url = buildSearchUrl(filters);
 
   useEffect(() => {
+    const controller = new AbortController();
     const handle = window.setTimeout(async () => {
       if (!url) {
         setItems([]);
@@ -41,19 +42,25 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
       }
       setLoading(true);
       try {
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) {
           setItems([]);
           return;
         }
         const body = (await res.json()) as ItemsListResponseBody;
         setItems(body.items);
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setItems([]);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }, DEBOUNCE_MS);
 
-    return () => window.clearTimeout(handle);
+    return () => {
+      window.clearTimeout(handle);
+      controller.abort();
+    };
   }, [url]);
 
   return { items, loading, hasQuery: url != null };

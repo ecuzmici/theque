@@ -67,7 +67,7 @@ export default function SearchPage() {
     <div>
       <PageHeader
         title="Search"
-        description="Find titles, notes, domains, and descriptions across your library."
+        description="Find titles, domains, and descriptions across your library."
       />
 
       <Label className="sr-only" htmlFor="search-q">

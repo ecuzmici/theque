@@ -171,7 +171,18 @@ export async function GET(req: Request) {
       return Response.json({ code: "invalid_query" }, { status: 400 });
     }
 
-    query = query.textSearch("search_vector", trimmedQuery, { type: "websearch" });
+    // The index uses the `simple` config (no stemming). Match prefixes so
+    // partial words work while the user types. The regex keeps letters and
+    // digits only, so no tsquery operator reaches the database.
+    const tokens = trimmedQuery.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    if (tokens.length === 0) {
+      return Response.json({ items: [], next_cursor: null } satisfies ItemsListResponseBody);
+    }
+    const tsquery = tokens
+      .slice(0, 8)
+      .map((t) => `${t}:*`)
+      .join(" & ");
+    query = query.textSearch("search_vector", tsquery, { config: "simple" });
   }
 
   const rangeEnd = offset + limit;
