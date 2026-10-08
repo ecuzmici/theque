@@ -5,6 +5,8 @@ vi.mock("server-only", () => ({}));
 const mockGenerateText = vi.fn();
 vi.mock("ai", () => ({
   generateText: (...args: unknown[]) => mockGenerateText(...args),
+  Output: { object: (opts: unknown) => ({ kind: "object", ...(opts as object) }) },
+  jsonSchema: (schema: unknown) => ({ jsonSchema: schema }),
 }));
 
 import { generateJsonWithFallback } from "@/lib/ai/gateway";
@@ -80,6 +82,34 @@ describe("generateJsonWithFallback", () => {
     const result = await generateJsonWithFallback({
       models: ["a/b", "c/d"],
       prompt: "p",
+      label: "test",
+    });
+    expect(result.model).toBe("c/d");
+  });
+
+  it("returns the structured output and skips the JSON system prompt when a schema is set", async () => {
+    mockGenerateText.mockResolvedValue({ output: { ok: true } });
+    const schema = { type: "object", properties: { ok: { type: "boolean" } } };
+    const result = await generateJsonWithFallback<{ ok: boolean }>({
+      models: ["openai/gpt-6-luna"],
+      prompt: "p",
+      schema,
+      label: "test",
+    });
+    expect(result.data.ok).toBe(true);
+    const callArg = mockGenerateText.mock.calls[0][0];
+    expect(callArg.output).toEqual({ kind: "object", schema: { jsonSchema: schema } });
+    expect(callArg.system).toBeUndefined();
+  });
+
+  it("falls back when a schema call returns no output", async () => {
+    mockGenerateText
+      .mockResolvedValueOnce({ output: undefined })
+      .mockResolvedValueOnce({ output: { ok: 1 } });
+    const result = await generateJsonWithFallback({
+      models: ["a/b", "c/d"],
+      prompt: "p",
+      schema: { type: "object" },
       label: "test",
     });
     expect(result.model).toBe("c/d");

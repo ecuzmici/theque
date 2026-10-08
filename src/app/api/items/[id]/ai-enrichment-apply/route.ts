@@ -2,6 +2,7 @@ import type { Json } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { applyItemRewriteProposal } from "@/lib/enrichment/llm/apply-item-rewrite-proposal";
 import { validateLlmItemRewriteProposal } from "@/lib/enrichment/llm/category-schemas";
+import { ENRICHMENT_LLM_PROVIDER } from "@/lib/enrichment/llm/llm-config";
 import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentApplyResponseBody,
@@ -62,7 +63,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     },
     proposal: validation.value,
     providerMetadata: {
-      provider: body.proposal_metadata?.provider ?? "gemini",
+      provider: body.proposal_metadata?.provider ?? ENRICHMENT_LLM_PROVIDER,
       model: body.proposal_metadata?.model,
     },
     now: new Date().toISOString(),

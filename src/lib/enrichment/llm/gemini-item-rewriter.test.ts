@@ -1,11 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { generateJsonMock } = vi.hoisted(() => ({ generateJsonMock: vi.fn() }));
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/ai/gateway", () => ({ generateJsonWithFallback: generateJsonMock }));
 
 import {
   buildGeminiItemRewritePrompt,
   buildGeminiItemRewriteResponseJsonSchema,
   normalizeGeminiItemRewritePayload,
+  rewriteItemWithGemini,
 } from "@/lib/enrichment/llm/gemini-item-rewriter";
 
 const baseRewriteInput = {
@@ -135,5 +139,59 @@ describe("buildGeminiItemRewritePrompt v3 additions", () => {
     const prompt = buildGeminiItemRewritePrompt(input);
     expect(prompt).toContain("model_knowledge");
     expect(prompt).toMatch(/NEVER invent .*(prices|volatile)/i);
+  });
+});
+
+describe("rewriteItemWithGemini (AI Gateway)", () => {
+  const validProposal = {
+    category: "books",
+    category_confidence: 0.9,
+    title: "A Drop of Corruption",
+    confidence: 0.85,
+    sources: ["url"],
+  };
+
+  beforeEach(() => {
+    generateJsonMock.mockReset();
+    vi.stubEnv("AI_GATEWAY_API_KEY", "test-key");
+    vi.stubEnv("VERCEL_OIDC_TOKEN", "");
+    vi.stubEnv("ENRICHMENT_MODELS", "");
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("skips when the gateway has no credentials", async () => {
+    vi.stubEnv("AI_GATEWAY_API_KEY", "");
+    const result = await rewriteItemWithGemini(baseRewriteInput);
+    expect(result).toEqual({ status: "skipped", reason: "missing_api_key" });
+  });
+
+  it("returns the proposal with the gateway provider and model", async () => {
+    generateJsonMock.mockImplementation((opts: { models: string[] }) =>
+      Promise.resolve({ data: validProposal, model: opts.models[0] }),
+    );
+    const result = await rewriteItemWithGemini(baseRewriteInput);
+    expect(result.status).toBe("enhanced");
+    if (result.status === "enhanced") {
+      expect(result.providerMetadata).toMatchObject({
+        provider: "ai_gateway",
+        model: "openai/gpt-6-luna",
+      });
+    }
+    expect(generateJsonMock.mock.calls[0][0].schema).toBeDefined();
+  });
+
+  it("falls back to the second model when the first payload fails validation", async () => {
+    generateJsonMock
+      .mockResolvedValueOnce({ data: { ...validProposal, confidence: 2 }, model: "openai/gpt-6-luna" })
+      .mockResolvedValueOnce({ data: validProposal, model: "anthropic/claude-haiku-5.5" });
+    const result = await rewriteItemWithGemini(baseRewriteInput);
+    expect(result.status).toBe("enhanced");
+    expect(generateJsonMock.mock.calls[1][0].models).toEqual(["anthropic/claude-haiku-5.5"]);
+  });
+
+  it("fails with the last reason when every model fails", async () => {
+    generateJsonMock.mockRejectedValue(new Error("boom"));
+    const result = await rewriteItemWithGemini(baseRewriteInput);
+    expect(result).toEqual({ status: "failed", reason: "boom" });
   });
 });

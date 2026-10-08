@@ -170,9 +170,9 @@ Written to item columns, not inside `structured`. `category_source` may be
 
 ### `raw_metadata.llm`
 
-When LLM enrichment is enabled, Theque records the Gemini attempt for debugging.
-Gemini normally enriches fields for the deterministic category. When
-deterministic evidence is weak, blocked, or sparse, Gemini may also return a
+When LLM enrichment is enabled, Theque records the LLM attempt for debugging.
+The LLM normally enriches fields for the deterministic category. When
+deterministic evidence is weak, blocked, or sparse, the LLM may also return a
 validated category suggestion. If the suggestion is applied, the item columns are
 updated with `category_source: "llm"`.
 
@@ -182,8 +182,8 @@ blocked/sparse fetch evidence.
 
 ```json
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "ai_gateway",
+  "model": "openai/gpt-6-luna",
   "status": "enhanced",
   "confidence": 0.82,
   "sources": ["open_graph", "json_ld"],
@@ -201,15 +201,15 @@ blocked/sparse fetch evidence.
 
 ### `raw_metadata.ai_review`
 
-When a user clicks `Enrich with AI`, Gemini can propose a full metadata rewrite
+When a user clicks `Enrich with AI`, the LLM can propose a full metadata rewrite
 for the item, including category changes. The proposal is shown to the user
 before any data is written. If the user accepts it, Theque records the accepted
 proposal in `raw_metadata.ai_review`.
 
 ```json
 {
-  "provider": "gemini",
-  "model": "gemini-2.5-flash",
+  "provider": "ai_gateway",
+  "model": "openai/gpt-6-luna",
   "status": "accepted",
   "accepted_fields": [
     "category",
@@ -238,7 +238,7 @@ proposal in `raw_metadata.ai_review`.
 
 ## LLM Rollout
 
-Roll out Gemini enrichment conservatively:
+Roll out LLM enrichment conservatively:
 
 ```text
 1. Local only with LLM_ENRICHMENT_ENABLED=true.

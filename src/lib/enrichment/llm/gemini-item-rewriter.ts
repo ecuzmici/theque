@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { ItemCategory } from "@/lib/database.types";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
 import type { RawMetadata } from "@/lib/enrichment/extract";
 import {
   type LlmItemRewriteProposal,
@@ -8,6 +9,14 @@ import {
   structuredFieldNamesForCategory,
   validateLlmItemRewriteProposal,
 } from "@/lib/enrichment/llm/category-schemas";
+import {
+  ENRICHMENT_LLM_PROVIDER,
+  ENRICHMENT_PROVIDER_OPTIONS,
+  enrichmentModels,
+  enrichmentTimeoutMs,
+  isEnrichmentLlmConfigured,
+} from "@/lib/enrichment/llm/llm-config";
+import { normalizeLlmPayload } from "@/lib/enrichment/llm/normalize-llm-payload";
 
 export type GeminiItemRewriteInput = {
   finalUrl: string;
@@ -95,61 +104,53 @@ export function buildGeminiItemRewritePrompt(input: GeminiItemRewriteInput): str
 }
 
 export function normalizeGeminiItemRewritePayload(payload: unknown): GeminiItemRewriteResult {
-  const validation = validateLlmItemRewriteProposal(payload);
+  const validation = validateLlmItemRewriteProposal(normalizeLlmPayload(payload));
   if (!validation.ok) return { status: "failed", reason: validation.reason };
   return {
     status: "enhanced",
     proposal: validation.value,
     providerMetadata: {
-      provider: "gemini",
+      provider: ENRICHMENT_LLM_PROVIDER,
       status: "enhanced",
     },
   };
 }
 
+/**
+ * Proposes a full metadata rewrite through the AI Gateway. The models in
+ * enrichmentModels() run in order. The next model runs when a model errors,
+ * times out, or returns a payload that fails validation.
+ */
 export async function rewriteItemWithGemini(input: GeminiItemRewriteInput): Promise<GeminiItemRewriteResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { status: "skipped", reason: "missing_api_key" };
+  if (!isEnrichmentLlmConfigured()) return { status: "skipped", reason: "missing_api_key" };
 
-  const timeoutMs = Number.parseInt(process.env.GEMINI_TIMEOUT_MS ?? "10000", 10);
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), Number.isFinite(timeoutMs) ? timeoutMs : 10000);
+  const prompt = buildGeminiItemRewritePrompt(input);
+  const schema = buildGeminiItemRewriteResponseJsonSchema(input.currentCategory);
+  const timeoutMs = enrichmentTimeoutMs();
 
-  try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-    const prompt = buildGeminiItemRewritePrompt(input);
-
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        abortSignal: controller.signal,
-        temperature: 0.1,
-        responseMimeType: "application/json",
-        responseJsonSchema: buildGeminiItemRewriteResponseJsonSchema(input.currentCategory),
-      },
-    });
-
-    const text = response.text;
-    const parsed = typeof text === "string" ? JSON.parse(text) : null;
-    const normalized = normalizeGeminiItemRewritePayload(parsed);
-    if (normalized.status !== "enhanced") return normalized;
-
-    return {
-      ...normalized,
-      providerMetadata: {
-        ...normalized.providerMetadata,
-        model,
-      },
-    };
-  } catch (error) {
-    return {
-      status: "failed",
-      reason: error instanceof Error ? error.message : "gemini_failed",
-    };
-  } finally {
-    clearTimeout(timeout);
+  let lastReason = "llm_failed";
+  for (const model of enrichmentModels()) {
+    try {
+      const { data } = await generateJsonWithFallback({
+        models: [model],
+        prompt,
+        schema,
+        timeoutMs,
+        providerOptions: ENRICHMENT_PROVIDER_OPTIONS,
+        label: "rewrite",
+      });
+      const normalized = normalizeGeminiItemRewritePayload(data);
+      if (normalized.status === "enhanced") {
+        return {
+          ...normalized,
+          providerMetadata: { ...normalized.providerMetadata, model },
+        };
+      }
+      if (normalized.status === "failed") lastReason = normalized.reason;
+    } catch (error) {
+      lastReason = error instanceof Error ? error.message : "llm_failed";
+    }
   }
+
+  return { status: "failed", reason: lastReason };
 }

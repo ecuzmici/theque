@@ -6,7 +6,7 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 
 - **Multi-user, open registration**, but **no social/sharing features** — each Profile is a private, RLS-isolated library (see `docs/adr/0010-login-code-otp-oauth-open-registration.md` and `docs/adr/0001-personal-taste-loop-no-grouping-no-sharing.md`). "Single-user" survives only as the per-Profile *feeling*, not a cap on accounts.
 - **Shelves are code-defined** (`src/lib/shelves.ts`), not DB tables. Collections and tags were removed (unused); the capture API still accepts `collection_ids` / `tag_names` from legacy clients as no-ops.
-- **Classification/enrichment**: deterministic domain map + schema.org + heuristics first; optional gated Gemini enrichment can fill sparse metadata and, when allowed, set `category_source = llm`.
+- **Classification/enrichment**: deterministic domain map + schema.org + heuristics first; optional gated LLM enrichment (AI Gateway) can fill sparse metadata and, when allowed, set `category_source = llm`.
 - **Web auth**: a hybrid login — **GitHub** / **Google** OAuth plus an **email code** (OTP) fallback. There is **no magic link** (see ADR 0010). Bot sign-ups are held off by Cloudflare Turnstile on the email-code request. **Capture auth**: `Bearer bmly_…` tokens for extension/Shortcut.
 - **iOS Shortcut** is documented but lower priority than Chrome + web QA.
 
@@ -22,7 +22,7 @@ Public thèque URL (users, redirects, Chrome extension default): **`https://theq
 GitHub: https://github.com/ecuzmici/theque  
 Vercel project: **theque** (linked to repo `master`).
 
-Required env vars: see `.env.local.example`. Never commit `.env.local`. Gemini env vars are optional and server-only.
+Required env vars: see `.env.local.example`. Never commit `.env.local`. AI Gateway and Gemini env vars are optional and server-only.
 
 ## Commands
 
@@ -123,7 +123,7 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - Taste loop: marking an item done goes through the category-aware verb (`doneVerb`) and stores `rating_personal` / `verdict` / `done_at`; enrichment extracts `dominant_color` / `dominant_hue` (sharp) for palette sort and placeholder tinting.
 - Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
-- LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus `GEMINI_API_KEY`; deterministic extraction must still work without it.
+- LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus AI Gateway auth (`AI_GATEWAY_API_KEY` locally, OIDC on Vercel); deterministic extraction must still work without it. Models and reasoning settings live in `src/lib/enrichment/llm/llm-config.ts` (ADR 0017). The `gemini-*` file names are historical; only grounded search still calls Gemini (`GEMINI_API_KEY`).
 - Free category resolvers live in `src/lib/enrichment/resolvers/` (TMDB, Google Books, iTunes, YouTube oEmbed, GitHub); they run after classify when important fields are sparse and rank above LLM output. Add a new source by adding a `CategoryResolver` and registering it in `resolvers/index.ts`.
 - Blocked/sparse, snapshot-less pages can fall back to Jina Reader (`JINA_READER_ENABLED`) and Gemini Google Search grounding (`LLM_GROUNDING_ENABLED`); both opt-in, default off, fail-open. Grounding is skipped when the URL already contains a canonical entity id (`src/lib/enrichment/url-identity.ts`).
 - Do not commit secrets, `.env.local`, or `.vercel/`.

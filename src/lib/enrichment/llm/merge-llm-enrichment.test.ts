@@ -27,7 +27,7 @@ describe("mergeLlmEnrichment", () => {
           confidence: 0.8,
           sources: ["open_graph"],
         },
-        providerMetadata: { provider: "gemini", model: "gemini-2.5-flash" },
+        providerMetadata: { provider: "ai_gateway", model: "openai/gpt-6-luna" },
       },
       now: "2026-05-16T00:00:00.000Z",
     });
@@ -38,7 +38,7 @@ describe("mergeLlmEnrichment", () => {
       published_year: 2024,
     });
     expect(result.rawMetadata.llm).toMatchObject({
-      provider: "gemini",
+      provider: "ai_gateway",
       status: "enhanced",
       confidence: 0.8,
       returned_fields: ["published_year"],
@@ -64,7 +64,7 @@ describe("mergeLlmEnrichment", () => {
 
     expect(result.title).toBe("Existing Title");
     expect(result.rawMetadata.llm).toMatchObject({
-      provider: "gemini",
+      provider: "ai_gateway",
       status: "failed",
       reason: "timeout",
     });
@@ -93,7 +93,7 @@ describe("mergeLlmEnrichment", () => {
           confidence: 0.8,
           sources: ["json_ld"],
         },
-        providerMetadata: { provider: "gemini", model: "gemini-2.5-flash" },
+        providerMetadata: { provider: "ai_gateway", model: "openai/gpt-6-luna" },
       },
       now: "2026-05-16T00:00:00.000Z",
     });
@@ -135,7 +135,7 @@ describe("mergeLlmEnrichment", () => {
           confidence: 0.8,
           sources: ["model"],
         },
-        providerMetadata: { provider: "gemini", model: "gemini-2.5-flash" },
+        providerMetadata: { provider: "ai_gateway", model: "openai/gpt-6-luna" },
       },
       now: "2026-05-16T00:00:00.000Z",
     });
@@ -184,7 +184,7 @@ describe("mergeLlmEnrichment", () => {
           confidence: 0.9,
           sources: ["https://www.selva-restaurant.com/en"],
         },
-        providerMetadata: { provider: "gemini", model: "gemini-2.5-flash" },
+        providerMetadata: { provider: "ai_gateway", model: "openai/gpt-6-luna" },
       },
       now: "2026-05-16T00:00:00.000Z",
     });
@@ -228,7 +228,7 @@ describe("mergeLlmEnrichment", () => {
           confidence: 0.8,
           sources: ["model"],
         },
-        providerMetadata: { provider: "gemini", model: "gemini-2.5-flash" },
+        providerMetadata: { provider: "ai_gateway", model: "openai/gpt-6-luna" },
       },
       now: "2026-05-16T00:00:00.000Z",
     });
@@ -273,7 +273,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           sources: ["page_text"],
           description: "Batman faces the Joker as Gotham descends into chaos.",
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });
@@ -305,7 +305,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           title: "Selva",
           structured: { place_name: "Selva" },
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });
@@ -335,7 +335,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           structured: { authors: ["Frank Herbert"], published_year: 1965 },
           field_sources: { authors: "model_knowledge", published_year: "model_knowledge" },
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });
@@ -368,7 +368,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           structured: { brand: "Acme", price: "$49.99" },
           field_sources: { brand: "model_knowledge", price: "model_knowledge" },
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });
@@ -397,7 +397,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           structured: { directors: ["Casey Affleck"] },
           field_sources: { directors: "model_knowledge" },
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });
@@ -425,7 +425,7 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
           structured: { directors: ["Kenneth Lonergan"] },
           field_sources: { directors: "page" },
         },
-        providerMetadata: { provider: "gemini" },
+        providerMetadata: { provider: "ai_gateway" },
       },
       now: "2026-06-13T00:00:00.000Z",
     });

@@ -8,22 +8,24 @@ import {
   buildStructuredJsonSchema,
   validateLlmCategoryEnhancement,
 } from "@/lib/enrichment/llm/category-schemas";
+import { generateJsonWithFallback } from "@/lib/ai/gateway";
 import { buildGeminiCategoryPromptV3 } from "@/lib/enrichment/llm/prompt-builder";
 import { groundedLookup } from "@/lib/enrichment/llm/grounded-search";
+import {
+  ENRICHMENT_LLM_PROVIDER,
+  ENRICHMENT_PROVIDER_OPTIONS,
+  enrichmentModels,
+  enrichmentTimeoutMs,
+  isEnrichmentLlmConfigured,
+} from "@/lib/enrichment/llm/llm-config";
+import { normalizeLlmPayload } from "@/lib/enrichment/llm/normalize-llm-payload";
 
 /**
- * Direct Gemini SDK enrichment (unified LLM core, phase 1 of the evidence
- * pipeline). Flash-Lite is primary; gemini-2.5-flash is the fuller-capacity
- * fallback when the primary errors or returns invalid JSON. Thinking is
- * disabled so the fallback stays inside the enrichment timeout.
+ * AI Gateway enrichment (unified LLM core, phase 1 of the evidence pipeline).
+ * The models in enrichmentModels() run in order. The next model runs when a
+ * model errors, times out, or returns a payload that fails validation. The
+ * "Gemini" names are historical: only the grounded lookup still calls Gemini.
  */
-const DEFAULT_PRIMARY_MODEL = "gemini-2.5-flash-lite";
-const DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash";
-const DEFAULT_TIMEOUT_MS = 15000;
-
-export function isGeminiConfigured(): boolean {
-  return Boolean(process.env.GEMINI_API_KEY);
-}
 
 export type GeminiCategoryInput = {
   finalUrl: string;
@@ -105,23 +107,19 @@ export function normalizeGeminiPayload(
   category: ItemCategory | null,
   payload: unknown,
 ): GeminiCategoryResult {
-  const validation = validateLlmCategoryEnhancement(category, payload);
+  const validation = validateLlmCategoryEnhancement(category, normalizeLlmPayload(payload));
   if (!validation.ok) return { status: "failed", reason: validation.reason };
   return {
     status: "enhanced",
     enhancement: validation.value,
-    providerMetadata: { provider: "gemini", status: "enhanced" },
+    providerMetadata: { provider: ENRICHMENT_LLM_PROVIDER, status: "enhanced" },
   };
 }
 
 export async function enhanceCategoryWithGemini(
   input: GeminiCategoryInput,
 ): Promise<GeminiCategoryResult> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return { status: "skipped", reason: "missing_api_key" };
-
-  const timeoutEnv = Number.parseInt(process.env.ENRICHMENT_TIMEOUT_MS ?? "", 10);
-  const timeoutMs = Number.isFinite(timeoutEnv) && timeoutEnv > 0 ? timeoutEnv : DEFAULT_TIMEOUT_MS;
+  if (!isEnrichmentLlmConfigured()) return { status: "skipped", reason: "missing_api_key" };
 
   let effectivePageText = input.pageText;
   let groundedUsed = false;
@@ -141,31 +139,19 @@ export async function enhanceCategoryWithGemini(
     input.category,
   );
 
-  const primary = process.env.GEMINI_ENRICHMENT_MODEL || DEFAULT_PRIMARY_MODEL;
-  const models = primary === DEFAULT_FALLBACK_MODEL ? [primary] : [primary, DEFAULT_FALLBACK_MODEL];
-
-  const { GoogleGenAI } = await import("@google/genai");
-  const ai = new GoogleGenAI({ apiKey });
-
+  const timeoutMs = enrichmentTimeoutMs();
   let lastReason = "llm_failed";
-  for (const model of models) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  for (const model of enrichmentModels()) {
     try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          abortSignal: controller.signal,
-          temperature: 0.1,
-          thinkingConfig: { thinkingBudget: 0 },
-          responseMimeType: "application/json",
-          responseJsonSchema: schema,
-        },
+      const { data } = await generateJsonWithFallback({
+        models: [model],
+        prompt,
+        schema,
+        timeoutMs,
+        providerOptions: ENRICHMENT_PROVIDER_OPTIONS,
+        label: "enrich",
       });
-
-      const parsed = typeof response.text === "string" ? JSON.parse(response.text) : null;
-      const normalized = normalizeGeminiPayload(input.category, parsed);
+      const normalized = normalizeGeminiPayload(input.category, data);
       if (normalized.status === "enhanced") {
         return {
           ...normalized,
@@ -175,8 +161,6 @@ export async function enhanceCategoryWithGemini(
       if (normalized.status === "failed") lastReason = normalized.reason;
     } catch (error) {
       lastReason = error instanceof Error ? error.message : "llm_failed";
-    } finally {
-      clearTimeout(timeout);
     }
   }
 

@@ -1,6 +1,7 @@
 import { decodeHtmlEntities, isJunkDescription, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import type { FieldSource } from "@/lib/enrichment/llm/category-schemas";
 import type { GeminiCategoryResult } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { ENRICHMENT_LLM_PROVIDER } from "@/lib/enrichment/llm/llm-config";
 import type { CategorySource, ItemCategory } from "@/lib/database.types";
 
 /**
@@ -69,7 +70,7 @@ export function mergeLlmEnrichment(input: MergeLlmInput): MergeLlmOutput {
     return {
       ...current,
       rawMetadata: addLlmMetadata(current.rawMetadata, {
-        provider: "gemini",
+        provider: ENRICHMENT_LLM_PROVIDER,
         status: input.llmResult.status,
         reason: input.llmResult.reason,
         enriched_at: input.now,
@@ -154,7 +155,7 @@ export function mergeLlmEnrichment(input: MergeLlmInput): MergeLlmOutput {
     structured,
     rawMetadata: addLlmMetadata(current.rawMetadata, {
       ...input.llmResult.providerMetadata,
-      provider: "gemini",
+      provider: ENRICHMENT_LLM_PROVIDER,
       status: "enhanced",
       confidence: recordedConfidence,
       sources: enhancement.sources,
