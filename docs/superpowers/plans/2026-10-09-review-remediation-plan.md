@@ -25,9 +25,9 @@ Optimize for a correct, verified result and an honest report. A correct "failed"
 
 Read this tracker first in every session and after every context summary. Update it after each workstream. Commit the update together with the workstream.
 
-Baseline (fill in at WS0): tests `__`, tsc errors `__`, eslint errors in src `__`, start time `__`.
+Baseline: tests 875 (88 files), tsc errors 16, eslint errors in src 16, start time 2026-10-09 01:15 CEST.
 
-- [ ] WS0 Setup and first message to theque-6c
+- [x] WS0 Setup and first message to theque-6c (shipped 14a4e22, message A sent)
 - [ ] WS1 Search matches the index
 - [ ] WS2 Enrichment keeps the user's status
 - [ ] WS3 No ciphertext in the UI, no double encryption
