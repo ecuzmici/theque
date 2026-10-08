@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}));
 
 import {
   buildRecommendPrompt,
+  parseLlmCandidates,
   RECOMMEND_RESPONSE_SCHEMA,
 } from "@/lib/recommend/recommend-prompt";
 import type { TasteProfile } from "@/lib/recommend/recommend-types";
@@ -164,5 +165,42 @@ describe("buildRecommendPrompt", () => {
       expect(itemRequired).toContain("description");
       expect(itemRequired).toContain("reason");
     });
+  });
+});
+
+describe("parseLlmCandidates", () => {
+  const valid = {
+    title: "Piranesi",
+    creator: "Susanna Clarke",
+    year: 2020,
+    description: "A man maps an endless house.",
+    reason: "Matches your love of quiet mysteries.",
+  };
+
+  it("returns null when the response has no candidates array", () => {
+    expect(parseLlmCandidates(null)).toBeNull();
+    expect(parseLlmCandidates({})).toBeNull();
+    expect(parseLlmCandidates({ candidates: "x" })).toBeNull();
+  });
+
+  it("keeps valid candidates", () => {
+    expect(parseLlmCandidates({ candidates: [valid] })).toEqual([valid]);
+  });
+
+  it("sets a zero or missing year to null so the resolver ignores it", () => {
+    const noYear: Record<string, unknown> = { ...valid };
+    delete noYear.year;
+    expect(parseLlmCandidates({ candidates: [{ ...valid, year: 0 }, noYear] })).toEqual([
+      { ...valid, year: null },
+      { ...valid, year: null },
+    ]);
+  });
+
+  it("drops candidates with an empty title or a missing required field", () => {
+    expect(
+      parseLlmCandidates({
+        candidates: [{ ...valid, title: " " }, { ...valid, reason: undefined }, null, valid],
+      }),
+    ).toEqual([valid]);
   });
 });

@@ -5,7 +5,12 @@
  * It NEVER emits URLs — grounding is handled deterministically by the resolver layer.
  */
 
-import type { RecommendShelfId, TasteProfile, TasteProfileItem } from "@/lib/recommend/recommend-types";
+import type {
+  LlmCandidate,
+  RecommendShelfId,
+  TasteProfile,
+  TasteProfileItem,
+} from "@/lib/recommend/recommend-types";
 import { RECOMMEND_OVER_REQUEST } from "@/lib/recommend/recommend-config";
 
 const SHELF_LABELS: Record<RecommendShelfId, string> = {
@@ -118,7 +123,7 @@ export function buildRecommendPrompt(
 }
 
 /**
- * The JSON schema enforced on Gemini's response.
+ * The JSON schema for structured output on every recommendation model.
  * Candidates have NO url field — grounding is deterministic.
  */
 export const RECOMMEND_RESPONSE_SCHEMA = {
@@ -145,3 +150,41 @@ export const RECOMMEND_RESPONSE_SCHEMA = {
   required: ["candidates"],
   additionalProperties: false,
 } as const;
+
+/**
+ * Parses the model response into candidates. Returns null when the response
+ * has no candidates array.
+ *
+ * Drops a candidate when a required field is not a string or the title is
+ * empty. Sets `year` to null when it is not a positive integer. Some models
+ * send 0 for an unknown year, and 0 would fail the resolver year check.
+ */
+export function parseLlmCandidates(data: unknown): LlmCandidate[] | null {
+  if (typeof data !== "object" || data === null) return null;
+  const raw = (data as { candidates?: unknown }).candidates;
+  if (!Array.isArray(raw)) return null;
+
+  const candidates: LlmCandidate[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== "object" || entry === null) continue;
+    const c = entry as Record<string, unknown>;
+    if (
+      typeof c.title !== "string" ||
+      !c.title.trim() ||
+      typeof c.creator !== "string" ||
+      typeof c.description !== "string" ||
+      typeof c.reason !== "string"
+    ) {
+      continue;
+    }
+    const year = typeof c.year === "number" && Number.isInteger(c.year) && c.year > 0 ? c.year : null;
+    candidates.push({
+      title: c.title,
+      creator: c.creator,
+      year,
+      description: c.description,
+      reason: c.reason,
+    });
+  }
+  return candidates;
+}

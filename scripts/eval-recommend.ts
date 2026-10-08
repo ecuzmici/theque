@@ -42,8 +42,12 @@ import {
   RECOMMEND_TEMPERATURE,
   RECOMMEND_TIMEOUT_MS,
 } from "../src/lib/recommend/recommend-config";
-import { buildRecommendPrompt } from "../src/lib/recommend/recommend-prompt";
-import { resolveBookWithOpenLibrary } from "../src/lib/recommend/resolve/open-library";
+import {
+  RECOMMEND_RESPONSE_SCHEMA,
+  buildRecommendPrompt,
+  parseLlmCandidates,
+} from "../src/lib/recommend/recommend-prompt";
+import { resolveBooks } from "../src/lib/recommend/resolve/books";
 import { resolveMovieWithTmdb } from "../src/lib/recommend/resolve/tmdb";
 import { isSuppressedOutcome } from "../src/lib/recommend/suppression";
 import {
@@ -54,7 +58,7 @@ import {
   type LibraryItemRow,
   type OutcomeRow,
 } from "../src/lib/recommend/taste-profile";
-import type { LlmCandidate, RecommendShelfId } from "../src/lib/recommend/recommend-types";
+import type { RecommendShelfId } from "../src/lib/recommend/recommend-types";
 import { createAdminClient } from "../src/lib/supabase/admin";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -177,18 +181,6 @@ type RoundResult = {
   picks: Pick[];
 };
 
-function parseCandidates(data: { candidates?: unknown[] }): LlmCandidate[] {
-  if (!Array.isArray(data.candidates)) return [];
-  return data.candidates.filter(
-    (c): c is LlmCandidate =>
-      c !== null &&
-      typeof c === "object" &&
-      typeof (c as Record<string, unknown>).title === "string" &&
-      typeof (c as Record<string, unknown>).creator === "string" &&
-      typeof (c as Record<string, unknown>).description === "string" &&
-      typeof (c as Record<string, unknown>).reason === "string",
-  );
-}
 
 async function runRound(
   round: number,
@@ -214,21 +206,21 @@ async function runRound(
   const { data } = await generateJsonWithFallback<{ candidates?: unknown[] }>({
     models,
     prompt,
+    schema: RECOMMEND_RESPONSE_SCHEMA,
     temperature: RECOMMEND_TEMPERATURE,
     timeoutMs: RECOMMEND_TIMEOUT_MS,
     providerOptions: RECOMMEND_PROVIDER_OPTIONS,
     label: "eval-recommend",
   });
 
-  const candidates = parseCandidates(data);
+  const candidates = parseLlmCandidates(data) ?? [];
   const isWatch = shelfId === "watch";
   const overRequested = candidates.slice(0, RECOMMEND_OVER_REQUEST);
 
+  const books = isWatch ? [] : await resolveBooks(overRequested);
   const settled = await Promise.allSettled(
-    overRequested.map(async (candidate): Promise<Pick | null> => {
-      const resolved = isWatch
-        ? await resolveMovieWithTmdb(candidate)
-        : await resolveBookWithOpenLibrary(candidate);
+    overRequested.map(async (candidate, index): Promise<Pick | null> => {
+      const resolved = isWatch ? await resolveMovieWithTmdb(candidate) : books[index];
       return resolved
         ? { title: candidate.title, creator: candidate.creator ?? null, year: candidate.year ?? null }
         : null;

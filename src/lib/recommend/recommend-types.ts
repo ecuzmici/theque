@@ -51,7 +51,7 @@ export type ResolvedRecommendation = {
   canonical_url: string;
   cover_url: string | null;
   search_query: string;
-  source: "open_library" | "tmdb";
+  source: "hardcover" | "open_library" | "tmdb";
   /** Source rating (e.g. Open Library / TMDB), 0–10 scale normalized to 0–5 for display. */
   source_rating?: number | null;
   /** Human-readable rating count (e.g. "1.1M"). */
