@@ -22,9 +22,13 @@ import {
 } from "@/lib/recommend/recommend-config";
 import { dedupRecommendations, normalizeTitle } from "@/lib/recommend/dedup";
 import { isSuppressedOutcome } from "@/lib/recommend/suppression";
-import { buildRecommendPrompt } from "@/lib/recommend/recommend-prompt";
+import {
+  RECOMMEND_RESPONSE_SCHEMA,
+  buildRecommendPrompt,
+  parseLlmCandidates,
+} from "@/lib/recommend/recommend-prompt";
 import { fetchBookDescription } from "@/lib/recommend/resolve/google-books";
-import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
+import { resolveBooks } from "@/lib/recommend/resolve/books";
 import {
   fetchTmdbCardExtras,
   formatWatchLength,
@@ -176,23 +180,16 @@ export async function POST(req: Request) {
     const { data } = await generateJsonWithFallback<{ candidates?: unknown[] }>({
       models: RECOMMEND_MODELS,
       prompt,
+      schema: RECOMMEND_RESPONSE_SCHEMA,
       temperature: RECOMMEND_TEMPERATURE,
       timeoutMs: RECOMMEND_TIMEOUT_MS,
       providerOptions: RECOMMEND_PROVIDER_OPTIONS,
       label: "recommend",
     });
 
-    if (!Array.isArray(data.candidates)) throw new Error("invalid_response_shape");
-
-    candidates = data.candidates.filter(
-      (c): c is LlmCandidate =>
-        c !== null &&
-        typeof c === "object" &&
-        typeof (c as Record<string, unknown>).title === "string" &&
-        typeof (c as Record<string, unknown>).creator === "string" &&
-        typeof (c as Record<string, unknown>).description === "string" &&
-        typeof (c as Record<string, unknown>).reason === "string",
-    );
+    const parsed = parseLlmCandidates(data);
+    if (!parsed) throw new Error("invalid_response_shape");
+    candidates = parsed;
   } catch (err) {
     console.error("[api/recommend] llm_failed:", err instanceof Error ? err.message : err);
     return jsonResponse(
@@ -214,11 +211,12 @@ export async function POST(req: Request) {
     media_type?: "movie" | "tv";
   };
 
+  const books = isWatch ? [] : await resolveBooks(overRequested);
+
   const settledResults = await Promise.allSettled(
-    overRequested.map(async (candidate) => {
-      const resolved = isWatch
-        ? await resolveMovieWithTmdb(candidate)
-        : await resolveBookWithOpenLibrary(candidate);
+    overRequested.map(async (candidate, index) => {
+      const book = isWatch ? null : books[index];
+      const resolved = isWatch ? await resolveMovieWithTmdb(candidate) : book;
 
       if (!resolved) return null;
 
@@ -232,7 +230,7 @@ export async function POST(req: Request) {
         canonical_url: resolved.canonical_url,
         cover_url: resolved.cover_url,
         search_query: buildSearchQuery(candidate, shelfId),
-        source: isWatch ? "tmdb" : "open_library",
+        source: book ? book.source : "tmdb",
         external_id: resolved.external_id,
         title_norm: normalizeTitle(candidate.title),
         source_rating: resolved.source_rating ?? null,

@@ -105,33 +105,38 @@ export function pickWatchRegion(headerCountry: string | null | undefined): strin
 /**
  * Ordered AI Gateway model fallback for recommendations.
  *
- * Chosen from the yield eval (scripts/eval-recommend.ts, ADR 0016, 2026-07-23):
- * candidates run against the owner's real library at over_request=24, scored on
- * JSON reliability, resolve rate, pick quality, and — critically — knowledge
- * recency, since the recommend path has no search grounding so the model's
- * training cutoff is a hard ceiling on how fresh a suggestion can be.
+ * Chosen from the yield eval (scripts/eval-recommend.ts, ADR 0016) re-run on
+ * 2026-10-09 against the owner's real library at over_request=24 (ADR 0018).
+ * The recommend path has no search grounding, so the model's training cutoff
+ * is a hard ceiling on how fresh a suggestion can be. Every model gets the
+ * RECOMMEND_RESPONSE_SCHEMA structured output.
  *
- * gemini-3.6-flash: primary — newest knowledge, best on-taste picks, reliable
- * JSON at 24. gpt-5.6-luna: recent cross-provider fallback. gemini-3.5-flash-lite:
- * cheap recent-knowledge backstop.
+ * gemini-3.6-flash: primary. It kept the books shelf full in 3 of 3 runs
+ * (6/6, 6/6, 8/8 full rounds) because its picks stay diverse round over
+ * round. gpt-6-luna: fallback. Newest knowledge (2026-05) and the best
+ * resolve rate, but it repeats earlier picks, so the books shelf ran dry in
+ * 3 of 3 runs (5/6, 5/6, 5/8). gemini-3.5-flash-lite: cheap backstop.
  *
- * Rejected: gemini-3.1-flash-lite (intermittent JSON truncation at 24),
+ * Rejected: claude-haiku-5.5 (invented titles, starved the books shelf by
+ * round 6), gemini-3.1-flash-lite (intermittent JSON truncation at 24),
  * openai/gpt-5-nano (too slow, aborts), zai/glm-4.7-flash (JSON truncation),
  * openai/gpt-4.1-mini (reliable but oldest cutoff, ~mid-2024).
  */
 export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
   "google/gemini-3.6-flash",
-  "openai/gpt-5.6-luna",
+  "openai/gpt-6-luna",
   "google/gemini-3.5-flash-lite",
 ]);
 
 /**
  * Provider-specific options forwarded to every recommendation model attempt.
- * thinkingBudget: 0 disables the thinking pass on Google models (latency gate).
- * The google key is a no-op for Anthropic fallbacks.
+ * Each key turns off the reasoning pass for one provider (latency gate) and
+ * applies only to models of that provider. gemini-3.5-flash-lite rejects
+ * thinkingBudget: 0, so the google key uses thinkingLevel instead.
  */
 export const RECOMMEND_PROVIDER_OPTIONS = {
-  google: { thinkingConfig: { thinkingBudget: 0 } },
+  openai: { reasoningEffort: "none" },
+  google: { thinkingConfig: { thinkingLevel: "minimal" } },
 };
 
 /** Temperature for recommendations (some variety, but steadier than before). */

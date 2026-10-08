@@ -13,6 +13,7 @@ const AUTHORITATIVE: Array<{ suffix: string; category: ItemCategory }> = [
   { suffix: "letterboxd.com", category: "movies_and_tv" },
   { suffix: "goodreads.com", category: "books" },
   { suffix: "openlibrary.org", category: "books" },
+  { suffix: "hardcover.app", category: "books" },
   { suffix: "storytel.com", category: "books" },
   { suffix: "etsy.com", category: "products" },
   { suffix: "airbnb.com", category: "travel" },

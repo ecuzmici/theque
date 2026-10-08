@@ -24,6 +24,16 @@ describe("classify", () => {
     expect(r.category_source).toBe("domain");
   });
 
+  it("hardcover maps to books (authoritative)", () => {
+    const r = classify({
+      domain: "hardcover.app",
+      pathname: "/books/piranesi",
+      jsonLd: [],
+    });
+    expect(r.category).toBe("books");
+    expect(r.category_source).toBe("domain");
+  });
+
   it("unknown domain with Book JSON-LD maps to books via schema", () => {
     const r = classify({
       domain: "example.org",

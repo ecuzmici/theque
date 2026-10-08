@@ -66,9 +66,9 @@ export function splitCreatorTokens(creator: string): string[] {
 
 /**
  * Returns true if any token from the candidate creator matches any token
- * from the Open Library author list (substring in either direction).
+ * from a resolver's author list (substring in either direction).
  */
-function authorsOverlap(candidateCreator: string, docAuthors: string[]): boolean {
+export function authorsOverlap(candidateCreator: string, docAuthors: string[]): boolean {
   const candidateTokens = splitCreatorTokens(candidateCreator);
   const docTokens = docAuthors.map((a) => a.toLowerCase());
 
@@ -104,7 +104,7 @@ export function pickOpeningLine(value: string[] | string | undefined): string | 
   return trimmed;
 }
 
-function formatRatingCount(count: number): string {
+export function formatRatingCount(count: number): string {
   if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (count >= 1_000) return `${Math.round(count / 1_000)}k`;
   return String(count);

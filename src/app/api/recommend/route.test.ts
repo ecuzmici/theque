@@ -33,6 +33,11 @@ vi.mock("@/lib/recommend/resolve/open-library", () => ({
   resolveBookWithOpenLibrary: vi.fn(),
 }));
 
+// Hardcover finds nothing by default, so book tests exercise the Open Library fallback.
+vi.mock("@/lib/recommend/resolve/hardcover", () => ({
+  resolveBooksWithHardcover: vi.fn(async (candidates: unknown[]) => candidates.map(() => null)),
+}));
+
 vi.mock("@/lib/recommend/resolve/tmdb", () => ({
   resolveMovieWithTmdb: vi.fn(),
 }));
@@ -44,7 +49,9 @@ vi.mock("@/lib/ai/gateway", () => ({
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { rateLimit } from "@/lib/rate-limit";
 import { resolveBookWithOpenLibrary } from "@/lib/recommend/resolve/open-library";
+import { resolveBooksWithHardcover } from "@/lib/recommend/resolve/hardcover";
 import { generateJsonWithFallback } from "@/lib/ai/gateway";
+import { RECOMMEND_RESPONSE_SCHEMA } from "@/lib/recommend/recommend-prompt";
 import { POST } from "@/app/api/recommend/route";
 
 const SAMPLE_USER = { id: "user-123", email: "test@example.com" };
@@ -275,6 +282,7 @@ describe("POST /api/recommend", () => {
       expect(call.prompt).toContain("Wanderers");
       expect(call.prompt).toContain("NEVER suggest these titles:");
       expect(call.prompt).toContain("dismissed pick");
+      expect(call.schema).toBe(RECOMMEND_RESPONSE_SCHEMA);
     });
 
     it("excludes shown outcomes past the cooldown but keeps recent ones (ADR 0016: 14d)", async () => {
@@ -313,6 +321,31 @@ describe("POST /api/recommend", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.cards[0].outcome_id).toBe("outcome-abc");
+      expect(body.cards[0].source).toBe("open_library");
+    });
+
+    it("uses the Hardcover match before Open Library", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({ insertId: "outcome-hc" });
+      mockGatewaySuccess([
+        { title: "Piranesi", creator: "Susanna Clarke", year: 2020, description: "A book", reason: "Great" },
+      ]);
+      mockResolverSuccess();
+      vi.mocked(resolveBooksWithHardcover).mockResolvedValueOnce([
+        {
+          canonical_url: "https://hardcover.app/books/piranesi",
+          cover_url: "https://assets.hardcover.app/piranesi.jpg",
+          confirmed_year: null,
+          external_id: "hardcover:123",
+          verified_author: "Susanna Clarke",
+        },
+      ]);
+
+      const res = await POST(makeRequest({ shelfId: "books" }));
+      const body = await res.json();
+      expect(body.cards[0].source).toBe("hardcover");
+      expect(body.cards[0].canonical_url).toBe("https://hardcover.app/books/piranesi");
+      expect(resolveBookWithOpenLibrary).not.toHaveBeenCalled();
     });
 
     it("writes shown rows on success", async () => {
