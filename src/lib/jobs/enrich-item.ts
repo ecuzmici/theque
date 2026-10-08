@@ -351,7 +351,8 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         category: mergedCategory,
         category_confidence: mergedCategoryConfidence,
         category_source: mergedCategorySource,
-        status: mergedCategorySource === "manual" ? row.status : nextStatus,
+        status:
+          row.status === "inbox" && mergedCategorySource !== "manual" ? nextStatus : row.status,
         structured: mergedStructured as Json,
         raw_metadata: mergedRawMetadata as Json,
         display: display as Json,
