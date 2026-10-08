@@ -18,7 +18,7 @@
 
 import "server-only";
 
-import { generateText } from "ai";
+import { Output, generateText, jsonSchema } from "ai";
 
 /** Provider-options shape accepted by the installed AI SDK (kept in sync automatically). */
 type ProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
@@ -43,6 +43,12 @@ export type GatewayJsonOptions = {
   prompt: string;
   /** Overrides the default JSON-only system instruction when provided. */
   system?: string;
+  /**
+   * JSON Schema for structured output. When set, the provider constrains the
+   * response to this schema and the default JSON-only system instruction is
+   * not sent.
+   */
+  schema?: Record<string, unknown>;
   temperature?: number;
   timeoutMs?: number;
   /**
@@ -72,20 +78,30 @@ export type GatewayJsonResult<T> = {
 export async function generateJsonWithFallback<T = unknown>(
   opts: GatewayJsonOptions,
 ): Promise<GatewayJsonResult<T>> {
-  const { models, prompt, system, temperature, timeoutMs = 20000, providerOptions, label } = opts;
+  const { models, prompt, system, schema, temperature, timeoutMs = 20000, providerOptions, label } =
+    opts;
   if (models.length === 0) throw new Error("no_models_configured");
 
   let lastError: unknown;
   for (const model of models) {
     try {
-      const { text } = await generateText({
+      const common = {
         model,
-        system: system ?? JSON_SYSTEM,
         prompt,
         temperature,
         ...(providerOptions ? { providerOptions } : {}),
         abortSignal: AbortSignal.timeout(timeoutMs),
-      });
+      };
+      if (schema) {
+        const { output } = await generateText({
+          ...common,
+          ...(system ? { system } : {}),
+          output: Output.object({ schema: jsonSchema(schema) }),
+        });
+        if (output === undefined || output === null) throw new Error("empty_response");
+        return { data: output as T, model };
+      }
+      const { text } = await generateText({ ...common, system: system ?? JSON_SYSTEM });
       if (!text) throw new Error("empty_response");
       const data = JSON.parse(stripCodeFence(text)) as T;
       return { data, model };

@@ -10,7 +10,8 @@ import { fetchViaJinaReader } from "@/lib/enrichment/jina-reader";
 import { enrichOpenLibraryWork } from "@/lib/enrichment/openlibrary";
 import { cacheItemImage, extractDominantColorForUrl } from "@/lib/enrichment/image-cache";
 import { decideLlmEligibility } from "@/lib/enrichment/llm/eligibility";
-import { enhanceCategoryWithGemini, isGeminiConfigured } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { enhanceCategoryWithGemini } from "@/lib/enrichment/llm/gemini-category-enhancer";
+import { isEnrichmentLlmConfigured } from "@/lib/enrichment/llm/llm-config";
 import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/snapshot-adapter";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
@@ -245,7 +246,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
 
     const llmEligibility = decideLlmEligibility({
       enabled: process.env.LLM_ENRICHMENT_ENABLED === "true",
-      hasApiKey: isGeminiConfigured(),
+      hasApiKey: isEnrichmentLlmConfigured(),
       fetchBlocked,
       fetchSparse,
       category: mergedCategory,

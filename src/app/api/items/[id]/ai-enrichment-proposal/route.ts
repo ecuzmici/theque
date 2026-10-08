@@ -2,6 +2,7 @@ import type { Json } from "@/lib/database.types";
 import type { RawMetadata } from "@/lib/enrichment/extract";
 import { fetchPage } from "@/lib/enrichment/fetch";
 import { rewriteItemWithGemini } from "@/lib/enrichment/llm/gemini-item-rewriter";
+import { ENRICHMENT_LLM_PROVIDER } from "@/lib/enrichment/llm/llm-config";
 import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot } from "@/lib/enrichment/snapshot-adapter";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
@@ -96,7 +97,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       notes: result.proposal.notes ?? null,
     },
     proposal_metadata: {
-      provider: String(result.providerMetadata.provider ?? "gemini"),
+      provider: String(result.providerMetadata.provider ?? ENRICHMENT_LLM_PROVIDER),
       model:
         typeof result.providerMetadata.model === "string"
           ? result.providerMetadata.model

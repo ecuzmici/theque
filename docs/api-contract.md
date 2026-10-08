@@ -202,7 +202,7 @@ Reset `processing_status` to `pending`, `enrichment_attempts` to 0. Enqueue job.
 
 **Auth:** Session
 
-Calls Gemini to propose a reviewed metadata rewrite for one item. The proposal is returned to the UI and is not written until accepted.
+Calls an LLM through the AI Gateway to propose a reviewed metadata rewrite for one item. The proposal is returned to the UI and is not written until accepted.
 
 **Response `200`**
 
@@ -222,13 +222,13 @@ Calls Gemini to propose a reviewed metadata rewrite for one item. The proposal i
     "notes": "Amazon Kindle listing"
   },
   "proposal_metadata": {
-    "provider": "gemini",
-    "model": "gemini-2.5-flash"
+    "provider": "ai_gateway",
+    "model": "openai/gpt-6-luna"
   }
 }
 ```
 
-**Errors:** `401`, `404`, `503` for skipped/unavailable Gemini configuration, `502 proposal_failed`.
+**Errors:** `401`, `404`, `503` for skipped/unavailable AI Gateway configuration, `502 proposal_failed`.
 
 ---
 
@@ -243,7 +243,7 @@ Validates and applies a proposal returned by `ai-enrichment-proposal`. Writes ac
 ```json
 {
   "proposal": { "category": "books", "...": "same shape as proposal response" },
-  "proposal_metadata": { "provider": "gemini", "model": "gemini-2.5-flash" }
+  "proposal_metadata": { "provider": "ai_gateway", "model": "openai/gpt-6-luna" }
 }
 ```
 
@@ -315,7 +315,7 @@ enrichItem(itemId: string): Promise<"ready" | "pending_retry" | "failed" | "skip
 2. Fetch URL metadata
 3. Extract OG/schema.org metadata and parser-specific fields
 4. Classify with domain/schema/heuristics plus any capture hint
-5. Optionally call Gemini when `LLM_ENRICHMENT_ENABLED=true` and eligibility allows it
+5. Optionally call an LLM through the AI Gateway when `LLM_ENRICHMENT_ENABLED=true` and eligibility allows it
 6. Set fields + `processing_status = ready` or `failed`
 7. Increment `enrichment_attempts` on failure; stop after 3
 

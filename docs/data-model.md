@@ -184,7 +184,7 @@ User can always override.
 
 ## Optional LLM enrichment
 
-The deterministic pipeline remains the default source of truth. When `LLM_ENRICHMENT_ENABLED=true` and `GEMINI_API_KEY` is present, the enrichment job may call Gemini to fill sparse structured fields and can set `category_source = 'llm'` only when the eligibility gate allows a category suggestion. User-set `manual` categories are preserved except for intentionally sparse/blocked metadata recovery paths documented in `docs/category-schemas.md`.
+The deterministic pipeline remains the default source of truth. When `LLM_ENRICHMENT_ENABLED=true` and AI Gateway auth is present, the enrichment job may call an LLM through the AI Gateway to fill sparse structured fields and can set `category_source = 'llm'` only when the eligibility gate allows a category suggestion. User-set `manual` categories are preserved except for intentionally sparse/blocked metadata recovery paths documented in `docs/category-schemas.md`.
 
 ## Realtime
 
