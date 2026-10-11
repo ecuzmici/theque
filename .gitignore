@@ -66,3 +66,6 @@ memory/
 
 # Local agent scaffolding (brainstorm/notes)
 .superpowers/
+
+# Backfill proposals and backups (real library data, local only)
+.backfill/
