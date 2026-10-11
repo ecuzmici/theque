@@ -107,6 +107,27 @@ describe("LibrarySearchRow", () => {
     expect(input().value).toBe("");
   });
 
+  it("renders the filter row under the shelf chips, and only when given", async () => {
+    await render(
+      <LibrarySearchRow
+        value=""
+        onChange={vi.fn()}
+        onClear={vi.fn()}
+        shelfLabel="Books"
+        showStatus={false}
+        status={null}
+        onStatusChange={vi.fn()}
+        filters={<div data-testid="taste-row" />}
+      >
+        <ShelfChips shelves={["all", "books"]} active="books" onSelect={vi.fn()} />
+      </LibrarySearchRow>,
+    );
+    const shelves = container?.querySelector('[role="tablist"]') as HTMLElement;
+    const row = container?.querySelector('[data-testid="taste-row"]') as HTMLElement;
+    expect(row).not.toBeNull();
+    expect(shelves.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("names the active shelf in the placeholder", async () => {
     await render(<Harness />);
     expect(input().placeholder).toBe("Search your library");

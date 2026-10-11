@@ -13,6 +13,10 @@ export type ItemSearchFilters = {
   category?: ItemCategory | ItemCategory[] | "";
   status?: ItemStatus | ItemStatus[] | "";
   limit?: number;
+  /** Genre key. The API accepts it only with exactly one `category`. */
+  genre?: string | null;
+  /** Mood key. */
+  mood?: string | null;
 };
 
 function toCsv(value: string | string[] | undefined): string {
@@ -30,6 +34,8 @@ function buildSearchUrl(filters: ItemSearchFilters): string | null {
   if (q) params.set("q", q);
   if (category) params.set("category", category);
   if (status) params.set("status", status);
+  if (filters.genre) params.set("genre", filters.genre);
+  if (filters.mood) params.set("mood", filters.mood);
   params.set("limit", String(filters.limit ?? 48));
   return `/api/items?${params.toString()}`;
 }

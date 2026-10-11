@@ -12,8 +12,10 @@ import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySearchResults } from "@/components/library/LibrarySearchResults";
 import { LibrarySearchRow } from "@/components/library/LibrarySearchRow";
 import { ShelfChips } from "@/components/library/ShelfChips";
+import { TasteChipRow } from "@/components/library/TasteChipRow";
 import { UpNextRow } from "@/components/library/UpNextRow";
 import { useLibrarySearch } from "@/components/library/useLibrarySearch";
+import { libraryCacheKey, useTasteFilter } from "@/components/library/useTasteFilter";
 import { Button } from "@/components/ui/button";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import { libraryHref, shelfFixesStatus } from "@/lib/library-search";
@@ -26,6 +28,7 @@ import {
   type ShelfId,
 } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
+import { tasteShelfCategory } from "@/lib/taste/taste-lists";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 type ShelfCache = {
@@ -63,7 +66,9 @@ export function LibraryPageClient({
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
   const search = useLibrarySearch();
 
-  const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
+  // The cache key is the shelf id, plus the genre and mood when a chip is active.
+  // A filtered list never shares a key with the full shelf.
+  const [itemsCache, setItemsCache] = useState<Partial<Record<string, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
   useEffect(() => {
     itemsCacheRef.current = itemsCache;
@@ -71,7 +76,7 @@ export function LibraryPageClient({
 
   const [inboxCount, setInboxCount] = useState<number | null>(null);
   const [otherCount, setOtherCount] = useState<number | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{ key: string; message: string } | null>(null);
   const [hideDone, setHideDone] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
 
@@ -90,6 +95,8 @@ export function LibraryPageClient({
     inbox: liveInboxCount ?? inboxCount ?? 0,
   });
   const activeShelf = resolveRequestedShelf(pendingShelf ?? urlShelf, visibleShelfIds);
+  const taste = useTasteFilter(activeShelf);
+  const cacheKey = libraryCacheKey(activeShelf, taste);
 
   // Leaving the inbox shelf always exits triage.
   useEffect(() => {
@@ -126,28 +133,36 @@ export function LibraryPageClient({
     [router, search.query],
   );
 
+  const tasteGenre = taste.genre;
+  const tasteMood = taste.mood;
   useEffect(() => {
-    if (itemsCacheRef.current[activeShelf] !== undefined) return;
+    if (itemsCacheRef.current[cacheKey] !== undefined) return;
 
     let cancelled = false;
     const targetShelf = activeShelf;
 
     void (async () => {
-      setLoadError(null);
+      setLoadError((prev) => (prev?.key === cacheKey ? null : prev));
       try {
-        const result = await fetchLibraryItemsPage(targetShelf, 0);
+        const result = await fetchLibraryItemsPage(targetShelf, 0, "recent", {
+          genre: tasteGenre,
+          mood: tasteMood,
+        });
         if (cancelled) return;
-        setItemsCache((prev) => ({ ...prev, [targetShelf]: result }));
+        setItemsCache((prev) => ({ ...prev, [cacheKey]: result }));
       } catch (e) {
         if (cancelled) return;
-        setLoadError(e instanceof Error ? e.message : "Could not load items");
+        setLoadError({
+          key: cacheKey,
+          message: e instanceof Error ? e.message : "Could not load items",
+        });
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [activeShelf]);
+  }, [activeShelf, cacheKey, tasteGenre, tasteMood]);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,24 +200,24 @@ export function LibraryPageClient({
     };
   }, [activeShelf]);
 
-  const cachedShelf = itemsCache[activeShelf];
+  const cachedShelf = itemsCache[cacheKey];
   const cachedItems = cachedShelf?.items;
   const cachedHasMore = cachedShelf?.hasMore ?? false;
-  const isLoadingShelf = cachedShelf === undefined && loadError == null;
+  const activeLoadError = loadError?.key === cacheKey ? loadError.message : null;
+  const isLoadingShelf = cachedShelf === undefined && activeLoadError == null;
   const activeLabel = SHELVES.find((s) => s.id === activeShelf)?.label ?? "All";
-  // The React Compiler cannot keep this memoization. LibraryItemsSection needs a stable
-  // setter per shelf, so the manual useCallback stays.
-  /* eslint-disable react-hooks/preserve-manual-memoization */
+  // LibraryItemsSection needs a stable setter per cache key, so the useCallback stays.
   const updateActiveShelfItems = useCallback(
     (items: LibraryItemRow[]) => {
       setItemsCache((prev) => {
-        const existing = prev[activeShelf];
-        return { ...prev, [activeShelf]: { items, hasMore: existing?.hasMore ?? false } };
+        const existing = prev[cacheKey];
+        return { ...prev, [cacheKey]: { items, hasMore: existing?.hasMore ?? false } };
       });
     },
-    [activeShelf],
+    [cacheKey],
   );
-  /* eslint-enable react-hooks/preserve-manual-memoization */
+
+  const tasteCategory = tasteShelfCategory(activeShelf);
 
   return (
     <div>
@@ -223,6 +238,19 @@ export function LibraryPageClient({
         showStatus={search.active && !shelfFixesStatus(activeShelf)}
         status={search.status}
         onStatusChange={search.setStatus}
+        filters={
+          taste.enabled && tasteCategory ? (
+            <TasteChipRow
+              category={tasteCategory}
+              facets={taste.facets}
+              loading={taste.facetsLoading}
+              genre={taste.genre}
+              mood={taste.mood}
+              onGenreChange={taste.setGenre}
+              onMoodChange={taste.setMood}
+            />
+          ) : null
+        }
       >
         <ShelfChips
           shelves={visibleShelfIds}
@@ -278,12 +306,19 @@ export function LibraryPageClient({
           toggle keeps `activeShelf` stable, so it does not re-animate.
           Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
       {search.active ? (
-        <LibrarySearchResults query={search.query} shelfId={activeShelf} status={search.status} />
+        <LibrarySearchResults
+          query={search.query}
+          shelfId={activeShelf}
+          status={search.status}
+          genre={taste.genre}
+          mood={taste.mood}
+          onClearFilter={taste.clear}
+        />
       ) : (
       <div key={activeShelf} className="ks-shelf-enter">
-      {loadError != null && cachedItems === undefined ? (
+      {activeLoadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
-          {loadError}
+          {activeLoadError}
         </div>
       ) : isLoadingShelf ? (
         <LibraryGridSkeleton />
@@ -316,9 +351,12 @@ export function LibraryPageClient({
         />
       ) : (
         <LibraryItemsSection
-          key={activeShelf}
+          key={cacheKey}
           userId={userId}
           shelfId={activeShelf}
+          genre={taste.genre}
+          mood={taste.mood}
+          onClearFilter={taste.clear}
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
           hideDone={hideDone}

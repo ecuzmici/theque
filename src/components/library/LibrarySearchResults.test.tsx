@@ -115,4 +115,34 @@ describe("LibrarySearchResults", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(container?.textContent).toContain("Nothing matches");
   });
+  it("sends the genre and mood with the single category", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: [], next_cursor: null }), { status: 200 }),
+    );
+    const onClearFilter = vi.fn();
+    await render(
+      <LibrarySearchResults
+        query="dune"
+        shelfId="books"
+        status={null}
+        genre="fantasy"
+        mood="epic"
+        onClearFilter={onClearFilter}
+      />,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(320);
+    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/items?q=dune&category=books&status=inbox%2Cwant%2Cdone&genre=fantasy&mood=epic&limit=100",
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(container?.textContent).toContain("0 for “dune” in Books · Fantasy · Epic");
+    expect(container?.textContent).toContain("Nothing matches this filter");
+    const clear = [...(container?.querySelectorAll("button") ?? [])].find(
+      (b) => b.textContent === "Clear filter",
+    );
+    await act(async () => clear?.click());
+    expect(onClearFilter).toHaveBeenCalledTimes(1);
+  });
 });

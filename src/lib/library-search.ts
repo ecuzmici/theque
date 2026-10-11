@@ -67,6 +67,27 @@ export function libraryHref(shelfId: ShelfId, q: string): string {
   return search ? `/library?${search}` : "/library";
 }
 
+/**
+ * The URL for a new genre and mood. It keeps every other query key, so `shelf`
+ * and `q` stay. An empty genre or mood removes its key.
+ */
+export function tasteHref(
+  pathname: string,
+  search: string,
+  taste: { genre: string | null; mood: string | null },
+): string {
+  const params = new URLSearchParams(search);
+  for (const [name, value] of [
+    ["genre", taste.genre],
+    ["mood", taste.mood],
+  ] as const) {
+    if (value) params.set(name, value);
+    else params.delete(name);
+  }
+  const next = params.toString();
+  return next ? `${pathname}?${next}` : pathname;
+}
+
 /** Where the old `/search` route sends a request: `/search?q=x` goes to `/library?q=x`. */
 export function searchRedirectHref(q: string | string[] | undefined): string {
   return libraryHref("all", (Array.isArray(q) ? q[0] : q) ?? "");

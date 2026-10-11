@@ -6,6 +6,7 @@ import {
   searchRedirectHref,
   searchScopeForShelf,
   shelfFixesStatus,
+  tasteHref,
 } from "./library-search";
 
 describe("searchScopeForShelf", () => {
@@ -93,5 +94,26 @@ describe("searchRedirectHref", () => {
     expect(searchRedirectHref("dune")).toBe("/library?q=dune");
     expect(searchRedirectHref(undefined)).toBe("/library");
     expect(searchRedirectHref(["x", "y"])).toBe("/library?q=x");
+  });
+});
+
+describe("tasteHref", () => {
+  it("adds genre and mood and keeps shelf and q", () => {
+    const href = tasteHref("/library", "?shelf=books&q=dune", { genre: "fantasy", mood: "epic" });
+    const params = new URL(href, "http://x").searchParams;
+    expect(params.get("shelf")).toBe("books");
+    expect(params.get("q")).toBe("dune");
+    expect(params.get("genre")).toBe("fantasy");
+    expect(params.get("mood")).toBe("epic");
+  });
+
+  it("removes an empty key and keeps unknown keys", () => {
+    expect(tasteHref("/library", "?shelf=watch&genre=horror&x=1", { genre: null, mood: null })).toBe(
+      "/library?shelf=watch&x=1",
+    );
+  });
+
+  it("returns the bare path when no key stays", () => {
+    expect(tasteHref("/library", "?genre=horror", { genre: null, mood: null })).toBe("/library");
   });
 });
