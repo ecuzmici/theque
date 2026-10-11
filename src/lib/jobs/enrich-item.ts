@@ -21,6 +21,8 @@ import { chooseSubtitle } from "@/lib/enrichment/subtitle";
 import { aiDailyLimitForUser } from "@/lib/ai/limits";
 import { rateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { deriveGenreKeys } from "@/lib/taste/derive-genres";
+import { isTaggerCategory, needsLlmGenres, tagItems, taggerInputFromItem } from "@/lib/taste/tagger";
 
 const DEFAULT_ENRICH_LLM_DAILY_LIMIT = 100;
 
@@ -101,6 +103,69 @@ function mergeDisplay(existing: Json, category: ItemCategory | null): Record<str
     base.card_aspect = defaultCardAspect(category);
   }
   return base;
+}
+
+type TagAdmin = ReturnType<typeof createAdminClient>;
+
+/**
+ * Tag a books or movies_and_tv item with moods, and with book genres when no
+ * deterministic key exists (ADR 0020). The tagging call counts against the same
+ * daily cap as LLM enrichment. Past the cap, or on any error, the function
+ * leaves `taste_tagged_at` null so a backfill run can tag the item later.
+ * It never throws.
+ */
+async function tagItemAfterEnrichment(
+  admin: TagAdmin,
+  input: {
+    itemId: string;
+    userId: string;
+    category: ItemCategory | null;
+    title: string | null;
+    description: string | null;
+    structured: Record<string, unknown>;
+    genreKeys: string[];
+  },
+): Promise<void> {
+  try {
+    if (process.env.LLM_ENRICHMENT_ENABLED !== "true" || !isEnrichmentLlmConfigured()) return;
+    if (!isTaggerCategory(input.category)) return;
+
+    const tagInput = taggerInputFromItem({
+      id: input.itemId,
+      category: input.category,
+      title: input.title,
+      description: input.description,
+      structured: input.structured,
+    });
+    if (!tagInput) return;
+
+    const withinCap = (
+      await rateLimit(
+        `llm-enrich:${input.userId}`,
+        aiDailyLimitForUser(input.userId, enrichLlmDailyLimit()),
+        86400,
+      )
+    ).ok;
+    if (!withinCap) return;
+
+    const [result] = await tagItems([tagInput]);
+    if (!result) return;
+
+    const payload: { mood_keys: string[]; taste_tagged_at: string; genre_keys?: string[] } = {
+      mood_keys: result.mood_keys,
+      taste_tagged_at: new Date().toISOString(),
+    };
+    if (input.genreKeys.length === 0 && needsLlmGenres(tagInput) && result.genre_keys.length > 0) {
+      payload.genre_keys = result.genre_keys;
+    }
+    await admin.from("items").update(payload).eq("id", input.itemId);
+  } catch (err) {
+    console.warn(
+      `[enrich-item] taste tagging failed item=${input.itemId}: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+  }
 }
 
 export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
@@ -344,6 +409,11 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     const enrichmentError =
       fetchBlocked && !title?.trim() ? "fetch_blocked_or_sparse" : null;
 
+    // A deterministic genre key replaces an LLM key. An empty result keeps the old value.
+    const derivedGenreKeys = isTaggerCategory(mergedCategory)
+      ? deriveGenreKeys(mergedCategory, mergedStructured.genres)
+      : [];
+
     await admin
       .from("items")
       .update({
@@ -360,6 +430,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         status:
           row.status === "inbox" && mergedCategorySource !== "manual" ? nextStatus : row.status,
         structured: mergedStructured as Json,
+        ...(derivedGenreKeys.length > 0 ? { genre_keys: derivedGenreKeys } : {}),
         raw_metadata: mergedRawMetadata as Json,
         display: display as Json,
         processing_status: "ready",
@@ -367,6 +438,18 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
         enriched_at: new Date().toISOString(),
       })
       .eq("id", itemId);
+
+    if (row.taste_tagged_at == null) {
+      await tagItemAfterEnrichment(admin, {
+        itemId,
+        userId: row.user_id,
+        category: mergedCategory,
+        title,
+        description: mergedDescription,
+        structured: mergedStructured,
+        genreKeys: derivedGenreKeys.length > 0 ? derivedGenreKeys : (row.genre_keys ?? []),
+      });
+    }
 
     return "ready";
   } catch (err) {
