@@ -30,7 +30,7 @@ Baseline: tests 875 (88 files), tsc errors 16, eslint errors in src 16, start ti
 - [x] WS0 Setup and first message to theque-6c (shipped 14a4e22, message A sent)
 - [x] WS1 Search matches the index (shipped b3be30e, deploy READY, misses 157 -> 3 of 350)
 - [x] WS2 Enrichment keeps the user's status (shipped 40a78a9, runtime check ok; 1 inconsistent row of another account not repaired)
-- [ ] WS3 No ciphertext in the UI, no double encryption
+- [x] WS3 No ciphertext in the UI, no double encryption (shipped SHA_WS3; double encryption: 1 found, 1 fixed, 0 remain; audit: all note/verdict boundaries decrypt; detail realtime joined as anon and got 0 events, now sets the session token first and gets events)
 - [ ] WS4 Book file allow-list on the server
 - [ ] WS5 Security fixes (redirect, login text, extension connect, SSRF, digest)
 - [ ] WS6 Dependency security upgrade (Next, sharp, audit)

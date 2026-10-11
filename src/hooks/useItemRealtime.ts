@@ -7,6 +7,7 @@ import type { ShelfId } from "@/lib/shelves";
 import { libraryItemFromRow, type LibraryItemRow } from "@/lib/types/library-item";
 import type { ItemDetailResponseBody } from "@/lib/types/api";
 import { createClient } from "@/lib/supabase/client";
+import { subscribeWithSession } from "@/lib/supabase/realtime-subscribe";
 
 /**
  * Subscribes to Realtime UPDATE events on `items` for shelf-membership
@@ -35,8 +36,8 @@ export function useItemRealtime(
     if (!userId) return;
 
     const supabase = createClient();
-    try {
-      const channel = supabase
+    return subscribeWithSession(supabase, () =>
+      supabase
         .channel(`items:${userId}`)
         .on(
           "postgres_changes",
@@ -82,13 +83,7 @@ export function useItemRealtime(
               });
           },
         )
-        .subscribe();
-
-      return () => {
-        void supabase.removeChannel(channel);
-      };
-    } catch {
-      // Realtime is progressive enhancement; the library still loads through REST.
-    }
+        .subscribe(),
+    );
   }, [userId, shelfId, setItems]);
 }

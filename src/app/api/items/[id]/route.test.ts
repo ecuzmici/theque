@@ -205,4 +205,65 @@ describe("PATCH /api/items/[id] (ADR 0013 field encryption)", () => {
     expect(patchArg.note).toBe("");
     expect(patchArg.verdict).toBe("");
   });
+
+  async function patch(initialRow: Record<string, unknown>, body: Record<string, unknown>) {
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+    const itemsTable = mocks.makeItemsTable({ initialRow });
+    mocks.from.mockImplementation(() => itemsTable);
+    const { PATCH } = await import("./route");
+    return PATCH(
+      new Request("https://theque.app/api/items/item-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id: "item-1" }) },
+    );
+  }
+
+  const baseRow = {
+    id: "item-1",
+    user_id: "user-1",
+    status: "want",
+    category: "books",
+    category_source: "domain",
+    category_confidence: 0.9,
+    note: null,
+    verdict: null,
+    display: null,
+  };
+
+  it("rejects an enc.v1 note", async () => {
+    const res = await patch(baseRow, { note: "enc.v1.a.b.c" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("invalid_note");
+    expect(mocks.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects an enc.v1 verdict", async () => {
+    const res = await patch(baseRow, { verdict: "enc.v1.a.b.c" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("invalid_verdict");
+    expect(mocks.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("keeps category_source when the category does not change", async () => {
+    const res = await patch(baseRow, { category: "books", status: "done" });
+    expect(res.status).toBe(200);
+    const patchArg = mocks.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(patchArg).not.toHaveProperty("category");
+    expect(patchArg).not.toHaveProperty("category_source");
+    expect(patchArg).not.toHaveProperty("category_confidence");
+    expect(patchArg.status).toBe("done");
+  });
+
+  it("marks the category manual when the category changes", async () => {
+    await patch(baseRow, { category: "articles" });
+    const patchArg = mocks.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(patchArg).toMatchObject({
+      category: "articles",
+      category_source: "manual",
+      category_confidence: 1,
+    });
+  });
 });

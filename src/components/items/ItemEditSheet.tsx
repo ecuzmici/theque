@@ -64,11 +64,14 @@ function ItemEditForm({
     try {
       const category =
         categoryValue === UNCATEGORIZED ? null : (categoryValue as ItemCategory);
-      await onSave({
-        note,
-        status,
-        category,
-      });
+      // Send changed fields only. An unchanged field must not reach the server:
+      // a category value marks the category as manual, and the note autosave
+      // already saved the note text.
+      const patch: Record<string, unknown> = {};
+      if (note !== (item.note ?? "")) patch.note = note;
+      if (status !== item.status) patch.status = status;
+      if (category !== (item.category ?? null)) patch.category = category;
+      if (Object.keys(patch).length > 0) await onSave(patch);
       onClose();
     } finally {
       setBusy(false);

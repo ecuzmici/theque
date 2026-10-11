@@ -15,12 +15,15 @@ const mocks = vi.hoisted(() => ({
   subscribe: vi.fn(),
   on: vi.fn(),
   channel: vi.fn(),
+  setAuth: vi.fn(async () => {}),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(() => ({
     channel: mocks.channel,
     removeChannel: mocks.removeChannel,
+    auth: { getSession: async () => ({ data: { session: { access_token: "token-1" } } }) },
+    realtime: { setAuth: mocks.setAuth },
   })),
 }));
 
@@ -85,6 +88,10 @@ describe("useItemRealtime", () => {
 
     await act(async () => {
       root?.render(<RealtimeHarness initialItems={[]} />);
+      // Flush the getSession()->setAuth()->channel() chain.
+      for (let i = 0; i < 6; i++) {
+        await Promise.resolve();
+      }
     });
 
     expect(container.textContent).toBe("");
@@ -110,6 +117,10 @@ describe("useItemRealtime", () => {
 
     await act(async () => {
       root?.render(<RealtimeHarness initialItems={[makeItem()]} />);
+      // Flush the getSession()->setAuth()->channel() chain.
+      for (let i = 0; i < 6; i++) {
+        await Promise.resolve();
+      }
     });
 
     expect(capturedHandler).toBeDefined();

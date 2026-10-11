@@ -15,6 +15,12 @@ function encryptIfPresent(value: string | null): string | null {
   return value ? encryptField(value) : value;
 }
 
+// A person never types ciphertext. A value with this prefix means a client
+// echoed back a raw row, and encrypting it again would lose the original text.
+function looksEncrypted(value: string): boolean {
+  return value.startsWith("enc.v");
+}
+
 const STATUSES = new Set<ItemStatus>(["inbox", "want", "done", "dismissed"]);
 
 const CATEGORIES = new Set<ItemCategory>([
@@ -93,7 +99,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   if (typeof body.note === "string" || body.note === null) {
-    if (typeof body.note === "string" && !hasMaxLength(body.note, MAX_NOTE_LENGTH)) {
+    if (
+      typeof body.note === "string" &&
+      (!hasMaxLength(body.note, MAX_NOTE_LENGTH) || looksEncrypted(body.note))
+    ) {
       return Response.json({ code: "invalid_note" }, { status: 400 });
     }
     // Encrypt at rest (ADR 0013); the PATCH response decrypts before returning.
@@ -113,9 +122,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       patch.category_confidence = null;
       patch.category_source = null;
     } else if (typeof body.category === "string" && CATEGORIES.has(body.category as ItemCategory)) {
-      patch.category = body.category as ItemCategory;
-      patch.category_source = "manual";
-      patch.category_confidence = 1;
+      // An unchanged category is not a manual choice: keep the provenance.
+      if (body.category !== row.category) {
+        patch.category = body.category as ItemCategory;
+        patch.category_source = "manual";
+        patch.category_confidence = 1;
+      }
     } else {
       return Response.json({ code: "invalid_category" }, { status: 400 });
     }
@@ -137,7 +149,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   }
 
   if (typeof body.verdict === "string" || body.verdict === null) {
-    if (typeof body.verdict === "string" && !hasMaxLength(body.verdict, MAX_NOTE_LENGTH)) {
+    if (
+      typeof body.verdict === "string" &&
+      (!hasMaxLength(body.verdict, MAX_NOTE_LENGTH) || looksEncrypted(body.verdict))
+    ) {
       return Response.json({ code: "invalid_verdict" }, { status: 400 });
     }
     // Encrypt at rest (ADR 0013); the PATCH response decrypts before returning.

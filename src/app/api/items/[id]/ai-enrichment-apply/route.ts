@@ -1,3 +1,4 @@
+import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import type { Json } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { applyItemRewriteProposal } from "@/lib/enrichment/llm/apply-item-rewrite-proposal";
@@ -97,5 +98,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  return Response.json(updated as AiEnrichmentApplyResponseBody);
+  // The row holds enc.* note/verdict (ADR 0013). Decrypt before it reaches the client.
+  try {
+    return Response.json(decryptItemFields(updated) as AiEnrichmentApplyResponseBody);
+  } catch (err) {
+    console.error(
+      "[api/items/:id/ai-enrichment-apply] decrypt_failed:",
+      err instanceof Error ? err.message : "unknown_error",
+    );
+    return Response.json({ code: "decrypt_failed" }, { status: 500 });
+  }
 }
