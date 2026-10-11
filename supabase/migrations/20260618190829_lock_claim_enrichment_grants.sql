@@ -3,7 +3,7 @@
 
   This SECURITY DEFINER function bypasses RLS and is meant to be called only by
   the cron/worker (service_role). The two-argument overload added in
-  20260607000002_claim_enrichment_per_user_cap.sql was created with Supabase's
+  20260607205822_claim_enrichment_per_user_cap.sql was created with Supabase's
   default privileges, which grant EXECUTE to `anon` and `authenticated`. A plain
   `revoke ... from public` (as in that migration) does NOT remove those explicit
   role grants, so the function stayed callable by signed-in and anonymous clients

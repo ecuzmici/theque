@@ -132,23 +132,26 @@ create table public.capture_tokens (
 
 -- updated_at triggers ------------------------------------------------------
 
-create or replace function public.touch_updated_at ()
+-- Production has set_updated_at() and items_set_updated_at. The repo file had
+-- other names, so a fresh replay failed at 20260618190829 (it alters
+-- set_updated_at). Renamed on 2026-10-11 to match production.
+create or replace function public.set_updated_at ()
 returns trigger
 language plpgsql
 as $$
 begin
-  new.updated_at := now();
+  new.updated_at = now();
   return new;
 end;
 $$;
 
-create trigger items_updated_at
+create trigger items_set_updated_at
 before update on public.items
-for each row execute function public.touch_updated_at ();
+for each row execute function public.set_updated_at ();
 
-create trigger collections_updated_at
+create trigger collections_set_updated_at
 before update on public.collections
-for each row execute function public.touch_updated_at ();
+for each row execute function public.set_updated_at ();
 
 -- RLS ----------------------------------------------------------------------
 

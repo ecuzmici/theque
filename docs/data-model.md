@@ -118,7 +118,7 @@ create index items_user_id_file_drive_id_idx on items (user_id)
 ```
 
 > **Removed tables:** `tags`, `item_tags`, `collections`, and `collection_items` were dropped in
-> `20260628120000_taste_loop_focus.sql` (unused — zero rows at decision time). The capture API
+> `20260628161700_taste_loop_focus.sql` (unused — zero rows at decision time). The capture API
 > still accepts their legacy request fields as no-ops.
 
 ### `capture_tokens`
