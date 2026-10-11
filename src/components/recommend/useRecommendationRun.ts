@@ -13,6 +13,7 @@ import type {
   RecommendShelfId,
   ResolvedRecommendation,
 } from "@/lib/recommend/recommend-types";
+import { sanitizeSteer } from "@/lib/recommend/steer";
 
 /**
  * Lifecycle of the single global recommendation run (see CONTEXT.md and
@@ -46,6 +47,8 @@ export type RecommendationRunState = {
   runStatus: RunStatus;
   view: RunView;
   shelf: RecommendShelfId | null;
+  /** The mood text of the run (ADR 0020). Empty for an unsteered run. */
+  steer: string;
   cards: ResolvedRecommendation[];
   errorMessage: string | null;
   /**
@@ -60,6 +63,7 @@ const INITIAL_STATE: RecommendationRunState = {
   runStatus: "empty",
   view: "open",
   shelf: null,
+  steer: "",
   cards: [],
   errorMessage: null,
   emptyReason: null,
@@ -110,7 +114,7 @@ export function useRecommendationRun() {
   const runIdRef = useRef(0);
 
   const runFetch = useCallback(
-    async (shelf: RecommendShelfId, view: RunView = "open") => {
+    async (shelf: RecommendShelfId, steer: string, view: RunView = "open") => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -121,6 +125,7 @@ export function useRecommendationRun() {
         runStatus: "loading",
         view,
         shelf,
+        steer,
         cards: [],
         errorMessage: null,
         emptyReason: null,
@@ -131,7 +136,7 @@ export function useRecommendationRun() {
         const res = await globalThis.fetch("/api/recommend", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shelfId: shelf }),
+          body: JSON.stringify(steer ? { shelfId: shelf, steer } : { shelfId: shelf }),
           signal: controller.signal,
         });
 
@@ -174,18 +179,24 @@ export function useRecommendationRun() {
   );
 
   /**
-   * Trigger a run for a shelf. Re-triggering the *same* shelf while a run is
-   * active just reopens the deck (no second request); any other case starts a
-   * fresh run.
+   * Trigger a run for a shelf, with an optional mood text (ADR 0020).
+   * Re-triggering the *same* shelf with the same steer while a run is active
+   * just reopens the deck (no second request); any other case starts a fresh
+   * run that replaces the active one.
    */
   const start = useCallback(
-    (shelf: RecommendShelfId) => {
+    (shelf: RecommendShelfId, rawSteer = "") => {
+      const steer = sanitizeSteer(rawSteer);
       const current = stateRef.current;
-      if (current.runStatus !== "empty" && current.shelf === shelf) {
+      if (
+        current.runStatus !== "empty" &&
+        current.shelf === shelf &&
+        current.steer === steer
+      ) {
         update((prev) => ({ ...prev, view: "open" }));
         return;
       }
-      void runFetch(shelf);
+      void runFetch(shelf, steer);
     },
     [runFetch, update],
   );
@@ -208,8 +219,8 @@ export function useRecommendationRun() {
    * minimized (and re-announces when ready) rather than yanking the deck open.
    */
   const retry = useCallback(() => {
-    const { shelf, view } = stateRef.current;
-    if (shelf) void runFetch(shelf, view);
+    const { shelf, steer, view } = stateRef.current;
+    if (shelf) void runFetch(shelf, steer, view);
   }, [runFetch]);
 
   /** End the active run and free the slot. */

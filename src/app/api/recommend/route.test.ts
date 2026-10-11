@@ -285,6 +285,45 @@ describe("POST /api/recommend", () => {
       expect(call.schema).toBe(RECOMMEND_RESPONSE_SCHEMA);
     });
 
+    it("adds a cleaned steer to the prompt", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({});
+      mockGatewaySuccess([]);
+      mockResolverSuccess();
+
+      await POST(makeRequest({ shelfId: "books", steer: '  "eerie"\n  Horror  ' }));
+
+      const call = vi.mocked(generateJsonWithFallback).mock.calls[0][0];
+      expect(call.prompt).toContain('the user is in the mood for "eerie Horror".');
+    });
+
+    it("cuts a long steer to 80 characters", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({});
+      mockGatewaySuccess([]);
+      mockResolverSuccess();
+
+      await POST(makeRequest({ shelfId: "books", steer: "x".repeat(300) }));
+
+      const call = vi.mocked(generateJsonWithFallback).mock.calls[0][0];
+      expect(call.prompt).toContain(`"${"x".repeat(80)}"`);
+      expect(call.prompt).not.toContain("x".repeat(81));
+    });
+
+    it("leaves the prompt unsteered when the steer is empty or not a string", async () => {
+      vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
+      mockSupabase({});
+      mockGatewaySuccess([]);
+      mockResolverSuccess();
+
+      await POST(makeRequest({ shelfId: "books", steer: "   " }));
+      await POST(makeRequest({ shelfId: "books", steer: 7 }));
+
+      for (const [call] of vi.mocked(generateJsonWithFallback).mock.calls) {
+        expect(call.prompt).not.toContain("REQUEST FOR THIS RUN");
+      }
+    });
+
     it("excludes shown outcomes past the cooldown but keeps recent ones (ADR 0016: 14d)", async () => {
       vi.mocked(getSessionUserOrNull).mockResolvedValue(SAMPLE_USER as never);
       const staleShown = new Date();

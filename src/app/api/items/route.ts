@@ -2,8 +2,14 @@ import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import type { Database } from "@/lib/database.types";
 import { hasMaxLength, MAX_SEARCH_QUERY_LENGTH } from "@/lib/input-limits";
-import { fetchLibraryItemsForShelf, type LibrarySort } from "@/lib/library-items-for-shelf";
+import {
+  applyTasteFilter,
+  fetchLibraryItemsForShelf,
+  type LibrarySort,
+  type TasteFilter,
+} from "@/lib/library-items-for-shelf";
 import { parseShelfParam } from "@/lib/shelves";
+import { isGenreKeyFor, isMoodKey, tasteShelfCategory } from "@/lib/taste/taste-lists";
 import type { ItemSummaryPayload, ItemsListResponseBody } from "@/lib/types/api";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { createClient } from "@/lib/supabase/server";
@@ -41,6 +47,22 @@ const LIBRARY_SORTS = new Set<LibrarySort>(["recent", "color", "title"]);
 
 function parseSortParam(param: string | null): LibrarySort {
   return param && LIBRARY_SORTS.has(param as LibrarySort) ? (param as LibrarySort) : "recent";
+}
+
+/**
+ * Reads the optional `genre` and `mood` params. `mood` must be a mood key.
+ * `genre` must be a genre key of `category`. A missing category rejects any
+ * genre. An empty param counts as absent.
+ */
+function parseTasteParams(
+  qp: URLSearchParams,
+  category: ItemRow["category"],
+): { taste: TasteFilter } | { error: "invalid_genre" | "invalid_mood" } {
+  const genre = qp.get("genre") || null;
+  const mood = qp.get("mood") || null;
+  if (mood && !isMoodKey(mood)) return { error: "invalid_mood" };
+  if (genre && !isGenreKeyFor(category, genre)) return { error: "invalid_genre" };
+  return { taste: { genre, mood } };
 }
 
 function mapSummary(row: ItemRow): ItemSummaryPayload {
@@ -112,9 +134,20 @@ export async function GET(req: Request) {
     const shelfId = parseShelfParam(shelfParam);
     const sort = parseSortParam(qp.get("sort"));
 
+    const tasteParsed = parseTasteParams(qp, tasteShelfCategory(shelfId));
+    if ("error" in tasteParsed) {
+      return Response.json({ code: tasteParsed.error }, { status: 400 });
+    }
+
     let shelfResult: { items: LibraryItemRow[]; hasMore: boolean };
     try {
-      shelfResult = await fetchLibraryItemsForShelf(supabase, shelfId, offset, sort);
+      shelfResult = await fetchLibraryItemsForShelf(
+        supabase,
+        shelfId,
+        offset,
+        sort,
+        tasteParsed.taste,
+      );
     } catch (err) {
       console.error(
         "[api/items] shelf_query_failed:",
@@ -143,6 +176,15 @@ export async function GET(req: Request) {
     return Response.json(shelfBody);
   }
 
+  // The search path has no shelf. A genre then needs exactly one `category`.
+  const tasteParsed = parseTasteParams(
+    qp,
+    categories?.length === 1 ? (categories[0] as ItemRow["category"]) : null,
+  );
+  if ("error" in tasteParsed) {
+    return Response.json({ code: tasteParsed.error }, { status: 400 });
+  }
+
   let query = supabase
     .from("items")
     .select("*")
@@ -157,6 +199,8 @@ export async function GET(req: Request) {
   if (categories?.length) {
     query = query.in("category", categories as NonNullable<ItemRow["category"]>[]);
   }
+
+  query = applyTasteFilter(query, tasteParsed.taste);
 
   if (processingStatuses?.length) {
     query = query.in(

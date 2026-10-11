@@ -14,7 +14,13 @@ const mocks = vi.hoisted(() => ({
   forceLlmEligible: false,
   rateLimit: vi.fn(async () => ({ ok: true })),
   enhanceCategoryWithGemini: vi.fn(async () => ({ status: "skipped", reason: "test" })),
+  tagItems: vi.fn(),
 }));
+
+vi.mock("@/lib/taste/tagger", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/taste/tagger")>();
+  return { ...actual, tagItems: mocks.tagItems };
+});
 
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: mocks.rateLimit }));
 vi.mock("@/lib/enrichment/llm/gemini-category-enhancer", () => ({
@@ -327,5 +333,118 @@ describe("enrichItem resolvers and byline", () => {
     await enrichItem("item-1");
 
     expect(mocks.resolveCategoryEvidence).toHaveBeenCalled();
+  });
+});
+
+describe("enrichItem taste tags", () => {
+  const BOOK_URL = "https://hardcover.app/books/piranesi";
+
+  function stubBookPage() {
+    mocks.fetchPage.mockResolvedValue({
+      html: `<html><head><title>Piranesi</title>
+        <meta property="og:description" content="A man lives in a house of endless halls." />
+        </head><body></body></html>`,
+      finalUrl: BOOK_URL,
+      statusCode: 200,
+    });
+  }
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    process.env.LLM_ENRICHMENT_ENABLED = "true";
+    process.env.AI_GATEWAY_API_KEY = "test-key";
+    mocks.enrichOpenLibraryWork.mockResolvedValue(null);
+    mocks.fetchViaJinaReader.mockResolvedValue(null);
+    mocks.cacheItemImage.mockResolvedValue(null);
+    mocks.extractDominantColorForUrl.mockResolvedValue(null);
+    mocks.rateLimit.mockResolvedValue({ ok: true });
+    stubBookPage();
+  });
+
+  afterEach(() => {
+    delete process.env.LLM_ENRICHMENT_ENABLED;
+    delete process.env.AI_GATEWAY_API_KEY;
+  });
+
+  function tagUpdate(updates: Record<string, unknown>[]) {
+    return updates.find((u) => "taste_tagged_at" in u);
+  }
+
+  it("writes genre keys from structured.genres with the final update", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "hardcover",
+      structured: { authors: ["Susanna Clarke"], genres: ["Fantasy", "Fiction"] },
+    });
+    mocks.tagItems.mockResolvedValue([]);
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    await enrichItem("item-1");
+    expect(finalUpdate(updates)?.genre_keys).toEqual(["fantasy"]);
+  });
+
+  it("keeps the old genre keys when the genres map to no key", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.tagItems.mockResolvedValue([]);
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL, genre_keys: ["horror"] }));
+    await enrichItem("item-1");
+    expect(finalUpdate(updates)).not.toHaveProperty("genre_keys");
+  });
+
+  it("tags moods and LLM genres for a book with no deterministic key", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.tagItems.mockResolvedValue([
+      { id: "item-1", mood_keys: ["eerie", "slow-burn"], genre_keys: ["fantasy"] },
+    ]);
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    await enrichItem("item-1");
+    expect(mocks.rateLimit).toHaveBeenCalledWith("llm-enrich:user-1", 100, 86400);
+    expect(tagUpdate(updates)).toMatchObject({
+      mood_keys: ["eerie", "slow-burn"],
+      genre_keys: ["fantasy"],
+      taste_tagged_at: expect.any(String),
+    });
+  });
+
+  it("does not write LLM genres when a deterministic key exists", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "hardcover",
+      structured: { genres: ["Horror"] },
+    });
+    mocks.tagItems.mockResolvedValue([{ id: "item-1", mood_keys: ["dark"], genre_keys: ["fantasy"] }]);
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    await enrichItem("item-1");
+    expect(finalUpdate(updates)?.genre_keys).toEqual(["horror"]);
+    expect(tagUpdate(updates)).toMatchObject({ mood_keys: ["dark"] });
+    expect(tagUpdate(updates)).not.toHaveProperty("genre_keys");
+  });
+
+  it("leaves taste_tagged_at null past the daily cap", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.rateLimit.mockResolvedValue({ ok: false });
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    const outcome = await enrichItem("item-1");
+    expect(outcome).toBe("ready");
+    expect(mocks.tagItems).not.toHaveBeenCalled();
+    expect(tagUpdate(updates)).toBeUndefined();
+  });
+
+  it("does not fail the enrichment when the tagger throws", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.tagItems.mockRejectedValue(new Error("gateway down"));
+    const updates = stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    const outcome = await enrichItem("item-1");
+    expect(outcome).toBe("ready");
+    expect(tagUpdate(updates)).toBeUndefined();
+  });
+
+  it("skips tagging when LLM enrichment is off or the item is tagged already", async () => {
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    stubAdmin(makeRow({ canonical_url: BOOK_URL, taste_tagged_at: "2026-10-01T00:00:00Z" }));
+    await enrichItem("item-1");
+    expect(mocks.tagItems).not.toHaveBeenCalled();
+
+    delete process.env.LLM_ENRICHMENT_ENABLED;
+    stubAdmin(makeRow({ canonical_url: BOOK_URL }));
+    await enrichItem("item-1");
+    expect(mocks.tagItems).not.toHaveBeenCalled();
   });
 });

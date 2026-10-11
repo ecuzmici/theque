@@ -73,12 +73,6 @@ export const RECOMMEND_COUNT = Number.parseInt(
   10,
 );
 
-/** Result cache TTL in seconds (24h default). */
-export const RECOMMEND_CACHE_TTL_SEC = Number.parseInt(
-  process.env.RECOMMEND_CACHE_TTL_SEC ?? "86400",
-  10,
-);
-
 /** Daily per-user rate limit cap for /api/recommend. */
 export const RECOMMEND_RATE_LIMIT_PER_DAY = Number.parseInt(
   process.env.RECOMMEND_RATE_LIMIT_PER_DAY ?? "20",

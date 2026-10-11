@@ -437,4 +437,130 @@ describe("useRecommendationRun", () => {
     expect(api.runStatus).toBe("ready");
     expect(api.view).toBe("minimized");
   });
+
+  // ---- ADR 0020: steer ----
+
+  it("sends the steer in the request body and stores it on the run", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("watch", "eerie Horror");
+    });
+
+    expect(api.steer).toBe("eerie Horror");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      shelfId: "watch",
+      steer: "eerie Horror",
+    });
+  });
+
+  it("omits the steer from the body when the text is empty", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books", "   ");
+    });
+
+    expect(api.steer).toBe("");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ shelfId: "books" });
+  });
+
+  it("retry() sends the same steer again", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books", "cozy");
+    });
+    await act(async () => {
+      api.retry();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    for (const call of fetchMock.mock.calls) {
+      expect(JSON.parse(call[1].body)).toEqual({ shelfId: "books", steer: "cozy" });
+    }
+  });
+
+  it("reopens without a second fetch for the same shelf and steer", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books", "cozy");
+    });
+    act(() => {
+      api.minimize();
+    });
+    act(() => {
+      api.start("books", "  cozy ");
+    });
+
+    expect(api.view).toBe("open");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a new run when the steer changes on the same shelf", async () => {
+    const fetchMock = okFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    await act(async () => {
+      api.start("books", "cozy");
+    });
+    await act(async () => {
+      api.start("books", "dark");
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(api.steer).toBe("dark");
+  });
+
+  it("ignores the late response of a run that a new steer replaced", async () => {
+    const { fetchMock, calls } = queuedFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    setup();
+
+    act(() => {
+      api.start("books", "cozy");
+    });
+    act(() => {
+      api.start("books", "dark");
+    });
+    expect(api.steer).toBe("dark");
+
+    await act(async () => {
+      calls[0].resolve(STALE_CARDS);
+      await flush();
+    });
+    expect(api.runStatus).toBe("loading");
+    expect(api.cards).toEqual([]);
+
+    await act(async () => {
+      calls[1].resolve(SAMPLE_CARDS);
+      await flush();
+    });
+    expect(api.cards).toEqual(SAMPLE_CARDS);
+    expect(api.steer).toBe("dark");
+  });
+
+  it("dismiss() clears the steer", async () => {
+    vi.stubGlobal("fetch", okFetch());
+    setup();
+
+    await act(async () => {
+      api.start("books", "cozy");
+    });
+    act(() => {
+      api.dismiss();
+    });
+
+    expect(api.steer).toBe("");
+  });
 });

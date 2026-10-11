@@ -8,6 +8,9 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const start = vi.fn();
 const savedCount = vi.hoisted(() => ({ value: 0 }));
+const nav = vi.hoisted(() => ({ params: new URLSearchParams() }));
+
+vi.mock("next/navigation", () => ({ useSearchParams: () => nav.params }));
 
 vi.mock("@/components/recommend/RecommendationProvider", () => ({
   useRecommendationContext: () => ({ start }),
@@ -23,6 +26,12 @@ vi.mock("@/lib/supabase/client", () => {
   return { createClient: () => ({ from: () => query }) };
 });
 
+function recommendButton() {
+  return Array.from(document.querySelectorAll("button")).find(
+    (b) => b.textContent?.trim() === "Recommend",
+  );
+}
+
 describe("MadeForYouTile", () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
@@ -37,6 +46,7 @@ describe("MadeForYouTile", () => {
     root = undefined;
     container = undefined;
     start.mockReset();
+    nav.params = new URLSearchParams();
     window.localStorage.clear();
   });
 
@@ -49,26 +59,42 @@ describe("MadeForYouTile", () => {
     });
   }
 
-  it("starts the picks for the only ready category", async () => {
+  async function openSheet() {
+    await act(async () => {
+      container?.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  it("opens the sheet, and Recommend starts an unsteered run", async () => {
     savedCount.value = 50;
     await render();
-    const button = container?.querySelector("button");
-    expect(button?.textContent).toContain("Made for you");
+    expect(container?.querySelector("button")?.textContent).toContain("Made for you");
+    expect(start).not.toHaveBeenCalled();
+    await openSheet();
+    expect(document.querySelector('[role="dialog"]')).not.toBeNull();
     await act(async () => {
-      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      recommendButton()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(start).toHaveBeenCalledWith("books");
+    expect(start).toHaveBeenCalledWith("books", "");
   });
 
-  it("opens a menu with the unlock goal while the category is locked", async () => {
+  it("passes the pre-filled mood to start", async () => {
+    savedCount.value = 50;
+    nav.params = new URLSearchParams("shelf=books&mood=eerie");
+    await render();
+    await openSheet();
+    await act(async () => {
+      recommendButton()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(start).toHaveBeenCalledWith("books", "eerie");
+  });
+
+  it("opens the sheet with Recommend disabled while the category is locked", async () => {
     savedCount.value = 0;
     await render();
     expect(container?.textContent).toContain("to unlock");
-    const button = container?.querySelector("button");
-    await act(async () => {
-      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    await openSheet();
+    expect(recommendButton()?.disabled).toBe(true);
     expect(start).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain("Recommend from…");
   });
 });

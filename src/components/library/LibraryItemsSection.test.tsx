@@ -104,4 +104,66 @@ describe("LibraryItemsSection", () => {
     expect(container.textContent).toContain("Artificial Wisdom");
     expect(container.textContent).not.toContain("Gathering details");
   });
+  async function renderSection(props: Partial<React.ComponentProps<typeof LibraryItemsSection>>) {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(
+        <LibraryItemsSection userId="user-1" shelfId="books" initialItems={[]} {...props} />,
+      );
+    });
+  }
+
+  it("passes the genre and mood to the pending refresh", async () => {
+    mocks.fetchLibraryItemsPage.mockResolvedValue({ items: [makeItem()], hasMore: false });
+    await renderSection({
+      initialItems: [makeItem()],
+      genre: "fantasy",
+      mood: "epic",
+    });
+    expect(mocks.fetchLibraryItemsPage).toHaveBeenCalledWith("books", 0, "recent", {
+      genre: "fantasy",
+      mood: "epic",
+    });
+  });
+
+  it("passes the genre and mood when it loads more", async () => {
+    let onIntersect: IntersectionObserverCallback = () => {};
+    class ObserverStub {
+      constructor(cb: IntersectionObserverCallback) {
+        onIntersect = cb;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("IntersectionObserver", ObserverStub);
+    mocks.fetchLibraryItemsPage.mockResolvedValue({ items: [], hasMore: false });
+
+    await renderSection({
+      initialItems: [makeItem({ processing_status: "ready" })],
+      initialHasMore: true,
+      genre: "horror",
+    });
+    await act(async () => {
+      onIntersect([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+
+    expect(mocks.fetchLibraryItemsPage).toHaveBeenCalledWith("books", 1, "recent", {
+      genre: "horror",
+      mood: null,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("shows an empty state with Clear filter when the filter matches nothing", async () => {
+    const onClearFilter = vi.fn();
+    await renderSection({ genre: "horror", onClearFilter });
+    expect(container?.textContent).toContain("Nothing matches this filter");
+    const clear = [...(container?.querySelectorAll("button") ?? [])].find(
+      (b) => b.textContent === "Clear filter",
+    );
+    await act(async () => clear?.click());
+    expect(onClearFilter).toHaveBeenCalledTimes(1);
+  });
 });

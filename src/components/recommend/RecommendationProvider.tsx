@@ -66,6 +66,7 @@ export function RecommendationProvider({ children }: { children: React.ReactNode
       {minimized && run.shelf && run.runStatus !== "empty" ? (
         <RecommendPill
           status={run.runStatus}
+          steer={run.steer}
           onReopen={run.reopen}
           onRetry={run.retry}
           onDismiss={run.dismiss}

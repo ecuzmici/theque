@@ -115,21 +115,6 @@ export type RecommendOption = {
   ready: boolean;
 };
 
-/**
- * What a tap on the "Made for you" tile does.
- * One ready category starts its picks at once. Other cases open a menu that
- * lists each category and how many saves it needs to unlock.
- */
-export function madeForYouAction(
-  options: RecommendOption[],
-): { kind: "none" } | { kind: "start"; shelfId: RecommendShelfId } | { kind: "menu" } {
-  if (options.length === 0) return { kind: "none" };
-  if (options.length === 1 && options[0].ready) {
-    return { kind: "start", shelfId: options[0].shelfId };
-  }
-  return { kind: "menu" };
-}
-
 /** The short line under the "Made for you" title. */
 export function madeForYouEyebrow(options: RecommendOption[]): string {
   if (options.some((o) => o.ready)) return "Picks";

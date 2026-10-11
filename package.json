@@ -14,6 +14,8 @@
     "seed": "tsx scripts/seed.ts",
     "backfill:images": "tsx --conditions=react-server scripts/backfill-image-cache.ts",
     "backfill:crew": "tsx --conditions=react-server scripts/backfill-tmdb-crew.ts",
+    "backfill:book-genres": "tsx --conditions=react-server scripts/backfill-book-genres.ts",
+    "backfill:taste-tags": "tsx --conditions=react-server scripts/backfill-taste-tags.ts",
     "backfill:item-text": "tsx --conditions=react-server scripts/backfill-item-text.ts",
     "eval:recommend": "tsx --conditions=react-server --env-file=.env.local scripts/eval-recommend.ts",
     "backfill:field-encryption": "tsx --conditions=react-server scripts/backfill-field-encryption.ts",

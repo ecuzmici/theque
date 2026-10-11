@@ -9,6 +9,8 @@ export type PillStatus = "loading" | "ready" | "error";
 
 type RecommendPillProps = {
   status: PillStatus;
+  /** The mood text of the run. The pill shows it after the status. */
+  steer?: string;
   onReopen: () => void;
   onRetry: () => void;
   onDismiss: () => void;
@@ -22,6 +24,7 @@ type RecommendPillProps = {
  */
 export function RecommendPill({
   status,
+  steer = "",
   onReopen,
   onRetry,
   onDismiss,
@@ -62,6 +65,11 @@ export function RecommendPill({
           <AlertTriangle className="size-4 text-destructive" aria-hidden />
         )}
         <span>{text}</span>
+        {steer ? (
+          <span className="max-w-28 truncate font-normal text-muted-foreground sm:max-w-44">
+            {steer}
+          </span>
+        ) : null}
         {status === "error" ? (
           <RotateCw className="ml-1 size-4 text-muted-foreground" aria-hidden />
         ) : null}
