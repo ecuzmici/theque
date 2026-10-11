@@ -1,12 +1,12 @@
 import { flattenJsonLd, typesOf } from "@/lib/jsonld";
 
-import { parseIsoDurationMinutes, parseTitleTag, personNames } from "@/lib/enrichment/meta-utils";
+import { parseImdbTitle, parseIsoDurationMinutes, personNames } from "@/lib/enrichment/meta-utils";
 
 export function parseImdb(
   doc: Document,
   jsonLdRoots: unknown[],
   openGraph: Record<string, string>,
-): { structured: Record<string, unknown> } {
+): { title?: string; structured: Record<string, unknown> } {
   const structured: Record<string, unknown> = {
     site_name: "IMDb",
   };
@@ -43,17 +43,19 @@ export function parseImdb(
     break;
   }
 
+  // No JSON-LD name: clean the page title. It can carry the year, the rating
+  // and the genres, and those must not reach the item title.
   if (!structured.title_hint) {
-    const ogTitle = openGraph["og:title"];
-    if (typeof ogTitle === "string") {
-      structured.title_hint = parseTitleTag(ogTitle, "IMDb");
+    const parts =
+      parseImdbTitle(openGraph["og:title"]) ??
+      parseImdbTitle(doc.querySelector("title")?.textContent ?? undefined);
+    if (parts) {
+      structured.title_hint = parts.title;
+      if (structured.year === undefined && parts.year !== undefined) structured.year = parts.year;
+      if (structured.genres === undefined && parts.genres) structured.genres = parts.genres;
     }
   }
 
-  if (!structured.title_hint) {
-    const fromTag = parseTitleTag(doc.querySelector("title")?.textContent ?? undefined, "IMDb");
-    if (fromTag) structured.title_hint = fromTag;
-  }
-
-  return { structured };
+  const title = typeof structured.title_hint === "string" ? structured.title_hint : undefined;
+  return { ...(title ? { title } : {}), structured };
 }

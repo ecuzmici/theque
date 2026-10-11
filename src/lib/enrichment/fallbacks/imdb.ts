@@ -1,7 +1,6 @@
 export type ImdbSuggestionResult = {
   title_hint: string;
   year?: number;
-  directors?: string[];
   genres?: string[];
   media_type?: "movie" | "tv";
   image_url?: string;
@@ -30,30 +29,29 @@ export async function fetchImdbFromSuggestionApi(ttId: string): Promise<ImdbSugg
   const entry = body.d?.find((row) => row.id === ttId) ?? body.d?.[0];
   if (!entry?.l) return null;
 
-  const cast = entry.s
-    ?.split(",")
-    .map((n) => n.trim())
-    .filter(Boolean);
-  const directors = cast?.length ? [cast[0]] : undefined;
-
+  // `entry.s` lists top-billed cast, not crew, so it never fills `directors`.
+  // TMDB owns directors (ADR 0011); the resolver runs when they are missing.
   return {
     title_hint: entry.l,
     year: typeof entry.y === "number" ? entry.y : undefined,
-    directors,
     genres: undefined,
     media_type: entry.qid === "tvSeries" || entry.qid === "tvEpisode" ? "tv" : "movie",
     image_url: entry.i?.imageUrl,
   };
 }
 
+/** Undefined values are left out, so they never erase a value the page gave. */
 export function imdbSuggestionToStructured(data: ImdbSuggestionResult): Record<string, unknown> {
-  return {
+  const out: Record<string, unknown> = {
     site_name: "IMDb",
     original_type: data.media_type === "tv" ? "TVSeries" : "Movie",
     title_hint: data.title_hint,
     year: data.year,
-    directors: data.directors,
     genres: data.genres,
     media_type: data.media_type ?? "movie",
   };
+  for (const key of Object.keys(out)) {
+    if (out[key] === undefined) delete out[key];
+  }
+  return out;
 }

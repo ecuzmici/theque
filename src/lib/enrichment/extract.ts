@@ -92,6 +92,7 @@ export function extractFromHtml(
   if (hostname === "imdb.com" || hostname.endsWith(".imdb.com")) {
     const imdb = parseImdb(doc, json_ld, open_graph);
     structured = { ...structured, ...imdb.structured };
+    title = imdb.title ?? null;
     parser = "imdb";
   } else if (hostname === "goodreads.com" || hostname.endsWith(".goodreads.com")) {
     const gr = parseGoodreads(doc, json_ld);

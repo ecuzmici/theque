@@ -1,3 +1,4 @@
+import { buildSubtitle } from "@/lib/enrichment/subtitle";
 import type { ResolvedMovie } from "@/lib/recommend/resolve/tmdb";
 
 /**
@@ -20,10 +21,14 @@ export type CrewBackfillInput = {
   fieldSources?: Record<string, string> | null;
   /** TMDB resolution for the item, or null when TMDB had no match. */
   tmdb: ResolvedMovie | null;
+  /** The stored card subtitle. When given, it is rebuilt from the new fields. */
+  subtitle?: string | null;
 };
 
 export type CrewBackfillResult = {
   nextStructured: Record<string, unknown>;
+  /** The rebuilt subtitle. Equal to the input subtitle when nothing changed. */
+  nextSubtitle: string | null;
   changed: boolean;
   /** Per-field record of what changed, prior → next, for audit/reversal. */
   log: Record<string, { prior: unknown; next: unknown }>;
@@ -65,7 +70,7 @@ function hasDirectors(structured: Record<string, unknown>): boolean {
 }
 
 export function computeCrewBackfill(input: CrewBackfillInput): CrewBackfillResult {
-  const { structured, fieldSources, tmdb } = input;
+  const { structured, fieldSources, tmdb, subtitle = null } = input;
   const next = { ...structured };
   const log: Record<string, { prior: unknown; next: unknown }> = {};
 
@@ -87,5 +92,16 @@ export function computeCrewBackfill(input: CrewBackfillInput): CrewBackfillResul
     }
   }
 
-  return { nextStructured: next, changed: Object.keys(log).length > 0, log };
+  // 3. Rebuild the byline when the crew changed, so a corrected director does
+  //    not leave an actor in the subtitle (issue #76).
+  let nextSubtitle = subtitle;
+  if (log.directors) {
+    const built = buildSubtitle("movies_and_tv", next);
+    if (built && built !== subtitle) {
+      log.subtitle = { prior: subtitle, next: built };
+      nextSubtitle = built;
+    }
+  }
+
+  return { nextStructured: next, nextSubtitle, changed: Object.keys(log).length > 0, log };
 }

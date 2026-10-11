@@ -5,7 +5,8 @@
  * memory-sourced director. For each item it resolves TMDB by stored title+year
  * (with credits) and OVERWRITES directors/runtime/genres/rating with TMDB's
  * values; on a TMDB miss it clears a model_knowledge director (blank beats
- * wrong). No page re-fetch, no LLM. Prior values are printed for audit.
+ * wrong). When the directors change, it also rebuilds the subtitle (issue #76).
+ * No page re-fetch, no LLM. Prior values are printed for audit.
  *
  * Usage:
  *   npm run backfill:crew              # dry-run (default): writes NOTHING
@@ -56,7 +57,7 @@ async function run() {
 
   const { data: rows, error } = await admin
     .from("items")
-    .select("id, title, structured, raw_metadata, canonical_url")
+    .select("id, title, subtitle, structured, raw_metadata, canonical_url")
     .eq("category", "movies_and_tv")
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -94,7 +95,12 @@ async function run() {
       console.warn(`  TMDB lookup failed for ${row.id} (${title}):`, err instanceof Error ? err.message : err);
     }
 
-    const { nextStructured, changed, log } = computeCrewBackfill({ structured, fieldSources, tmdb });
+    const { nextStructured, nextSubtitle, changed, log } = computeCrewBackfill({
+      structured,
+      fieldSources,
+      tmdb,
+      subtitle: row.subtitle,
+    });
     if (!changed) continue;
 
     changedCount++;
@@ -106,7 +112,7 @@ async function run() {
     if (apply) {
       const { error: updateErr } = await admin
         .from("items")
-        .update({ structured: nextStructured as Json })
+        .update({ structured: nextStructured as Json, subtitle: nextSubtitle })
         .eq("id", row.id);
       if (updateErr) {
         console.warn(`    ! write failed: ${updateErr.message}`);

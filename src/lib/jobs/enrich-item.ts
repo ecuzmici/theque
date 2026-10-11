@@ -15,8 +15,9 @@ import { isEnrichmentLlmConfigured } from "@/lib/enrichment/llm/llm-config";
 import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/snapshot-adapter";
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
-import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
+import { isBotBlockPage, isGeneratedShareCard, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { resolveCategoryEvidence } from "@/lib/enrichment/resolvers/index";
+import { chooseSubtitle } from "@/lib/enrichment/subtitle";
 import { aiDailyLimitForUser } from "@/lib/ai/limits";
 import { rateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -75,31 +76,6 @@ function hasSparseFetchEvidence(input: {
     !input.image_url?.trim() &&
     !Object.values(input.structured).some(hasUsefulValue)
   );
-}
-
-function buildSubtitle(category: ItemCategory | null, structured: Record<string, unknown>): string | null {
-  switch (category) {
-    case "movies_and_tv": {
-      const directors = structured.directors as string[] | undefined;
-      const year = structured.year as number | undefined;
-      const d = directors?.[0];
-      if (d && year !== undefined) return `${d} · ${year}`;
-      if (d) return d;
-      if (year !== undefined) return String(year);
-      return null;
-    }
-    case "books": {
-      const authors = structured.authors as string[] | undefined;
-      const py = structured.published_year as number | undefined;
-      const a = authors?.[0];
-      if (a && py !== undefined) return `${a} · ${py}`;
-      if (a) return a;
-      if (py !== undefined) return String(py);
-      return null;
-    }
-    default:
-      return null;
-  }
 }
 
 function defaultCardAspect(category: ItemCategory | null): string {
@@ -214,17 +190,20 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     }
     let mergedSubtitle = extracted.subtitle ?? null;
     let mergedDescription = extracted.description ?? row.description;
-    let mergedImageUrl = extracted.image_url ?? row.image_url;
+    // A generated share card is not a cover. Drop it so the resolvers supply one.
+    const coverOrNull = (url: string | null) => (isGeneratedShareCard(url) ? null : url);
+    let mergedImageUrl = coverOrNull(extracted.image_url) ?? coverOrNull(row.image_url);
     let mergedCategory = classification.category;
     let mergedCategoryConfidence = classification.category_confidence;
     let mergedCategorySource = classification.category_source;
 
     // Phase 3: free deterministic API resolvers. Only when important fields are
-    // still sparse; fills missing fields and ranks above any later LLM merge.
-    if (resolverFieldsSparse(mergedCategory, mergedStructured)) {
+    // still sparse or the cover is missing; fills missing fields and ranks above
+    // any later LLM merge.
+    if (resolverFieldsSparse(mergedCategory, mergedStructured) || !mergedImageUrl) {
       const patch = await resolveCategoryEvidence(mergedCategory, {
         canonicalUrl: fetchResult.finalUrl,
-        title: mergedTitle,
+        title: isWeakTitle(mergedTitle) ? (titleHint?.trim() || mergedTitle) : mergedTitle,
         structured: mergedStructured,
       });
       if (patch) {
@@ -340,7 +319,7 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
           : null;
     const imageStoragePath = cachedImage?.storagePath ?? row.image_storage_path ?? null;
 
-    const subtitle = mergedSubtitle ?? buildSubtitle(mergedCategory, mergedStructured);
+    const subtitle = chooseSubtitle(mergedCategory, mergedStructured, mergedSubtitle);
 
     const siteForTitle =
       typeof mergedStructured.site_name === "string" ? mergedStructured.site_name : undefined;

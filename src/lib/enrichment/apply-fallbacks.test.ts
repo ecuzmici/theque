@@ -43,7 +43,35 @@ describe("applyEnrichmentFallbacks", () => {
 
     expect(result.title).toBe("Inception");
     expect(result.structured.year).toBe(2010);
-    expect(result.structured.directors).toEqual(["Christopher Nolan"]);
+    expect(result.structured.directors).toBeUndefined();
+  });
+
+  it("never stores suggestion cast as directors", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("media-imdb.com/suggestion")) {
+          return new Response(
+            JSON.stringify({
+              d: [{ id: "tt0100814", l: "Tremors", y: 1990, s: "Kevin Bacon, Fred Ward", qid: "movie" }],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("<html></html>", { status: 404 });
+      }),
+    );
+
+    const finalUrl = "https://www.imdb.com/title/tt0100814/";
+    const html = `<!DOCTYPE html><html><head><title></title></head><body></body></html>`;
+    const fetchResult = { html, finalUrl, statusCode: 403 };
+    const extracted = extractFromHtml(html, { finalUrl, statusCode: 403 });
+    const result = await applyEnrichmentFallbacks(fetchResult, extracted, { requestUrl: finalUrl });
+
+    expect(result.title).toBe("Tremors");
+    expect(result.structured.year).toBe(1990);
+    expect(result.structured.directors).toBeUndefined();
   });
 
   it("uses Google Maps place name from request URL when redirect strips path", async () => {

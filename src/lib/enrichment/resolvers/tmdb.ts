@@ -1,7 +1,7 @@
 import "server-only";
 
 import { resolveMovieWithTmdb } from "@/lib/recommend/resolve/tmdb";
-import { extractImdbTitleId } from "@/lib/enrichment/url-hints";
+import { extractImdbTitleId, extractTmdbRef } from "@/lib/enrichment/url-hints";
 import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers/types";
 
 /**
@@ -13,12 +13,17 @@ import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers
  * ADR 0011 / the Crew rule).
  */
 export const resolveMovie: CategoryResolver = async (input) => {
-  const title = input.title?.trim();
-  if (!title) return null;
+  const title = input.title?.trim() ?? "";
+  const imdbId = extractImdbTitleId(input.canonicalUrl);
+  const tmdbRef = extractTmdbRef(input.canonicalUrl);
+  // A blocked page gives no title. An id in the URL still resolves exactly.
+  if (!title && !imdbId && !tmdbRef) return null;
 
   const year = typeof input.structured.year === "number" ? input.structured.year : null;
-  const imdbId = extractImdbTitleId(input.canonicalUrl);
-  const resolved = await resolveMovieWithTmdb({ title, creator: "", year }, { includeCredits: true, imdbId });
+  const resolved = await resolveMovieWithTmdb(
+    { title, creator: "", year },
+    { includeCredits: true, imdbId, tmdbRef },
+  );
   if (!resolved) return null;
 
   const structured: Record<string, unknown> = {};
@@ -36,6 +41,7 @@ export const resolveMovie: CategoryResolver = async (input) => {
   }
 
   const patch: ResolverPatch = { source: "tmdb", structured };
+  if (resolved.title) patch.title = resolved.title;
   if (resolved.cover_url) patch.image_url = resolved.cover_url;
   return patch;
 };

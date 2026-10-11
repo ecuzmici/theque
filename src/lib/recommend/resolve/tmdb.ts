@@ -8,10 +8,13 @@
 import "server-only";
 
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
+import type { TmdbRef } from "@/lib/enrichment/url-hints";
 import type { LlmCandidate } from "@/lib/recommend/recommend-types";
 
 export type ResolvedMovie = {
   canonical_url: string;
+  /** TMDB title (movie) or name (TV). */
+  title?: string;
   cover_url: string | null;
   confirmed_year: number | null;
   /** TMDB movie or TV id as a string. */
@@ -360,6 +363,41 @@ async function findTmdbByImdbId(apiKey: string, imdbId: string): Promise<TmdbMat
 }
 
 /**
+ * Resolve a TMDB movie/TV by its TMDB id, e.g. from a themoviedb.org URL. The
+ * id is exact, so no title is needed. Fails open (returns null) on any error.
+ */
+async function findTmdbByRef(apiKey: string, ref: TmdbRef): Promise<TmdbMatch | null> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  const url = new URL(
+    `${TMDB_DETAILS_BASE}/${ref.mediaType}/${encodeURIComponent(ref.id)}?${params.toString()}`,
+  );
+
+  try {
+    await assertSafeFetchUrl(url);
+  } catch {
+    return null;
+  }
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as Omit<TmdbResult, "media_type" | "genre_ids"> & {
+      genres?: Array<{ id?: number }>;
+    };
+    if (typeof body.id !== "number") return null;
+    const genreIds = (body.genres ?? [])
+      .map((genre) => genre.id)
+      .filter((id): id is number => typeof id === "number");
+    return { ...body, media_type: ref.mediaType, genre_ids: genreIds };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolve a TMDB movie/TV by title (the fuzzy fallback). /search/multi ignores a
  * `year` param, so disambiguation happens client-side in selectTmdbMatch.
  */
@@ -411,15 +449,20 @@ async function searchTmdbByTitle(
  */
 export async function resolveMovieWithTmdb(
   candidate: Pick<LlmCandidate, "title" | "creator" | "year">,
-  { includeCredits = false, imdbId = null }: { includeCredits?: boolean; imdbId?: string | null } = {},
+  {
+    includeCredits = false,
+    imdbId = null,
+    tmdbRef = null,
+  }: { includeCredits?: boolean; imdbId?: string | null; tmdbRef?: TmdbRef | null } = {},
 ): Promise<ResolvedMovie | null> {
   const apiKey = process.env.TMDB_API_KEY;
   if (!apiKey) return null;
 
-  // Prefer the canonical id; fall back to title-search when there is no id or
-  // /find has no movie/TV result for it.
-  let best: TmdbMatch | null = imdbId ? await findTmdbByImdbId(apiKey, imdbId) : null;
-  if (!best) best = await searchTmdbByTitle(apiKey, candidate);
+  // Prefer a canonical id (TMDB, then IMDb); fall back to title-search when
+  // there is no id or the id lookup misses.
+  let best: TmdbMatch | null = tmdbRef ? await findTmdbByRef(apiKey, tmdbRef) : null;
+  if (!best && imdbId) best = await findTmdbByImdbId(apiKey, imdbId);
+  if (!best && candidate.title.trim()) best = await searchTmdbByTitle(apiKey, candidate);
   if (!best) return null;
 
   const yearStr = best.release_date ?? best.first_air_date ?? null;
@@ -434,8 +477,10 @@ export async function resolveMovieWithTmdb(
     .filter((g): g is string => Boolean(g))
     .slice(0, 3);
 
+  const resolvedTitle = (best.title ?? best.name)?.trim();
   const resolved: ResolvedMovie = {
     canonical_url: `https://www.themoviedb.org/${best.media_type}/${best.id}`,
+    ...(resolvedTitle ? { title: resolvedTitle } : {}),
     cover_url: best.poster_path ? `${TMDB_IMAGE_BASE}${best.poster_path}` : null,
     confirmed_year: Number.isFinite(confirmedYear) ? (confirmedYear as number) : null,
     external_id: String(best.id),

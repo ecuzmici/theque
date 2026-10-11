@@ -14,6 +14,7 @@
     "seed": "tsx scripts/seed.ts",
     "backfill:images": "tsx --conditions=react-server scripts/backfill-image-cache.ts",
     "backfill:crew": "tsx --conditions=react-server scripts/backfill-tmdb-crew.ts",
+    "backfill:item-text": "tsx --conditions=react-server scripts/backfill-item-text.ts",
     "eval:recommend": "tsx --conditions=react-server --env-file=.env.local scripts/eval-recommend.ts",
     "backfill:field-encryption": "tsx --conditions=react-server scripts/backfill-field-encryption.ts",
     "drive:create-folder": "tsx --conditions=react-server scripts/create-drive-folder.ts",
