@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ItemGrid } from "@/components/items/ItemGrid";
+import { COVER_GRID_CLASS, ItemGrid } from "@/components/items/ItemGrid";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LIBRARY_SEARCH_INPUT_ID } from "@/components/library/LibrarySearchRow";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import type { LibrarySort } from "@/lib/library-items-for-shelf";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
@@ -29,7 +30,6 @@ type LibraryItemsSectionProps = {
   initialItems: LibraryItemRow[];
   initialHasMore?: boolean;
   sort?: LibrarySort;
-  wall?: boolean;
   /** When set, consumed items are dropped from this shelf's fetches and realtime updates. */
   hideDone?: boolean;
   onItemsChange?: (items: LibraryItemRow[]) => void;
@@ -47,7 +47,6 @@ export function LibraryItemsSection({
   initialItems,
   initialHasMore = false,
   sort = "recent",
-  wall = false,
   hideDone = false,
   onItemsChange,
 }: LibraryItemsSectionProps) {
@@ -150,7 +149,7 @@ export function LibraryItemsSection({
   }, [hasMore, loadMore]);
 
   // Keyboard browsing: J/K or arrows walk the shelf, Space/Enter quick-looks,
-  // O opens the item page, / jumps to search.
+  // O opens the item page, / focuses the search field.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -162,7 +161,7 @@ export function LibraryItemsSection({
 
       if (e.key === "/" && !quickLookOpen) {
         e.preventDefault();
-        router.push("/search");
+        document.getElementById(LIBRARY_SEARCH_INPUT_ID)?.focus();
         return;
       }
       if (!displayItems.length) return;
@@ -253,7 +252,7 @@ export function LibraryItemsSection({
   // Everything on the shelf is consumed and "Hide done" is filtering it all out.
   const allHiddenAsDone = displayItems.length === 0 && items.length > 0;
   const moreSkeletons = (count: number) => (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+    <ul className={COVER_GRID_CLASS}>
       {Array.from({ length: count }, (_, i) => (
         <li key={i}>
           <ItemCardSkeleton />
@@ -307,12 +306,11 @@ export function LibraryItemsSection({
             items={displayItems}
             shelfId={shelfId}
             itemActionsEnabled
-            wall={wall}
             selectedId={selectedItem?.id ?? null}
             onItemPatch={onItemPatch}
             onOpenMarkDone={openMarkDoneItem}
           />
-          {loadingMore ? <div className="mt-3">{moreSkeletons(4)}</div> : null}
+          {loadingMore ? <div className="mt-5 lg:mt-7">{moreSkeletons(5)}</div> : null}
         </>
       )}
 

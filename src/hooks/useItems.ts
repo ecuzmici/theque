@@ -9,27 +9,37 @@ const DEBOUNCE_MS = 320;
 
 export type ItemSearchFilters = {
   q: string;
-  category?: ItemCategory | "";
-  status?: ItemStatus | "";
+  /** One value or a list; a list goes to the API as CSV. */
+  category?: ItemCategory | ItemCategory[] | "";
+  status?: ItemStatus | ItemStatus[] | "";
+  limit?: number;
 };
+
+function toCsv(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value.join(",") : (value ?? "");
+}
 
 function buildSearchUrl(filters: ItemSearchFilters): string | null {
   const q = filters.q.trim();
-  if (!q && !filters.category && !filters.status) {
+  const category = toCsv(filters.category);
+  const status = toCsv(filters.status);
+  if (!q && !category && !status) {
     return null;
   }
   const params = new URLSearchParams();
   if (q) params.set("q", q);
-  if (filters.category) params.set("category", filters.category);
-  if (filters.status) params.set("status", filters.status);
-  params.set("limit", "48");
+  if (category) params.set("category", category);
+  if (status) params.set("status", status);
+  params.set("limit", String(filters.limit ?? 48));
   return `/api/items?${params.toString()}`;
 }
 
-/** Debounced GET /api/items with optional filters for Search. */
+/** Debounced GET /api/items with optional filters for library search. */
 export function useDebouncedItemSearch(filters: ItemSearchFilters) {
   const [items, setItems] = useState<ItemSummaryPayload[]>([]);
-  const [loading, setLoading] = useState(false);
+  // The URL whose request finished last. Until it matches `url`, the search is loading,
+  // so the debounce wait counts as loading too.
+  const [settledUrl, setSettledUrl] = useState<string | null>(null);
   const url = buildSearchUrl(filters);
 
   useEffect(() => {
@@ -37,10 +47,9 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
     const handle = window.setTimeout(async () => {
       if (!url) {
         setItems([]);
-        setLoading(false);
+        setSettledUrl(null);
         return;
       }
-      setLoading(true);
       try {
         const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) {
@@ -53,9 +62,9 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
         if (err instanceof DOMException && err.name === "AbortError") return;
         setItems([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setSettledUrl(url);
       }
-    }, DEBOUNCE_MS);
+    }, url ? DEBOUNCE_MS : 0);
 
     return () => {
       window.clearTimeout(handle);
@@ -63,5 +72,5 @@ export function useDebouncedItemSearch(filters: ItemSearchFilters) {
     };
   }, [url]);
 
-  return { items, loading, hasQuery: url != null };
+  return { items, loading: url != null && url !== settledUrl, hasQuery: url != null };
 }

@@ -2,187 +2,169 @@
 
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { Hourglass } from "lucide-react";
-import { useCallback, useState } from "react";
-import { InboxActions } from "@/components/inbox/InboxActions";
+import { useCallback, useEffect, useRef, useState } from "react";
+
 import { ItemCardActions } from "@/components/items/ItemCardActions";
-import {
-  ItemCardVerdictControl,
-  ItemCardVerdictDisplay,
-} from "@/components/items/ItemCardVerdictControl";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import {
-  categoryPlaceholderClass,
-  categoryPlaceholderLabel,
-} from "@/lib/category-placeholder";
-import { cardAspectRatio, getDisplayImageUrl } from "@/lib/item-display";
-import { formatStatus } from "@/lib/item-labels";
-import { FORGOTTEN_AFTER_DAYS } from "@/lib/shelves";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-import type { ItemPatch, ItemPatchHandler, ItemPatchOptions } from "@/lib/item-patch";
+import type { ItemPatchHandler } from "@/lib/item-patch";
 import { cn } from "@/lib/utils";
+
+import { cardByline, cardTitle, coverStatusLabel, ItemCardCover } from "./ItemCardCover";
 
 type ItemCardProps = {
   item: LibraryItemRow;
   shelfId: ShelfId;
   itemActionsEnabled?: boolean;
-  inboxActionsEnabled?: boolean;
-  /** Imagery-only presentation: no caption, covers carry the wall. */
-  wall?: boolean;
   /** Keyboard-navigation highlight from the library page. */
   selected?: boolean;
   onItemPatch?: ItemPatchHandler;
   onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 
-function monthsOnShelf(createdAt: string): number {
-  return Math.floor((Date.now() - new Date(createdAt).getTime()) / (30 * 86_400_000));
+/** Hold time before a touch press opens the quick actions. */
+export const LONG_PRESS_MS = 450;
+/** Finger travel (px) that turns a press into a scroll and cancels it. */
+const LONG_PRESS_SLOP = 10;
+
+/**
+ * Long-press on touch or pen calls `onLongPress` and swallows the click that follows.
+ * Mouse presses pass through, so a right-click keeps the browser menu.
+ */
+function useLongPress(onLongPress: () => void, enabled: boolean) {
+  const timer = useRef<number | null>(null);
+  const fired = useRef(false);
+  const start = useRef<{ x: number; y: number } | null>(null);
+
+  const clear = useCallback(() => {
+    if (timer.current != null) window.clearTimeout(timer.current);
+    timer.current = null;
+  }, []);
+
+  useEffect(() => clear, [clear]);
+
+  if (!enabled) return {};
+
+  return {
+    onPointerDown: (e: React.PointerEvent) => {
+      fired.current = false;
+      start.current = null;
+      if (e.pointerType === "mouse") return;
+      start.current = { x: e.clientX, y: e.clientY };
+      clear();
+      timer.current = window.setTimeout(() => {
+        timer.current = null;
+        fired.current = true;
+        navigator.vibrate?.(10);
+        onLongPress();
+      }, LONG_PRESS_MS);
+    },
+    onPointerMove: (e: React.PointerEvent) => {
+      if (!start.current) return;
+      const moved = Math.abs(e.clientX - start.current.x) + Math.abs(e.clientY - start.current.y);
+      if (moved > LONG_PRESS_SLOP) clear();
+    },
+    onPointerUp: clear,
+    onPointerCancel: clear,
+    // Cancel the click the browser makes from this touch. The menu would read it
+    // as an outside press and close at once.
+    onTouchEnd: (e: React.TouchEvent) => {
+      if (!fired.current || !e.cancelable) return;
+      e.preventDefault();
+      // No click follows now, so the next keyboard Enter must not be swallowed.
+      fired.current = false;
+    },
+    // A touch long-press can raise the browser's own context menu. Treat it as ours.
+    onContextMenu: (e: React.MouseEvent) => {
+      if (!start.current) return;
+      e.preventDefault();
+      if (!fired.current) {
+        clear();
+        fired.current = true;
+        onLongPress();
+      }
+    },
+    onClickCapture: (e: React.MouseEvent) => {
+      if (!fired.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      fired.current = false;
+    },
+  };
 }
 
+/** One cover on the wall: a 2:3 cover, a title line, and a byline line. */
 export function ItemCard({
   item,
   shelfId,
   itemActionsEnabled,
-  inboxActionsEnabled,
-  wall,
   selected,
   onItemPatch,
   onOpenMarkDone,
 }: ItemCardProps) {
   const router = useRouter();
   const detailHref = `/item/${item.id}`;
-  // Warm the item route on hover / focus / press-in — well before the click — so the
-  // cover morph starts promptly instead of stalling on the server fetch.
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Warm the item route on hover, focus, or press so navigation starts promptly.
   const prefetchDetail = useCallback(() => {
     router.prefetch(detailHref);
   }, [router, detailHref]);
 
-  const aspect = cardAspectRatio(item.category, item.display);
-  const [aw, ah] = aspect.split("/").map(Number);
-  const ratioStyle =
-    aw > 0 && ah > 0 ? ({ aspectRatio: `${aw} / ${ah}` } as const) : ({ aspectRatio: "2 / 3" } as const);
-
-  const processing =
-    item.processing_status === "pending" || item.processing_status === "processing";
-  const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);
-  // Read the clock once per mount. The badge works in days, so a stale value is fine.
-  const [now] = useState(() => Date.now());
-  const dusty =
-    item.status === "want" &&
-    now - new Date(item.created_at).getTime() > FORGOTTEN_AFTER_DAYS * 86_400_000;
-
-  const handleOptimistic = useCallback(
-    (patch: ItemPatch, opts?: ItemPatchOptions) => onItemPatch?.(item.id, patch, opts),
-    [item.id, onItemPatch],
-  );
-
-  const showVerdictControl =
-    itemActionsEnabled && !wall && !inboxActionsEnabled && item.status !== "inbox";
+  const openMenu = useCallback(() => setMenuOpen(true), []);
+  const press = useLongPress(openMenu, Boolean(itemActionsEnabled));
+  const statusLabel = coverStatusLabel(item);
 
   return (
-    <Card
-      data-item-card={item.id}
-      className={cn(
-        "group relative gap-0 overflow-hidden py-0 transition hover:ring-foreground/20",
-        selected && "ring-2 ring-ring",
-      )}
-    >
-      {inboxActionsEnabled ? (
-        <div className="absolute right-2 top-2 z-10">
-          <InboxActions itemId={item.id} category={item.category} onOptimistic={handleOptimistic} />
-        </div>
-      ) : itemActionsEnabled && !wall ? (
-        <div className="absolute right-2 top-2 z-10">
-          <ItemCardActions item={item} shelfId={shelfId} onItemPatch={onItemPatch} />
-        </div>
-      ) : null}
-
+    <div data-item-card={item.id} className="group relative">
       <Link
         href={detailHref}
-        aria-label={item.title ?? item.domain}
         onPointerEnter={prefetchDetail}
         onFocus={prefetchDetail}
-        onPointerDown={prefetchDetail}
-        className="block outline-none transition-transform duration-100 ease-out active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        onPointerDown={(e) => {
+          prefetchDetail();
+          press.onPointerDown?.(e);
+        }}
+        onPointerMove={press.onPointerMove}
+        onPointerUp={press.onPointerUp}
+        onPointerCancel={press.onPointerCancel}
+        onTouchEnd={press.onTouchEnd}
+        onContextMenu={press.onContextMenu}
+        onClickCapture={press.onClickCapture}
+        onKeyDown={(e) => {
+          // The context-menu key and Shift+F10 open the quick actions from the keyboard.
+          if (!itemActionsEnabled) return;
+          if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+            e.preventDefault();
+            openMenu();
+          }
+        }}
+        className="block rounded-md outline-none transition-transform duration-100 ease-out select-none [-webkit-touch-callout:none] active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 focus-visible:ring-offset-background"
       >
-          <div
-            className={cn(
-              "relative w-full bg-muted",
-              processing && !imgSrc && "ks-shimmer",
-              !imgSrc && !item.dominant_color && `bg-gradient-to-br ${categoryPlaceholderClass(item.category)}`,
-            )}
-            style={{
-              ...ratioStyle,
-              // Extracted cover color doubles as loading base and imageless tint.
-              ...(item.dominant_color ? { backgroundColor: item.dominant_color } : null),
-            }}
-          >
-            {imgSrc ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
-                <img
-                  src={imgSrc}
-                  alt=""
-                  className={cn("absolute inset-0 h-full w-full object-cover transition", processing && "opacity-75")}
-                />
-                {processing ? (
-                  <div className="pointer-events-none absolute inset-0 ks-shimmer bg-transparent" />
-                ) : null}
-              </>
-            ) : (
-              <div className="absolute inset-0 flex flex-col items-center justify-center px-3 text-center">
-                {processing ? (
-                  <span className="text-xs text-white/80">Gathering details…</span>
-                ) : (
-                  <>
-                    <span className="font-serif text-sm font-medium text-white/90">
-                      {categoryPlaceholderLabel(item.category)}
-                    </span>
-                    <span className="mt-1 break-all text-[11px] text-white/70">{item.domain}</span>
-                  </>
-                )}
-              </div>
-            )}
-            {wall ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 pt-8 opacity-0 transition group-hover:opacity-100">
-                <p className="line-clamp-2 text-xs font-medium text-white">
-                  {item.title ?? item.domain}
-                </p>
-              </div>
-            ) : null}
-          </div>
-
-        {wall ? null : (
-          <div className="p-3">
-            <p className="line-clamp-2 font-serif text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
-              {item.title ?? item.domain}
-            </p>
-            {item.subtitle ? (
-              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{item.subtitle}</p>
-            ) : null}
-            <div className="flex flex-wrap gap-1.5">
-              {item.status === "inbox" ? (
-                <Badge variant="secondary" className="mt-2 text-[10px]">
-                  {formatStatus(item.status)}
-                </Badge>
-              ) : null}
-              {dusty ? (
-                <Badge variant="outline" className="mt-2 gap-1 text-[10px] text-muted-foreground">
-                  <Hourglass className="size-2.5" aria-hidden />
-                  {monthsOnShelf(item.created_at)} mo on the shelf
-                </Badge>
-              ) : null}
-            </div>
-            <ItemCardVerdictDisplay item={item} />
-          </div>
-        )}
+        <ItemCardCover item={item} selected={selected} />
+        <p className="mt-1.5 truncate text-[13px] leading-tight font-medium text-foreground">
+          {cardTitle(item)}
+        </p>
+        <p className="truncate text-[11px] leading-tight text-muted-foreground">{cardByline(item)}</p>
+        {statusLabel ? <span className="sr-only">, {statusLabel}</span> : null}
       </Link>
 
-      {showVerdictControl ? (
-        <ItemCardVerdictControl item={item} onOpenMarkDone={onOpenMarkDone} />
+      {itemActionsEnabled ? (
+        <ItemCardActions
+          item={item}
+          shelfId={shelfId}
+          onItemPatch={onItemPatch}
+          onOpenMarkDone={onOpenMarkDone}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+          // Hidden until hover on a mouse. Touch opens it with a long-press, so the
+          // button only anchors the menu there. Keyboard focus shows it.
+          triggerClassName={cn(
+            "absolute top-1.5 right-1.5 z-10 opacity-0 transition-opacity",
+            "group-hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100",
+            "pointer-coarse:pointer-events-none",
+          )}
+        />
       ) : null}
-    </Card>
+    </div>
   );
 }

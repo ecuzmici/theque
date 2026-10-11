@@ -1,15 +1,14 @@
 "use client";
 
 /**
- * Finish-setup nudge (ADR 0009). A self-clearing info box in the desktop
- * sidebar, above "Add link", that walks the user through the two-stage funnel:
+ * Finish-setup nudge (ADR 0009). A self-clearing info box in the capture sheet,
+ * under the link field, that walks the user through the two-stage funnel:
  *   absent    → "Add to Chrome" (install)
  *   installed → "Connect" (mint + link a capture token, in place)
  *   connected → nothing
  *
- * Lives in AppShell's desktop-only sidebar (`hidden lg:flex`), so it never
- * renders at mobile widths — the capture extension only works on desktop Chrome
- * anyway. Detection is a live client-side ping to the known published extension
+ * The capture sheet shows it at desktop widths only (`hidden lg:block`). The
+ * capture extension works on desktop Chrome only. Detection is a live client-side ping to the known published extension
  * ids, re-run on focus / visibility change so the box clears the instant the
  * user returns from installing or connecting — no reload. Only Chromium-family
  * desktop browsers see it; dismissing snoozes it for ~14 days.
@@ -164,7 +163,7 @@ export function ExtensionNudge() {
   const connecting = connectStatus === "connecting";
 
   return (
-    <div className="relative mb-3 rounded-lg border border-border bg-accent/50 px-3 py-3">
+    <div className="relative rounded-lg border border-border bg-accent/50 px-3 py-3">
       <Button
         type="button"
         size="sm"
@@ -200,6 +199,7 @@ export function ExtensionNudge() {
         <Button
           type="button"
           size="sm"
+          variant="outline"
           disabled={connecting}
           onClick={() => void handleConnect()}
           className="mt-2 w-full"
@@ -210,6 +210,7 @@ export function ExtensionNudge() {
         <Button
           nativeButton={false}
           size="sm"
+          variant="outline"
           className="mt-2 w-full"
           render={<Link href={CHROME_STORE_URL} target="_blank" rel="noreferrer" />}
         >

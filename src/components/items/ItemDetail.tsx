@@ -2,16 +2,20 @@
 
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Star, Trash2 } from "lucide-react";
+import { ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BookFileField } from "@/components/items/BookFileField";
 import { ItemAiReviewDialog } from "@/components/items/ItemAiReviewDialog";
 import { ItemEditSheet } from "@/components/items/ItemEditSheet";
-import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
+import { ItemRatingCard } from "@/components/items/ItemRatingCard";
 import { RelatedItemsStrip } from "@/components/items/RelatedItemsStrip";
 import { StructuredFields } from "@/components/items/StructuredFields";
-import { Badge } from "@/components/ui/badge";
+import {
+  getBylineDetailKeys,
+  getDetailByline,
+  prefersLightText,
+} from "@/components/items/item-detail-header";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,11 +33,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
+import { cleanDisplayTitle } from "@/lib/display-title";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
-import { getHeadlineFacts } from "@/lib/item-detail-display";
-import { doneVerb, formatCategory, formatEnrichmentError, formatStatus } from "@/lib/item-labels";
+import { doneVerb, formatCategory, formatEnrichmentError } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+import { cn } from "@/lib/utils";
 import type {
   AiEnrichmentApplyRequestBody,
   AiEnrichmentProposalResponseBody,
@@ -42,6 +47,36 @@ import type {
 
 export type ItemDetailModel = ItemDetailResponseBody;
 
+/** Backdrop and cover tint for items without a sampled `dominant_color`. */
+const FALLBACK_TINT = "#78716c";
+
+/** Typographic stand-in cover, tinted with the item's dominant color. */
+function TypeCover({
+  color,
+  category,
+  title,
+  footer,
+}: {
+  color: string;
+  category: string | null;
+  title: string;
+  footer: string;
+}) {
+  return (
+    <div
+      data-testid="item-type-cover"
+      className={cn(
+        "flex aspect-[2/3] h-72 flex-col justify-between overflow-hidden rounded-lg p-5 shadow-2xl ring-1 ring-black/10 sm:h-80 lg:h-96",
+        prefersLightText(color) ? "text-white" : "text-stone-900",
+      )}
+      style={{ backgroundColor: color }}
+    >
+      <span className="font-mono text-[10px] uppercase tracking-widest opacity-70">{category}</span>
+      <span className="line-clamp-6 font-serif text-2xl leading-tight break-words">{title}</span>
+      <span className="truncate text-[11px] opacity-70">{footer}</span>
+    </div>
+  );
+}
 
 async function patchItem(itemId: string, body: Record<string, unknown>): Promise<ItemDetailModel | null> {
   const res = await fetch(`/api/items/${itemId}`, {
@@ -93,7 +128,6 @@ export function ItemDetail({
   const [editOpen, setEditOpen] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
-  const [markDoneOpen, setMarkDoneOpen] = useState(false);
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -222,161 +256,167 @@ export function ItemDetail({
   const refreshLabel =
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
-  const facts = getHeadlineFacts(item.category, item.structured);
+  const title = cleanDisplayTitle(item.title ?? item.domain);
+  const byline = getDetailByline(item.category, item.subtitle, item.structured);
+  const omitDetailKeys = [
+    ...(item.description ? ["description"] : []),
+    ...getBylineDetailKeys(item.category, item.structured, byline),
+  ];
   const savedDate = item.created_at ? formatDateMedium(item.created_at) : null;
   const descIsLong = (item.description?.length ?? 0) > 350;
   const verb = doneVerb(item.category);
   const isDone = item.status === "done";
-  const doneDate = item.done_at ? formatDateMedium(item.done_at) : null;
+  const tint = item.dominant_color ?? FALLBACK_TINT;
+  const isFetching =
+    item.processing_status === "pending" || item.processing_status === "processing";
 
   return (
-    <article className="pb-12">
-      <Link
-        href="/library"
-        className="-ml-1 inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-muted-foreground hover:text-foreground lg-fine:min-h-0 lg-fine:py-0"
+    <article className="relative pb-12">
+      {/* Ambient backdrop: a blurred, tinted copy of the cover behind the page.
+          Every layer fills the masked box, so the fade ends at the box edge and
+          no layer stops short of it. */}
+      <div
+        aria-hidden
+        data-testid="item-ambient"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[85vh] overflow-hidden"
+        style={{
+          maskImage: "linear-gradient(to bottom, black 30%, transparent 95%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 30%, transparent 95%)",
+        }}
       >
-        ← Library
-      </Link>
+        {imgSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy.
+          <img
+            src={imgSrc}
+            alt=""
+            className="absolute -inset-x-[10%] inset-y-0 h-full w-[120%] scale-110 object-cover opacity-70 blur-3xl saturate-150"
+          />
+        ) : null}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `radial-gradient(120% 70% at 50% 0%, color-mix(in oklab, ${tint} 80%, transparent), transparent 70%)`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background" />
+      </div>
 
-      <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
-        {/* Cover pane — sticky alongside the metadata on desktop */}
-        <div className="lg:sticky lg:top-6 lg:self-start">
-          <div
-            className="overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-foreground/10"
-            style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
-          >
-            {imgSrc ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
-                <img
-                  src={imgSrc}
-                  alt=""
-                  className="h-auto max-h-[40vh] w-full object-contain lg:max-h-[32rem]"
-                />
-              </>
-            ) : (
-              <div className="flex h-56 items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                {item.processing_status === "pending" || item.processing_status === "processing"
-                  ? "Fetching preview image…"
-                  : item.domain}
-              </div>
-            )}
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Saved from{" "}
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-foreground underline-offset-2 hover:underline"
-            >
-              {item.domain}
-            </a>
-            {savedDate ? <> · {savedDate}</> : null}
-          </p>
-        </div>
+      <div className="relative z-10">
+        <Link
+          href="/library"
+          className="-ml-1 inline-flex min-h-11 items-center rounded-md px-1 text-sm font-medium text-foreground/80 hover:text-foreground lg-fine:min-h-0 lg-fine:py-0"
+        >
+          ← Library
+        </Link>
 
-        {/* Metadata pane */}
-        <header className="min-w-0">
-          <div className="flex flex-wrap gap-2">
-            <Badge variant="secondary">{formatStatus(item.status)}</Badge>
+        <div className="mt-4 flex flex-col items-center">
+          {imgSrc ? (
+            <div className="overflow-hidden rounded-lg shadow-2xl ring-1 ring-black/10">
+              {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
+              <img
+                src={imgSrc}
+                alt=""
+                className="block h-auto max-h-72 w-auto max-w-full sm:max-h-80 lg:max-h-96"
+              />
+            </div>
+          ) : (
+            <TypeCover
+              color={tint}
+              category={item.category ? formatCategory(item.category) : null}
+              title={title}
+              footer={isFetching ? "Fetching cover…" : item.domain}
+            />
+          )}
+
+          <header className="mt-6 w-full max-w-2xl min-w-0 text-center">
             {item.category ? (
-              <Badge variant="outline">{formatCategory(item.category)}</Badge>
+              <p className="font-mono text-[11px] uppercase tracking-widest text-foreground/70">
+                {formatCategory(item.category)}
+              </p>
             ) : null}
-          </div>
+            <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight text-balance break-words text-foreground lg:text-4xl">
+              {title}
+            </h1>
+            {byline ? <p className="mt-2 text-sm text-foreground/70">{byline}</p> : null}
+          </header>
 
-          <h1 className="mt-4 font-serif text-3xl leading-tight tracking-tight text-foreground">
-            {item.title ?? item.domain}
-          </h1>
-          {item.subtitle ? (
-            <p className="mt-2 text-base text-muted-foreground">{item.subtitle}</p>
-          ) : null}
-          {facts.length > 0 ? (
-            <p className="mt-1.5 text-sm text-muted-foreground">{facts.join(" · ")}</p>
-          ) : null}
+          <ItemRatingCard
+            className="mt-6 w-full max-w-md"
+            verb={verb}
+            isDone={isDone}
+            rating={item.rating_personal}
+            verdict={item.verdict}
+            doneAt={item.done_at}
+            onSave={async (patch) => (await syncPatch(patch)) != null}
+          />
 
-          <div className="mt-6 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={isDone ? "outline" : "default"}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-            onClick={() => {
-              if (!isDone) {
-                void syncPatch({ status: "done" }).then((next) => {
-                  if (next) setMarkDoneOpen(true);
-                });
-              } else {
-                setMarkDoneOpen(true);
-              }
-            }}
-          >
-            <CheckCircle2 className="size-4" />
-            {isDone ? "Edit verdict" : `Mark as ${verb}`}
-          </Button>
-          <Button
-            nativeButton={false}
-            variant={isDone ? "default" : "outline"}
-            render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
-            className="min-h-11 gap-1.5 lg-fine:min-h-8"
-          >
-            <ExternalLink className="size-4" />
-            Open original
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11 gap-1.5 px-3 lg-fine:min-h-8"
-                  aria-label="More actions"
-                  disabled={retryBusy || aiProposalBusy || aiApplyBusy || deleteBusy}
-                />
-              }
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button
+              nativeButton={false}
+              variant="outline"
+              render={<a href={item.url} target="_blank" rel="noopener noreferrer" />}
+              className="min-h-11 gap-1.5 rounded-full bg-card/80 px-4 backdrop-blur lg-fine:min-h-8"
             >
-              <MoreHorizontal className="size-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuItem onClick={() => setEditOpen(true)}>
-                <Pencil className="size-4" />
-                Edit details
-              </DropdownMenuItem>
-              {showRefreshMetadata ? (
-                <DropdownMenuItem disabled={retryBusy} onClick={() => void onRetry()}>
-                  <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
-                  {retryBusy ? "Refreshing…" : refreshLabel}
+              <ExternalLink className="size-4" />
+              {item.domain.replace(/^www\./, "")}
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 min-w-11 rounded-full bg-card/80 px-3 backdrop-blur lg-fine:min-h-8 lg-fine:min-w-8"
+                    aria-label="More actions"
+                    disabled={retryBusy || aiProposalBusy || aiApplyBusy || deleteBusy}
+                  />
+                }
+              >
+                <MoreHorizontal className="size-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56">
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="size-4" />
+                  Edit details
                 </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem
-                disabled={aiProposalBusy || aiApplyBusy}
-                onClick={() => void onOpenAiReview()}
-              >
-                <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
-                {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => {
-                  setDeleteError(null);
-                  setDeleteOpen(true);
-                }}
-              >
-                <Trash2 className="size-4" />
-                Delete item
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {showRefreshMetadata ? (
+                  <DropdownMenuItem disabled={retryBusy} onClick={() => void onRetry()}>
+                    <RefreshCw className={`size-4 ${retryBusy ? "animate-spin" : ""}`} />
+                    {retryBusy ? "Refreshing…" : refreshLabel}
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem
+                  disabled={aiProposalBusy || aiApplyBusy}
+                  onClick={() => void onOpenAiReview()}
+                >
+                  <Sparkles className={`size-4 ${aiProposalBusy ? "animate-pulse" : ""}`} />
+                  {aiProposalBusy ? "Preparing AI review…" : "Enrich with AI"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => {
+                    setDeleteError(null);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete item
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
+        <div className="mx-auto mt-8 max-w-2xl">
           {item.enrichment_error ? (
-            <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <p className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {formatEnrichmentError(item.enrichment_error)}
             </p>
           ) : null}
 
           {item.note ? (
-            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
+            <div className="mb-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
                 Your note
               </p>
@@ -384,43 +424,13 @@ export function ItemDetail({
             </div>
           ) : null}
 
-          {isDone && (item.rating_personal != null || item.verdict || doneDate) ? (
-            <div className="mt-5 rounded-xl border border-border bg-accent/40 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-accent-foreground">
-                Your verdict
-              </p>
-              {item.rating_personal != null ? (
-                <div className="mt-1.5 flex items-center gap-0.5" aria-label={`${item.rating_personal} of 5 stars`}>
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Star
-                      key={n}
-                      className={
-                        n <= (item.rating_personal ?? 0)
-                          ? "size-4 fill-amber-500 text-amber-500"
-                          : "size-4 text-muted-foreground/40"
-                      }
-                      aria-hidden
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {item.verdict ? (
-                <p className="mt-1.5 text-sm leading-relaxed text-foreground">{item.verdict}</p>
-              ) : null}
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Marked {verb}
-                {doneDate ? <> · {doneDate}</> : null}
-              </p>
-            </div>
-          ) : null}
-
           {item.description ? (
-            <section className="mt-5" aria-label="About">
+            <section aria-label="About">
               <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 About
               </h2>
               <p
-                className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-foreground/90 ${
+                className={`mt-2 text-[15px] leading-relaxed whitespace-pre-line text-foreground/90 ${
                   descIsLong && !descExpanded ? "line-clamp-6" : ""
                 }`}
               >
@@ -429,7 +439,7 @@ export function ItemDetail({
               {descIsLong ? (
                 <button
                   type="button"
-                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  className="ks-pointer-coarse-min-hit mt-1.5 inline-flex items-center rounded-sm text-sm font-medium text-accent-foreground underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => setDescExpanded((v) => !v)}
                 >
                   {descExpanded ? "Show less" : "Show more"}
@@ -441,7 +451,7 @@ export function ItemDetail({
           <StructuredFields
             category={item.category}
             structured={item.structured}
-            omitKeys={item.description ? ["description"] : undefined}
+            omitKeys={omitDetailKeys}
           />
 
           {showBookFile ? (
@@ -459,28 +469,14 @@ export function ItemDetail({
               }
             />
           ) : null}
-        </header>
+
+          {savedDate ? (
+            <p className="mt-6 text-xs text-muted-foreground">Saved {savedDate}</p>
+          ) : null}
+        </div>
+
+        <RelatedItemsStrip items={related} />
       </div>
-
-      <RelatedItemsStrip items={related} />
-
-      <ItemMarkDoneDialog
-        key={`${item.id}:${markDoneOpen}`}
-        open={markDoneOpen}
-        onOpenChange={setMarkDoneOpen}
-        verb={verb}
-        title={item.title ?? item.domain}
-        initialRating={item.rating_personal}
-        initialVerdict={item.verdict}
-        onSave={async (rating, verdict) => {
-          const next = await syncPatch({
-            ...(isDone ? {} : { status: "done" }),
-            rating_personal: rating,
-            verdict,
-          });
-          return next != null;
-        }}
-      />
 
       <ItemAiReviewDialog
         open={aiReviewOpen}
@@ -512,7 +508,7 @@ export function ItemDetail({
           <DialogHeader>
             <DialogTitle>Delete item?</DialogTitle>
             <DialogDescription>
-              Delete &quot;{item.title ?? item.domain}&quot; permanently from your library. This cannot be undone.
+              Delete &quot;{title}&quot; permanently from your library. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}

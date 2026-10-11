@@ -23,7 +23,8 @@
   --ks-shadow: 0 1px 2px rgba(28, 25, 23, 0.06);
   --ks-shadow-md: 0 4px 16px rgba(28, 25, 23, 0.08);
   --ks-radius-card: 0.875rem;
-  --ks-nav-height: 4.25rem;
+  /* Space that floating toasts and pills keep above the floating + button. */
+  --ks-fab-clearance: 5.5rem;
   --background: var(--ks-bg);
   --foreground: var(--ks-fg);
   --card: var(--ks-surface);
@@ -177,7 +178,7 @@
    thumb zooming into a big hero fought the medium and, gated on the item fetch,
    felt disconnected from the tap).
 
-   • Content only: the sidebar / mobile header / bottom nav are anchored (below)
+   • Content only: the header and the floating + are anchored (below)
      so they stay sharp and still — one steady frame while the content swaps.
    • Applies uniformly to open / back / sibling routes. Snapshot-based, so it
      never remounts the page or discards the library's in-memory shelf cache.
@@ -222,12 +223,11 @@
   }
 }
 
-/* Anchor the chrome: the sidebar / mobile header / bottom nav carry a stable
+/* Anchor the chrome: the header and the floating + carry a stable
    view-transition-name (AppShell), so they hold still while content transitions
    — one fixed spatial reference, never a sliding frame. */
-::view-transition-group(app-sidebar),
 ::view-transition-group(app-header),
-::view-transition-group(app-bottomnav) {
+::view-transition-group(app-fab) {
   animation: none;
 }
 
@@ -247,6 +247,21 @@
   animation: ks-fade var(--ks-shelf-duration) ease backwards;
 }
 
+/* The notch header draws its spines in once on load (NotchHeader). The mask
+   path carries its own length in --ks-spine-length. */
+.ks-spine-draw-in {
+  stroke-dashoffset: 0;
+  animation: ks-spine-draw-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes ks-spine-draw-in {
+  from {
+    stroke-dashoffset: var(--ks-spine-length);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 /* Directional slides were deliberately skipped (top motion-sickness trigger,
    and a library has no natural forward/back order), so reduced-motion just needs
    to neutralize the morph's scale/position and every crossfade. */
@@ -258,7 +273,8 @@
     animation-duration: 0.01ms !important;
     animation-delay: 0s !important;
   }
-  .ks-shelf-enter {
+  .ks-shelf-enter,
+  .ks-spine-draw-in {
     animation: none;
   }
 }
