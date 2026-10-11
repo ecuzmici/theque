@@ -1,45 +1,27 @@
-import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import SearchPage from "./page";
 
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-
-// Return a stable reference: SearchPage has `useEffect(..., [items])`, so a fresh
-// `items` array on every render would loop forever inside `act`.
-vi.mock("@/hooks/useItems", () => {
-  const result = { items: [], loading: false, hasQuery: false };
-  return { useDebouncedItemSearch: () => result };
-});
+const redirect = vi.hoisted(() => vi.fn());
+vi.mock("next/navigation", () => ({ redirect }));
 
 describe("SearchPage", () => {
-  let root: Root | undefined;
-  let container: HTMLDivElement | undefined;
-
   afterEach(() => {
-    if (root) {
-      act(() => {
-        root?.unmount();
-      });
-    }
-    container?.remove();
-    root = undefined;
-    container = undefined;
-    vi.restoreAllMocks();
+    redirect.mockReset();
   });
 
-  it("renders friendly filter values instead of internal sentinel tokens", async () => {
-    container = document.createElement("div");
-    document.body.append(container);
-    root = createRoot(container);
+  it("redirects a query to the library search", async () => {
+    await SearchPage({ searchParams: Promise.resolve({ q: " dune " }) });
+    expect(redirect).toHaveBeenCalledWith("/library?q=dune");
+  });
 
-    await act(async () => {
-      root?.render(<SearchPage />);
-    });
+  it("redirects to the library when there is no query", async () => {
+    await SearchPage({ searchParams: Promise.resolve({}) });
+    expect(redirect).toHaveBeenCalledWith("/library");
+  });
 
-    expect(container.textContent).toContain("Any category");
-    expect(container.textContent).toContain("Any status");
-    expect(container.textContent).not.toContain("__any__");
+  it("uses the first value of a repeated q", async () => {
+    await SearchPage({ searchParams: Promise.resolve({ q: ["a b", "c"] }) });
+    expect(redirect).toHaveBeenCalledWith("/library?q=a+b");
   });
 });

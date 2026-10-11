@@ -9,15 +9,17 @@ import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { COVER_GRID_CLASS } from "@/components/items/ItemGrid";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
+import { LibrarySearchResults } from "@/components/library/LibrarySearchResults";
+import { LibrarySearchRow } from "@/components/library/LibrarySearchRow";
+import { ShelfChips } from "@/components/library/ShelfChips";
 import { UpNextRow } from "@/components/library/UpNextRow";
-import { Badge } from "@/components/ui/badge";
+import { useLibrarySearch } from "@/components/library/useLibrarySearch";
 import { Button } from "@/components/ui/button";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
+import { libraryHref, shelfFixesStatus } from "@/lib/library-search";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import {
   SHELVES,
-  getShelf,
   parseShelfParam,
   resolveRequestedShelf,
   visibleShelves,
@@ -25,7 +27,6 @@ import {
 } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-import { cn } from "@/lib/utils";
 
 type ShelfCache = {
   items: LibraryItemRow[];
@@ -60,6 +61,7 @@ export function LibraryPageClient({
   const searchParams = useSearchParams();
   const urlShelf = parseShelfParam(searchParams.get("shelf"));
   const [pendingShelf, setPendingShelf] = useState<ShelfId | null>(null);
+  const search = useLibrarySearch();
 
   const [itemsCache, setItemsCache] = useState<Partial<Record<ShelfId, ShelfCache>>>({});
   const itemsCacheRef = useRef(itemsCache);
@@ -119,10 +121,9 @@ export function LibraryPageClient({
   const selectShelf = useCallback(
     (id: ShelfId) => {
       setPendingShelf(id);
-      const href = id === "all" ? "/library" : `/library?shelf=${id}`;
-      router.replace(href, { scroll: false });
+      router.replace(libraryHref(id, search.query), { scroll: false });
     },
-    [router],
+    [router, search.query],
   );
 
   useEffect(() => {
@@ -214,78 +215,22 @@ export function LibraryPageClient({
         recommendWatchEnabled={recommendWatchEnabled}
       />
 
-      <ScrollArea className="w-full pb-4">
-        {/* Rings are drawn outside the box and clip inside overflow:hidden viewports — use border for inactive tabs */}
-        {/* WAI-ARIA tabs pattern: roving tabIndex + arrow key navigation */}
-        <div
-          className="flex w-max gap-2 px-0.5 py-1.5 pb-2"
-          role="tablist"
-          aria-label="Shelves"
-          onKeyDown={(e) => {
-            const tabs = visibleShelfIds;
-            const currentIndex = tabs.indexOf(activeShelf);
-            let nextIndex = currentIndex;
-            if (e.key === "ArrowRight") {
-              e.preventDefault();
-              nextIndex = (currentIndex + 1) % tabs.length;
-            } else if (e.key === "ArrowLeft") {
-              e.preventDefault();
-              nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-            } else if (e.key === "Home") {
-              e.preventDefault();
-              nextIndex = 0;
-            } else if (e.key === "End") {
-              e.preventDefault();
-              nextIndex = tabs.length - 1;
-            } else {
-              return;
-            }
-            const nextShelf = tabs[nextIndex];
-            if (nextShelf) {
-              selectShelf(nextShelf);
-              // Move focus to the newly selected tab
-              const tabEl = document.querySelector<HTMLButtonElement>(
-                `[role="tab"][data-shelf-id="${nextShelf}"]`,
-              );
-              tabEl?.focus();
-            }
-          }}
-        >
-          {visibleShelfIds.map((id) => {
-            const s = getShelf(id);
-            const selected = s.id === activeShelf;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                tabIndex={selected ? 0 : -1}
-                data-shelf-id={s.id}
-                onClick={() => selectShelf(s.id)}
-                className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-                  selected
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border bg-muted text-muted-foreground hover:bg-card hover:text-foreground",
-                )}
-              >
-                {s.label}
-                {s.id === "inbox" && inboxCount != null && inboxCount > 0 ? (
-                  <Badge
-                    variant="secondary"
-                    className="h-5 min-w-5 justify-center px-1.5 text-[10px]"
-                  >
-                    {inboxCount}
-                  </Badge>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-        <ScrollBar orientation="horizontal" className="hidden" />
-      </ScrollArea>
+      <LibrarySearchRow
+        value={search.draft}
+        onChange={search.setDraft}
+        onClear={search.clear}
+        shelfLabel={activeShelf === "all" ? null : activeLabel}
+        showStatus={search.active && !shelfFixesStatus(activeShelf)}
+        status={search.status}
+        onStatusChange={search.setStatus}
+      >
+        <ShelfChips
+          shelves={visibleShelfIds}
+          active={activeShelf}
+          onSelect={selectShelf}
+          inboxCount={inboxCount}
+        />
+      </LibrarySearchRow>
 
       <p className="sr-only" aria-live="polite">
         Showing {activeLabel} shelf
@@ -332,6 +277,9 @@ export function LibraryPageClient({
       {/* Keyed by shelf so a shelf swap replays a soft fade; the triage
           toggle keeps `activeShelf` stable, so it does not re-animate.
           Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
+      {search.active ? (
+        <LibrarySearchResults query={search.query} shelfId={activeShelf} status={search.status} />
+      ) : (
       <div key={activeShelf} className="ks-shelf-enter">
       {loadError != null && cachedItems === undefined ? (
         <div className="rounded-xl border border-border bg-muted/40 px-6 py-10 text-center text-sm text-muted-foreground">
@@ -378,6 +326,7 @@ export function LibraryPageClient({
         />
       )}
       </div>
+      )}
     </div>
   );
 }
