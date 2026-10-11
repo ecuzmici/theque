@@ -11,6 +11,16 @@ function SearchHarness({ q = "" }: { q?: string }) {
   return <output>{items.map((i) => i.title).join(",")}</output>;
 }
 
+function ListHarness() {
+  useDebouncedItemSearch({
+    q: "dune",
+    category: ["restaurants", "travel"],
+    status: ["want", "done"],
+    limit: 100,
+  });
+  return null;
+}
+
 describe("useDebouncedItemSearch", () => {
   let root: Root | undefined;
   let container: HTMLDivElement | undefined;
@@ -105,5 +115,26 @@ describe("useDebouncedItemSearch", () => {
     });
 
     expect(container.textContent).toBe("new-result");
+  });
+
+  it("sends list filters as CSV and honors the limit", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: [], next_cursor: null }), { status: 200 }),
+    );
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(<ListHarness />);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(320);
+    });
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/items?q=dune&category=restaurants%2Ctravel&status=want%2Cdone&limit=100",
+      { signal: expect.any(AbortSignal) },
+    );
   });
 });

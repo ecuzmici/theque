@@ -10,6 +10,7 @@ import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LIBRARY_SEARCH_INPUT_ID } from "@/components/library/LibrarySearchRow";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import type { LibrarySort } from "@/lib/library-items-for-shelf";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
@@ -150,7 +151,7 @@ export function LibraryItemsSection({
   }, [hasMore, loadMore]);
 
   // Keyboard browsing: J/K or arrows walk the shelf, Space/Enter quick-looks,
-  // O opens the item page, / jumps to search.
+  // O opens the item page, / focuses the search field.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -162,7 +163,7 @@ export function LibraryItemsSection({
 
       if (e.key === "/" && !quickLookOpen) {
         e.preventDefault();
-        router.push("/search");
+        document.getElementById(LIBRARY_SEARCH_INPUT_ID)?.focus();
         return;
       }
       if (!displayItems.length) return;
