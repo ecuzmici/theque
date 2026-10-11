@@ -2,6 +2,7 @@ import "server-only";
 
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
 import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers/types";
+import { extractHardcoverSlug } from "@/lib/enrichment/url-hints";
 
 const ENDPOINT = "https://api.hardcover.app/v1/graphql";
 const TIMEOUT_MS = 8000;
@@ -97,8 +98,18 @@ function pickBest(hits: unknown, wanted: string): SearchDocument | null {
  * it carries series and genres, which Google Books omits. Needs
  * HARDCOVER_API_KEY; returns null without one so enrichment falls through.
  */
+/**
+ * "a-fire-upon-the-deep" → "a fire upon the deep". A trailing number stays
+ * ("catch-22"); the search still matches "the-three-body-problem-2" by containment.
+ */
+export function titleFromHardcoverSlug(slug: string): string {
+  return slug.replace(/-/g, " ").trim();
+}
+
 export const resolveHardcover: CategoryResolver = async (input) => {
-  const title = input.title?.trim() ?? "";
+  // A blocked hardcover.app page gives no title. The URL slug still names the book.
+  const slug = extractHardcoverSlug(input.canonicalUrl);
+  const title = input.title?.trim() || (slug ? titleFromHardcoverSlug(slug) : "");
   if (!title) return null;
 
   const token = readToken();

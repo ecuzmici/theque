@@ -134,6 +134,61 @@ export function parseTitleTag(titleTag: string | undefined, siteName?: string): 
   return t || undefined;
 }
 
+/**
+ * True for an image a site renders as a share card: a picture of the page
+ * (title text, stars, tags), not the cover. Only hardcover.app today (#78).
+ */
+export function isGeneratedShareCard(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const hardcover = host === "hardcover.app" || host.endsWith(".hardcover.app");
+    return hardcover && /\/ogimage\.png$/i.test(parsed.pathname);
+  } catch {
+    return false;
+  }
+}
+
+export type ImdbTitleParts = { title: string; year?: number; genres?: string[] };
+
+/**
+ * Split an IMDb page title into its parts. IMDb `og:title` now carries the
+ * year, the rating and the genres:
+ * "Twin Peaks (TV Series 1990–1991) ⭐ 8.7 | Crime, Drama, Mystery".
+ * Returns undefined when nothing is left after the cleanup.
+ */
+export function parseImdbTitle(raw: string | undefined): ImdbTitleParts | undefined {
+  if (!raw?.trim()) return undefined;
+  let t = raw.trim();
+  let genres: string[] | undefined;
+
+  const pipe = t.indexOf(" | ");
+  if (pipe !== -1) {
+    const tail = t.slice(pipe + 3).trim();
+    t = t.slice(0, pipe).trim();
+    if (tail && !/^imdb$/i.test(tail)) {
+      const list = tail
+        .split(",")
+        .map((g) => g.trim())
+        .filter(Boolean);
+      if (list.length) genres = list;
+    }
+  }
+  t = t.replace(/\s+-\s+IMDb$/i, "").trim();
+  t = t.replace(/\s*⭐.*$/u, "").trim();
+
+  let year: number | undefined;
+  const paren = t.match(/^(.+?)\s*\(([^()]*?)(\d{4})[^()]*\)\s*$/);
+  if (paren) {
+    t = paren[1].trim();
+    year = Number.parseInt(paren[3], 10);
+  }
+
+  if (!t) return undefined;
+  return { title: t, ...(year !== undefined ? { year } : {}), ...(genres ? { genres } : {}) };
+}
+
 /** Trim Amazon-style titles: "Product : Amazon.com: …" → "Product". */
 export function normalizeAmazonTitle(title: string): string {
   let t = title.trim();

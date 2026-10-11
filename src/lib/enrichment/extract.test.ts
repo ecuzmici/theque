@@ -41,6 +41,18 @@ describe("extractFromHtml", () => {
     expect(r.title).toContain("Inception");
   });
 
+  it("cleans an IMDb og:title that carries the year, rating and genres", () => {
+    const html = loadFixture("imdb-og-title-rating.html");
+    const r = extractFromHtml(html, {
+      finalUrl: "https://www.imdb.com/title/tt0098936/",
+      statusCode: 200,
+    });
+    expect(r.raw_metadata.parser).toBe("imdb");
+    expect(r.title).toBe("Twin Peaks");
+    expect(r.structured.year).toBe(1990);
+    expect(r.structured.genres).toEqual(["Crime", "Drama", "Mystery"]);
+  });
+
   it("parses Recipe structured fields from @graph JSON-LD", () => {
     const html = loadFixture("recipe-graph.html");
     const r = extractFromHtml(html, {

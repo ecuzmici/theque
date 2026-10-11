@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   decodeHtmlEntities,
   isErrorPageTitle,
+  isGeneratedShareCard,
   isJunkDescription,
   isTruncatedTitle,
   isWeakTitle,
+  parseImdbTitle,
 } from "@/lib/enrichment/meta-utils";
 
 describe("isJunkDescription", () => {
@@ -99,5 +101,50 @@ describe("decodeHtmlEntities", () => {
 
   it("keeps a bare ampersand", () => {
     expect(decodeHtmlEntities("Salt & Pepper")).toBe("Salt & Pepper");
+  });
+});
+
+describe("parseImdbTitle", () => {
+  it("splits a TV series title with a year range, rating and genres", () => {
+    expect(parseImdbTitle("Twin Peaks (TV Series 1990–1991) ⭐ 8.7 | Crime, Drama, Mystery")).toEqual({
+      title: "Twin Peaks",
+      year: 1990,
+      genres: ["Crime", "Drama", "Mystery"],
+    });
+  });
+
+  it("splits a movie title with a rating and genres", () => {
+    expect(parseImdbTitle("Patriots Day (2016) ⭐ 7.3 | Action, Crime, Drama")).toEqual({
+      title: "Patriots Day",
+      year: 2016,
+      genres: ["Action", "Crime", "Drama"],
+    });
+  });
+
+  it("handles the older formats", () => {
+    expect(parseImdbTitle("Inception (2010)")).toEqual({ title: "Inception", year: 2010 });
+    expect(parseImdbTitle("Tremors (1990) - IMDb")).toEqual({ title: "Tremors", year: 1990 });
+    expect(parseImdbTitle("Alien | IMDb")).toEqual({ title: "Alien" });
+  });
+
+  it("keeps parentheses that hold no year", () => {
+    expect(parseImdbTitle("M*A*S*H (Pilot)")).toEqual({ title: "M*A*S*H (Pilot)" });
+  });
+
+  it("returns undefined for an empty title", () => {
+    expect(parseImdbTitle("")).toBeUndefined();
+    expect(parseImdbTitle(undefined)).toBeUndefined();
+  });
+});
+
+describe("isGeneratedShareCard", () => {
+  it("flags the hardcover.app rendered share card", () => {
+    expect(isGeneratedShareCard("https://hardcover.app/books/the-three-body-problem/ogimage.png")).toBe(true);
+  });
+
+  it("keeps real covers and other hosts", () => {
+    expect(isGeneratedShareCard("https://assets.hardcover.app/edition/30854539/cover.jpg")).toBe(false);
+    expect(isGeneratedShareCard("https://example.com/ogimage.png")).toBe(false);
+    expect(isGeneratedShareCard(null)).toBe(false);
   });
 });

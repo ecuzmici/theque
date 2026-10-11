@@ -247,3 +247,85 @@ describe("enrichItem LLM daily cap", () => {
   });
 });
 
+
+describe("enrichItem resolvers and byline", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    delete process.env.LLM_ENRICHMENT_ENABLED;
+    mocks.enrichOpenLibraryWork.mockResolvedValue(null);
+    mocks.fetchViaJinaReader.mockResolvedValue(null);
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.cacheItemImage.mockResolvedValue(null);
+    mocks.extractDominantColorForUrl.mockResolvedValue(null);
+  });
+
+  it("takes the cover and title from TMDB when the page is blocked", async () => {
+    const url = "https://www.themoviedb.org/movie/886083-deadstream";
+    mocks.fetchPage.mockResolvedValue({ html: "<html><head></head><body></body></html>", finalUrl: url, statusCode: 403 });
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "tmdb",
+      title: "Deadstream",
+      image_url: "https://image.tmdb.org/t/p/w500/deadstream.jpg",
+      structured: { year: 2022, directors: ["Joseph Winter", "Vanessa Winter"] },
+    });
+    const updates = stubAdmin(makeRow({ canonical_url: url, title: null }));
+
+    await enrichItem("item-1");
+
+    expect(mocks.resolveCategoryEvidence).toHaveBeenCalledWith(
+      "movies_and_tv",
+      expect.objectContaining({ canonicalUrl: url }),
+    );
+    expect(finalUpdate(updates)).toMatchObject({
+      title: "Deadstream",
+      image_url: "https://image.tmdb.org/t/p/w500/deadstream.jpg",
+      subtitle: "Joseph Winter · 2022",
+    });
+  });
+
+  it("replaces a hardcover.app share card with the resolver cover", async () => {
+    const url = "https://hardcover.app/books/the-three-body-problem";
+    mocks.fetchPage.mockResolvedValue({
+      html: `<html><head><title>The Three-Body Problem by Liu Cixin | Hardcover</title>
+        <meta property="og:title" content="The Three-Body Problem" />
+        <meta property="og:image" content="https://hardcover.app/books/the-three-body-problem/ogimage.png" />
+        </head><body></body></html>`,
+      finalUrl: url,
+      statusCode: 200,
+    });
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "hardcover",
+      image_url: "https://assets.hardcover.app/edition/1/cover.jpg",
+      structured: { authors: ["Liu Cixin"] },
+    });
+    const updates = stubAdmin(
+      makeRow({
+        canonical_url: url,
+        image_url: "https://hardcover.app/books/the-three-body-problem/ogimage.png",
+      }),
+    );
+
+    await enrichItem("item-1");
+
+    expect(finalUpdate(updates)?.image_url).toBe("https://assets.hardcover.app/edition/1/cover.jpg");
+  });
+
+  it("runs the resolvers when the fields are full but the cover is missing", async () => {
+    const url = "https://www.imdb.com/title/tt0111161/";
+    mocks.fetchPage.mockResolvedValue({
+      html: `<html><head><script type="application/ld+json">${JSON.stringify({
+        "@type": "Movie",
+        name: "The Shawshank Redemption",
+        datePublished: "1994-09-23",
+        director: [{ "@type": "Person", name: "Frank Darabont" }],
+      })}</script></head><body></body></html>`,
+      finalUrl: url,
+      statusCode: 200,
+    });
+    stubAdmin(makeRow({ canonical_url: url }));
+
+    await enrichItem("item-1");
+
+    expect(mocks.resolveCategoryEvidence).toHaveBeenCalled();
+  });
+});

@@ -12,6 +12,33 @@ import { resolveMovie } from "@/lib/enrichment/resolvers/tmdb";
 afterEach(() => resolveMovieWithTmdb.mockReset());
 
 describe("resolveMovie", () => {
+  it("resolves a themoviedb.org URL by its id when the page gave no title", async () => {
+    resolveMovieWithTmdb.mockResolvedValue({
+      canonical_url: "https://www.themoviedb.org/movie/886083",
+      title: "Deadstream",
+      cover_url: "https://image.tmdb.org/t/p/w500/deadstream.jpg",
+      confirmed_year: 2022,
+      verified_author: null,
+    });
+
+    const patch = await resolveMovie({
+      canonicalUrl: "https://www.themoviedb.org/movie/886083-deadstream",
+      title: null,
+      structured: {},
+    });
+
+    expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
+      { title: "", creator: "", year: null },
+      { includeCredits: true, imdbId: null, tmdbRef: { mediaType: "movie", id: "886083" } },
+    );
+    expect(patch).toMatchObject({
+      source: "tmdb",
+      title: "Deadstream",
+      image_url: "https://image.tmdb.org/t/p/w500/deadstream.jpg",
+      structured: { year: 2022, media_type: "movie" },
+    });
+  });
+
   it("returns null when title is missing", async () => {
     expect(await resolveMovie({ canonicalUrl: "https://x", title: null, structured: {} })).toBeNull();
     expect(resolveMovieWithTmdb).not.toHaveBeenCalled();
@@ -38,7 +65,7 @@ describe("resolveMovie", () => {
     });
     expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
       { title: "The Dark Knight", creator: "", year: 2008 },
-      { includeCredits: true, imdbId: "tt0468569" },
+      { includeCredits: true, imdbId: "tt0468569", tmdbRef: null },
     );
   });
 
@@ -51,7 +78,7 @@ describe("resolveMovie", () => {
     });
     expect(resolveMovieWithTmdb).toHaveBeenCalledWith(
       { title: "Inception", creator: "", year: 2010 },
-      { includeCredits: true, imdbId: null },
+      { includeCredits: true, imdbId: null, tmdbRef: null },
     );
   });
 

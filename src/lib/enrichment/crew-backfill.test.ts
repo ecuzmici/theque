@@ -28,6 +28,26 @@ describe("computeCrewBackfill", () => {
     expect(r.log.directors).toEqual({ prior: ["Ed Harris"], next: ["James Cameron"] });
   });
 
+  it("rebuilds the subtitle when the director changes", () => {
+    const r = computeCrewBackfill({
+      structured: { directors: ["Ed Harris"], year: 1989 },
+      tmdb: resolved({ directors: ["James Cameron"] }),
+      subtitle: "Ed Harris · 1989",
+    });
+    expect(r.nextSubtitle).toBe("James Cameron · 1989");
+    expect(r.log.subtitle).toEqual({ prior: "Ed Harris · 1989", next: "James Cameron · 1989" });
+  });
+
+  it("keeps the subtitle when the director is unchanged", () => {
+    const r = computeCrewBackfill({
+      structured: { directors: ["James Cameron"], year: 1989 },
+      tmdb: resolved({ directors: ["James Cameron"], runtime_minutes: 140 }),
+      subtitle: "James Cameron - 1989",
+    });
+    expect(r.nextSubtitle).toBe("James Cameron - 1989");
+    expect(r.log.subtitle).toBeUndefined();
+  });
+
   it("overwrites runtime, genres, and rating on a hit", () => {
     const r = computeCrewBackfill({
       structured: { directors: ["James Cameron"] },

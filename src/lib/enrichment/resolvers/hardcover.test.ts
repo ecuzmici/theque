@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { resolveHardcover } from "@/lib/enrichment/resolvers/hardcover";
+import { resolveHardcover, titleFromHardcoverSlug } from "@/lib/enrichment/resolvers/hardcover";
 
 const fetchMock = vi.fn();
 
@@ -50,6 +50,30 @@ describe("resolveHardcover", () => {
   it("returns null without a title", async () => {
     expect(await resolveHardcover({ canonicalUrl: "https://x", title: null, structured: {} })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("searches by the URL slug when the page gave no title", async () => {
+    fetchMock.mockResolvedValue(
+      searchResponse([{ ...piranesi, title: "A Fire Upon the Deep", author_names: ["Vernor Vinge"] }]),
+    );
+
+    const patch = await resolveHardcover({
+      canonicalUrl: "https://hardcover.app/books/a-fire-upon-the-deep",
+      title: null,
+      structured: {},
+    });
+
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body)) as {
+      variables: { q: string };
+    };
+    expect(body.variables.q).toBe("a fire upon the deep");
+    expect(patch?.title).toBe("A Fire Upon the Deep");
+    expect(patch?.image_url).toBe("https://assets.hardcover.app/cover.jpg");
+  });
+
+  it("turns a slug into search words and keeps numbers", () => {
+    expect(titleFromHardcoverSlug("catch-22")).toBe("catch 22");
+    expect(titleFromHardcoverSlug("anomalies")).toBe("anomalies");
   });
 
   it("returns null when no token is configured", async () => {
