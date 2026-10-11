@@ -1,6 +1,9 @@
+import { after } from "next/server";
+
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import type { Json } from "@/lib/database.types";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { cacheItemImage } from "@/lib/enrichment/image-cache";
 import { applyItemRewriteProposal } from "@/lib/enrichment/llm/apply-item-rewrite-proposal";
 import { validateLlmItemRewriteProposal } from "@/lib/enrichment/llm/category-schemas";
 import { ENRICHMENT_LLM_PROVIDER } from "@/lib/enrichment/llm/llm-config";
@@ -9,6 +12,7 @@ import type {
   AiEnrichmentApplyResponseBody,
 } from "@/lib/types/api";
 import { rateLimit } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -91,6 +95,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (updateError) {
     console.error("[api/items/:id/ai-enrichment-apply] update_failed:", updateError.message);
     return Response.json({ code: "update_failed" }, { status: 500 });
+  }
+
+  // The page shows the cached cover first. Cache the new image after the
+  // response, so the visible cover follows the accepted image URL.
+  const newImageUrl = merged.image_url;
+  if (newImageUrl && newImageUrl !== row.image_url) {
+    after(async () => {
+      const admin = createAdminClient();
+      const cached = await cacheItemImage(admin, user.id, id, newImageUrl);
+      if (!cached.storagePath) return;
+      await admin
+        .from("items")
+        .update({
+          image_storage_path: cached.storagePath,
+          dominant_color: cached.dominantColor,
+          dominant_hue: cached.dominantHue,
+        })
+        .eq("id", id)
+        .eq("user_id", user.id);
+    });
   }
 
   const { data: updated } = await supabase.from("items").select("*").eq("id", id).single();

@@ -134,3 +134,57 @@ describe("enrichItem status rule", () => {
     expect(finalUpdate(updates)?.status).toBe("inbox");
   });
 });
+
+describe("enrichItem cover cache", () => {
+  const PAGE_IMAGE = "https://img.example/new.jpg";
+
+  beforeEach(() => {
+    vi.resetAllMocks();
+    delete process.env.LLM_ENRICHMENT_ENABLED;
+    mocks.enrichOpenLibraryWork.mockResolvedValue(null);
+    mocks.fetchViaJinaReader.mockResolvedValue(null);
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.cacheItemImage.mockResolvedValue({
+      storagePath: "user-1/item-1/cover.jpg",
+      dominantColor: "#112233",
+      dominantHue: 210,
+    });
+    mocks.extractDominantColorForUrl.mockResolvedValue({
+      storagePath: null,
+      dominantColor: "#445566",
+      dominantHue: 200,
+    });
+    mocks.fetchPage.mockImplementation(async (url: string) => ({
+      html: `<html><head><title>Page</title><meta property="og:image" content="${PAGE_IMAGE}"></head><body></body></html>`,
+      finalUrl: url,
+      statusCode: 200,
+    }));
+  });
+
+  it("caches the cover again when the image URL changes", async () => {
+    const updates = stubAdmin(
+      makeRow({
+        image_url: "https://img.example/old.jpg",
+        image_storage_path: "user-1/item-1/cover.png",
+        dominant_color: "#000000",
+      }),
+    );
+    await enrichItem("item-1");
+    expect(mocks.cacheItemImage).toHaveBeenCalledWith(expect.anything(), "user-1", "item-1", PAGE_IMAGE);
+    expect(finalUpdate(updates)).toMatchObject({
+      image_storage_path: "user-1/item-1/cover.jpg",
+      dominant_color: "#112233",
+    });
+  });
+
+  it("only extracts the color when the URL is the same and the color is missing", async () => {
+    const updates = stubAdmin(
+      makeRow({ image_url: PAGE_IMAGE, image_storage_path: "user-1/item-1/cover.jpg" }),
+    );
+    await enrichItem("item-1");
+    expect(mocks.cacheItemImage).not.toHaveBeenCalled();
+    expect(mocks.extractDominantColorForUrl).toHaveBeenCalledWith(PAGE_IMAGE);
+    expect(finalUpdate(updates)?.dominant_color).toBe("#445566");
+  });
+});
+

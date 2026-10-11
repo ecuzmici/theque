@@ -195,6 +195,19 @@ async function fetchValidatedImageBuffer(
   return { buffer, contentType: contentType.split(";")[0].trim() };
 }
 
+async function removeOtherCovers(admin: SupabaseClient, folder: string, keep: string) {
+  try {
+    const { data } = await admin.storage.from("item-images").list(folder, { limit: 100, offset: 0 });
+    const stale = (data ?? [])
+      .map((entry) => entry.name)
+      .filter((name) => name.startsWith("cover.") && name !== keep)
+      .map((name) => `${folder}${name}`);
+    if (stale.length > 0) await admin.storage.from("item-images").remove(stale);
+  } catch {
+    // Best effort: an orphan costs storage only. scripts/purge-orphan-covers.ts removes it.
+  }
+}
+
 export async function cacheItemImage(
   admin: SupabaseClient,
   userId: string,
@@ -207,11 +220,16 @@ export async function cacheItemImage(
     const { buffer, contentType } = fetched;
 
     const ext = extFromContentType(contentType);
-    const storagePath = `${userId}/${itemId}/cover.${ext}`;
+    const folder = `${userId}/${itemId}/`;
+    const storagePath = `${folder}cover.${ext}`;
 
     const { error } = await admin.storage
       .from("item-images")
       .upload(storagePath, buffer, { contentType, upsert: true });
+
+    // A new cover with another extension leaves the old object behind. No row
+    // points at it, so remove it now.
+    if (!error) await removeOtherCovers(admin, folder, `cover.${ext}`);
 
     const dominant = await extractDominantColor(buffer);
     return {

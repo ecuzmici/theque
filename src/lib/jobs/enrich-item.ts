@@ -304,9 +304,12 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       mergedCategorySource = merged.category_source;
     }
 
+    // The page shows the cached copy first (`getDisplayImageUrl`), so a new
+    // image URL must replace the cached copy, or the old cover stays visible.
+    const imageUrlChanged = !!mergedImageUrl && mergedImageUrl !== row.image_url;
     const cachedImage = !mergedImageUrl
       ? null
-      : !row.image_storage_path
+      : !row.image_storage_path || imageUrlChanged
         ? await cacheItemImage(admin, row.user_id, itemId, mergedImageUrl)
         : !row.dominant_color
           ? await extractDominantColorForUrl(mergedImageUrl)

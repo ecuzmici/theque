@@ -171,6 +171,26 @@ describe("cacheItemImage", () => {
   });
 });
 
+describe("cacheItemImage stale covers", () => {
+  it("removes a cover with another extension after the upload", async () => {
+    fetchMock.mockResolvedValue(fakeImageResponse());
+    sharpMocks.toBuffer.mockResolvedValue(rawPixels([{ rgb: [200, 30, 30], count: 10 }]));
+    const upload = vi.fn().mockResolvedValue({ error: null });
+    const list = vi.fn().mockResolvedValue({
+      data: [{ name: "cover.png" }, { name: "cover.jpg" }, { name: "other.txt" }],
+      error: null,
+    });
+    const remove = vi.fn().mockResolvedValue({ error: null });
+    const admin = { storage: { from: () => ({ upload, list, remove }) } } as never;
+
+    const result = await cacheItemImage(admin, "user-1", "item-1", "https://covers.example/a.jpg");
+
+    expect(result.storagePath).toBe("user-1/item-1/cover.jpg");
+    expect(list).toHaveBeenCalledWith("user-1/item-1/", { limit: 100, offset: 0 });
+    expect(remove).toHaveBeenCalledWith(["user-1/item-1/cover.png"]);
+  });
+});
+
 describe("extractDominantColorForUrl", () => {
   it("re-extracts a vivid color without touching storage", async () => {
     fetchMock.mockResolvedValue(fakeImageResponse());
