@@ -180,7 +180,7 @@ export default async function Home() {
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
             Saves sort themselves onto image-forward shelves. Mark what you finish with a quick
-            verdict, and thèque starts turning up new things you'll probably love.
+            verdict, and thèque starts turning up new things you&apos;ll probably love.
           </p>
           <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-2">
             {SHELVES.map((shelf) => (

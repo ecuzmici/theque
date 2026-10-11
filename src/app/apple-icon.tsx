@@ -1,7 +1,5 @@
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
@@ -24,7 +22,6 @@ export default function AppleIcon() {
           background: "#faf8f5",
         }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element -- OG route embeds rasterized SVG via data URL */}
         <img src={src} width={180} height={180} alt="" />
       </div>
     ),

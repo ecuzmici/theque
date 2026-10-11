@@ -15,6 +15,13 @@ const eslintConfig = defineConfig([
     ".agent/**",
     ".cursor/**",
     ".worktrees/**",
+    // Agent worktrees and session files (gigabytes of copies of the repo).
+    ".claude/**",
+    // Extension build output (`npm run build:extension` compiles the .ts sources).
+    "extension/popup.js",
+    "extension/background.js",
+    "extension/category-hints.js",
+    "extension/page-snapshot.js",
   ]),
 ]);
 

@@ -41,6 +41,7 @@ export default function SearchPage() {
   const [rows, setRows] = useState<LibraryItemRow[]>([]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- local copy of the results that optimistic patches can change
     setRows(items.map(libraryItemFromSummary));
   }, [items]);
 

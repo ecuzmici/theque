@@ -180,14 +180,15 @@ async function run(model: string, prompt: string, providerOptions?: Record<strin
     abortSignal: AbortSignal.timeout(60_000),
   });
   const ms = Date.now() - start;
-  let parsed: any;
+  let parsed: Record<string, unknown>;
   try { parsed = JSON.parse(stripCodeFence(res.text)); } catch { parsed = { _raw: res.text }; }
   return { ms, parsed };
 }
 
 /** One-line quality summary of a parsed enrichment payload. */
-function summarize(p: any): string {
-  if (!p || typeof p !== "object") return "no object";
+function summarize(value: unknown): string {
+  if (!value || typeof value !== "object") return "no object";
+  const p = value as Record<string, unknown>;
   const keys = Object.keys(p).filter((k) => k !== "confidence" && k !== "sources");
   if (keys.length === 0) return "EMPTY (confidence+sources only)";
   const desc = typeof p.description === "string" ? `${p.description.length}c` : "—";

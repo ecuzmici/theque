@@ -94,12 +94,14 @@ export function LibraryPageClient({
 
   // Leaving the inbox shelf always exits triage.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- leaving the inbox ends triage
     if (activeShelf !== "inbox") setTriageMode(false);
   }, [activeShelf]);
   const prefsLoaded = useRef(false);
 
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is read after mount so hydration stays clean
     setWall(window.localStorage.getItem("theque_wall_mode") === "1");
     setHideDone(window.localStorage.getItem("theque_hide_done") === "1");
     prefsLoaded.current = true;
@@ -196,6 +198,9 @@ export function LibraryPageClient({
   const cachedHasMore = cachedShelf?.hasMore ?? false;
   const isLoadingShelf = cachedShelf === undefined && loadError == null;
   const activeLabel = SHELVES.find((s) => s.id === activeShelf)?.label ?? "All";
+  // The React Compiler cannot keep this memoization. LibraryItemsSection needs a stable
+  // setter per shelf, so the manual useCallback stays.
+  /* eslint-disable react-hooks/preserve-manual-memoization */
   const updateActiveShelfItems = useCallback(
     (items: LibraryItemRow[]) => {
       setItemsCache((prev) => {
@@ -205,6 +210,7 @@ export function LibraryPageClient({
     },
     [activeShelf],
   );
+  /* eslint-enable react-hooks/preserve-manual-memoization */
 
   return (
     <div>

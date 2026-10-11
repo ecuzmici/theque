@@ -129,6 +129,7 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - `note` and `verdict` are ciphertext in the database and in Realtime payloads (ADR 0013). Decrypt with `decryptItemFields` at every boundary, and refetch `GET /api/items/:id` on a Realtime event instead of merging the payload.
 - Free category resolvers live in `src/lib/enrichment/resolvers/` (TMDB, Google Books, iTunes, YouTube oEmbed, GitHub); they run after classify when important fields are sparse and rank above LLM output. Add a new source by adding a `CategoryResolver` and registering it in `resolvers/index.ts`.
 - Blocked/sparse, snapshot-less pages can fall back to Jina Reader (`JINA_READER_ENABLED`) and Gemini Google Search grounding (`LLM_GROUNDING_ENABLED`); both opt-in, default off, fail-open. Grounding is skipped when the URL already contains a canonical entity id (`src/lib/enrichment/url-identity.ts`).
+- `npm run lint` ignores `.claude/**` (agent worktrees) and the compiled extension `.js` files. CI (`.github/workflows/ci.yml`) runs Vitest, `tsc` for the app and for `extension/tsconfig.test.json`, lint, and the extension build on each push. Vercel runs `next build`.
 - Do not commit secrets, `.env.local`, or `.vercel/`.
 
 ## Documentation index

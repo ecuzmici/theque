@@ -140,10 +140,10 @@ async function runScenario(s: Scenario): Promise<Row> {
       abortSignal: AbortSignal.timeout(Number(process.env.AB_TIMEOUT_MS ?? "90000")),
     });
     const ms = Date.now() - start;
-    const u = res.usage ?? ({} as Record<string, number>);
-    const inTok = (u as any).inputTokens ?? 0;
-    const outTok = (u as any).outputTokens ?? 0;
-    const reasonTok = (u as any).reasoningTokens ?? 0;
+    const u = (res.usage ?? {}) as Partial<Record<"inputTokens" | "outputTokens" | "reasoningTokens", number>>;
+    const inTok = u.inputTokens ?? 0;
+    const outTok = u.outputTokens ?? 0;
+    const reasonTok = u.reasoningTokens ?? 0;
     const price = PRICE[s.model] ?? { in: 0, out: 0 };
     const costUsd = (inTok / 1e6) * price.in + (outTok / 1e6) * price.out;
 

@@ -3,7 +3,7 @@
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { Hourglass } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { InboxActions } from "@/components/inbox/InboxActions";
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import {
@@ -67,9 +67,11 @@ export function ItemCard({
   const processing =
     item.processing_status === "pending" || item.processing_status === "processing";
   const imgSrc = getDisplayImageUrl(item.image_storage_path, item.image_url);
+  // Read the clock once per mount. The badge works in days, so a stale value is fine.
+  const [now] = useState(() => Date.now());
   const dusty =
     item.status === "want" &&
-    Date.now() - new Date(item.created_at).getTime() > FORGOTTEN_AFTER_DAYS * 86_400_000;
+    now - new Date(item.created_at).getTime() > FORGOTTEN_AFTER_DAYS * 86_400_000;
 
   const handleOptimistic = useCallback(
     (patch: ItemPatch, opts?: ItemPatchOptions) => onItemPatch?.(item.id, patch, opts),

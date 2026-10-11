@@ -60,6 +60,7 @@ function AddForm() {
   });
   useEffect(() => {
     const sharedTitle = searchParams.get("title") ?? "";
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- copies the share-target query into the form when the URL changes
     if (sharedUrl) setUrl(sharedUrl);
     // Skip a title that only carries the link itself.
     const titleIsLink = sharedUrl !== null && sharedTitle.includes(sharedUrl);
@@ -72,6 +73,7 @@ function AddForm() {
   useEffect(() => {
     const trimmed = url.trim();
     if (!/^https?:\/\//i.test(trimmed)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears the duplicate hint when the input stops being a URL
       setExisting(null);
       return;
     }

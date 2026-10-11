@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npx vitest run
+      - name: Type check (app)
+        run: npx tsc --noEmit
+      - name: Type check (extension tests)
+        run: npx tsc -p extension/tsconfig.test.json
+      - name: Lint
+        run: npm run lint
+      # Vercel runs `next build` with the secrets. CI has no secrets, so it
+      # builds the extension only.
+      - name: Build extension
+        run: npm run build:extension

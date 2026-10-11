@@ -79,6 +79,7 @@ export function ItemMarkDoneDialog({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the form each time the dialog opens
       setRating(initialRating);
       setVerdict(initialVerdict ?? "");
       setError(false);
