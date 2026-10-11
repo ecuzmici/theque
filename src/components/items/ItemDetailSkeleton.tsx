@@ -1,33 +1,35 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Loading fallback for the item detail route while its data loads. */
+/**
+ * Loading fallback for the item detail route. It mirrors the ItemDetail layout:
+ * a centered cover, the title block under it, the rating card, and the actions.
+ */
 export function ItemDetailSkeleton() {
   return (
     <article aria-busy="true" aria-live="polite" className="pb-12">
       <Skeleton className="h-11 w-24 rounded-md lg:h-5" />
 
-      <Skeleton className="mt-4 h-[min(40vh,28rem)] w-full rounded-xl" />
+      <div className="mt-4 flex flex-col items-center">
+        <Skeleton className="aspect-[2/3] h-72 rounded-lg sm:h-80 lg:h-96" />
 
-      <header className="mt-6">
-        <div className="flex flex-wrap gap-2">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={i} className="h-6 w-20 rounded-full" />
-          ))}
+        <header className="mt-6 flex w-full max-w-2xl flex-col items-center">
+          <Skeleton className="h-3 w-20 rounded-sm" />
+          <Skeleton className="mt-3 h-9 w-full max-w-md rounded-lg lg:h-10" />
+          <Skeleton className="mt-3 h-4 w-full max-w-xs rounded-md" />
+        </header>
+
+        <Skeleton className="mt-6 h-28 w-full max-w-md rounded-2xl sm:h-24" />
+
+        <div className="mt-4 flex justify-center gap-2">
+          <Skeleton className="h-11 w-36 rounded-full lg:h-8" />
+          <Skeleton className="size-11 rounded-full lg:size-8" />
         </div>
+      </div>
 
-        <Skeleton className="mt-4 h-9 w-full max-w-2xl rounded-lg" />
-        <Skeleton className="mt-3 h-5 w-full max-w-md rounded-md" />
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={i} className="h-11 w-32 rounded-lg lg:h-8" />
-          ))}
-        </div>
-      </header>
-
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">
+      <div className="mx-auto mt-8 max-w-2xl space-y-2">
+        <Skeleton className="h-3 w-16 rounded-sm" />
         {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} className="h-20 rounded-xl" />
+          <Skeleton key={i} className="h-4 w-full rounded-md" />
         ))}
       </div>
     </article>
