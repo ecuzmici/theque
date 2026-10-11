@@ -2,10 +2,10 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 
-import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import { cardAspectRatio } from "@/lib/item-display";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+import type { ItemPatchHandler } from "@/lib/item-patch";
 
 import { ItemCard } from "./ItemCard";
 
@@ -17,11 +17,7 @@ type ItemGridProps = {
   wall?: boolean;
   /** Item highlighted by keyboard navigation. */
   selectedId?: string | null;
-  onItemPatch?: (
-    itemId: string,
-    patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-    opts?: { remove?: boolean },
-  ) => void;
+  onItemPatch?: ItemPatchHandler;
   onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 

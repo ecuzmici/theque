@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { SAVE_ERROR_EVENT } from "@/lib/save-error";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 import { ItemCardActions } from "./ItemCardActions";
@@ -71,4 +72,37 @@ describe("ItemCardActions", () => {
     expect(document.body.textContent).toContain("Change status");
     expect(document.body.textContent).toContain("Delete item");
   });
+
+  it("undoes the optimistic status change and reports the error when the save fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
+    const undo = vi.fn();
+    const onItemPatch = vi.fn(() => undo);
+    const onSaveError = vi.fn();
+    window.addEventListener(SAVE_ERROR_EVENT, onSaveError);
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<ItemCardActions item={makeItem()} shelfId="all" onItemPatch={onItemPatch} />);
+    });
+    await act(async () => {
+      document.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const dismiss = [...document.querySelectorAll('[role="menuitem"]')].find(
+      (el) => el.textContent === "Dismissed",
+    );
+    expect(dismiss).toBeDefined();
+    await act(async () => {
+      dismiss?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 6; i++) await Promise.resolve();
+    });
+
+    expect(onItemPatch).toHaveBeenCalledWith("item-1", { status: "dismissed" }, expect.anything());
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(onSaveError).toHaveBeenCalledTimes(1);
+    window.removeEventListener(SAVE_ERROR_EVENT, onSaveError);
+    vi.unstubAllGlobals();
+  });
 });
+

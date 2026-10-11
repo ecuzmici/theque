@@ -22,22 +22,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ItemCategory, ItemStatus } from "@/lib/database.types";
+import type { ItemStatus } from "@/lib/database.types";
 import { formatStatus } from "@/lib/item-labels";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
+import type { ItemPatchHandler } from "@/lib/item-patch";
+import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 
 const STATUS_ACTIONS: ItemStatus[] = ["want", "dismissed"];
 
 type ItemCardActionsProps = {
   item: LibraryItemRow;
   shelfId: ShelfId;
-  onItemPatch?: (
-    itemId: string,
-    patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-    opts?: { remove?: boolean },
-  ) => void;
+  onItemPatch?: ItemPatchHandler;
 };
 
 function safeHttpUrl(url: string | null): string | null {
@@ -63,22 +61,22 @@ export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsP
   const applyStatus = useCallback(
     async (status: ItemStatus) => {
       const patch = { status };
-      onItemPatch?.(item.id, patch, {
+      const undo = onItemPatch?.(item.id, patch, {
         remove: !itemMatchesShelf({ ...item, ...patch }, shelfId),
       });
       setBusy(true);
       try {
-        const res = await fetch(`/api/items/${item.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        });
-        if (!res.ok) router.refresh();
+        // The list lives in client state, so a refresh does not undo the
+        // optimistic change. Undo it here and tell the user.
+        if (!(await patchItemRequest(item.id, patch))) {
+          undo?.();
+          reportSaveError();
+        }
       } finally {
         setBusy(false);
       }
     },
-    [item, onItemPatch, router, shelfId],
+    [item, onItemPatch, shelfId],
   );
 
   const deleteItem = useCallback(async () => {

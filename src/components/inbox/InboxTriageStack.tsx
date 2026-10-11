@@ -1,7 +1,6 @@
 "use client";
 
 import { Check, FolderInput, RotateCcw, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import {
   categoryPlaceholderLabel,
 } from "@/lib/category-placeholder";
 import { getDisplayImageUrl } from "@/lib/item-display";
+import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 import { CATEGORY_LABELS, formatCategory } from "@/lib/item-labels";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -24,6 +24,8 @@ import { cn } from "@/lib/utils";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ItemCategory[];
 const COMMIT_DISTANCE = 90;
+/** Length of the fling animation before the next card shows. */
+const FLING_MS = 180;
 
 type PatchPayload = { status?: ItemStatus; category?: ItemCategory | null };
 
@@ -50,7 +52,6 @@ export function InboxTriageStack({
   ) => void;
   onExit: () => void;
 }) {
-  const router = useRouter();
   const [queue, setQueue] = useState<LibraryItemRow[]>(() =>
     items.filter((i) => i.status === "inbox"),
   );
@@ -63,13 +64,16 @@ export function InboxTriageStack({
   const current = queue[0] ?? null;
   const next = queue[1] ?? null;
 
-  async function patchItem(itemId: string, body: PatchPayload) {
-    const res = await fetch(`/api/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) router.refresh();
+  // Undo a swipe that the server did not save: the card returns to the
+  // front of the queue. The delay is longer than the fling timer in
+  // `commit`, so the timer cannot remove the returned card again.
+  function revertFailedCommit(item: LibraryItemRow) {
+    window.setTimeout(() => {
+      setHistory((h) => h.filter((a) => a.item.id !== item.id));
+      setQueue((q) => (q.some((i) => i.id === item.id) ? q : [item, ...q]));
+      onResolve(item.id, { status: item.status, category: item.category ?? null }, { restoreItem: item });
+    }, FLING_MS + 20);
+    reportSaveError();
   }
 
   function commit(direction: "left" | "right", patch: PatchPayload) {
@@ -78,16 +82,18 @@ export function InboxTriageStack({
     setLeaving(direction);
     // Let the fling animation play before swapping cards.
     window.setTimeout(() => {
-      setQueue((q) => q.slice(1));
+      setQueue((q) => q.filter((i) => i.id !== item.id));
       setHistory((h) => [
         ...h,
         { item, revert: { status: "inbox", category: item.category ?? null } },
       ]);
       setLeaving(null);
       setDrag({ dx: 0, active: false });
-    }, 180);
+    }, FLING_MS);
     onResolve(item.id, patch, { remove: true });
-    void patchItem(item.id, patch);
+    void patchItemRequest(item.id, patch).then((ok) => {
+      if (!ok) revertFailedCommit(item);
+    });
   }
 
   const keep = () => commit("right", { status: "want" });
@@ -100,7 +106,7 @@ export function InboxTriageStack({
     setHistory((h) => h.slice(0, -1));
     setQueue((q) => [last.item, ...q]);
     onResolve(last.item.id, last.revert, { restoreItem: last.item });
-    await patchItem(last.item.id, last.revert);
+    if (!(await patchItemRequest(last.item.id, last.revert))) reportSaveError();
   }
 
   function onPointerDown(e: React.PointerEvent) {

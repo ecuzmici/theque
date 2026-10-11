@@ -1,7 +1,6 @@
 "use client";
 
 import { MoreHorizontal } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CATEGORY_LABELS, formatCategory } from "@/lib/item-labels";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
+import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as ItemCategory[];
 
@@ -30,29 +30,27 @@ type PatchPayload = {
 type InboxActionsProps = {
   itemId: string;
   category: ItemCategory | null;
-  onOptimistic: (patch: PatchPayload, opts?: { remove?: boolean }) => void;
+  /** Applies the optimistic change. The returned function undoes it. */
+  onOptimistic: (patch: PatchPayload, opts?: { remove?: boolean }) => (() => void) | void;
 };
 
 export function InboxActions({ itemId, category, onOptimistic }: InboxActionsProps) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   const apply = useCallback(
     async (body: PatchPayload, opts?: { remove?: boolean }) => {
-      onOptimistic(body, opts);
+      const undo = onOptimistic(body, opts);
       setBusy(true);
       try {
-        const res = await fetch(`/api/items/${itemId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (!res.ok) router.refresh();
+        if (!(await patchItemRequest(itemId, body))) {
+          undo?.();
+          reportSaveError();
+        }
       } finally {
         setBusy(false);
       }
     },
-    [itemId, onOptimistic, router],
+    [itemId, onOptimistic],
   );
 
   return (

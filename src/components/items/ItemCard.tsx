@@ -21,7 +21,7 @@ import { formatStatus } from "@/lib/item-labels";
 import { FORGOTTEN_AFTER_DAYS } from "@/lib/shelves";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-import type { ItemCategory, ItemStatus } from "@/lib/database.types";
+import type { ItemPatch, ItemPatchHandler, ItemPatchOptions } from "@/lib/item-patch";
 import { cn } from "@/lib/utils";
 
 type ItemCardProps = {
@@ -33,11 +33,7 @@ type ItemCardProps = {
   wall?: boolean;
   /** Keyboard-navigation highlight from the library page. */
   selected?: boolean;
-  onItemPatch?: (
-    itemId: string,
-    patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-    opts?: { remove?: boolean },
-  ) => void;
+  onItemPatch?: ItemPatchHandler;
   onOpenMarkDone?: (item: LibraryItemRow) => void;
 };
 
@@ -76,12 +72,7 @@ export function ItemCard({
     Date.now() - new Date(item.created_at).getTime() > FORGOTTEN_AFTER_DAYS * 86_400_000;
 
   const handleOptimistic = useCallback(
-    (
-      patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-      opts?: { remove?: boolean },
-    ) => {
-      onItemPatch?.(item.id, patch, opts);
-    },
+    (patch: ItemPatch, opts?: ItemPatchOptions) => onItemPatch?.(item.id, patch, opts),
     [item.id, onItemPatch],
   );
 

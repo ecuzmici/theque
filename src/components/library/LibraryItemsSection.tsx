@@ -14,9 +14,10 @@ import { useItemRealtime } from "@/hooks/useItemRealtime";
 import type { LibrarySort } from "@/lib/library-items-for-shelf";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import { doneVerb } from "@/lib/item-labels";
+import { applyItemPatch, type ItemPatchHandler } from "@/lib/item-patch";
+import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
-import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
@@ -198,17 +199,8 @@ export function LibraryItemsSection({
       ?.scrollIntoView({ block: "nearest" });
   }, [selectedItem]);
 
-  const onItemPatch = useCallback(
-    (
-      itemId: string,
-      patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-      opts?: { remove?: boolean },
-    ) => {
-      setItems((prev) => {
-        if (opts?.remove) return prev.filter((i) => i.id !== itemId);
-        return prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
-      });
-    },
+  const onItemPatch = useCallback<ItemPatchHandler>(
+    (itemId, patch, opts) => applyItemPatch(setItems, itemId, patch, opts),
     [],
   );
 
@@ -230,18 +222,15 @@ export function LibraryItemsSection({
       setMarkDoneItem(item);
 
       if (item.status !== "done") {
-        const res = await fetch(`/api/items/${item.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "done" }),
-        });
-        if (!res.ok) {
+        if (!(await patchItemRequest(item.id, { status: "done" }))) {
+          // Put the row back as it was and close the dialog.
+          setItems((prev) => prev.map((i) => (i.id === item.id ? item : i)));
           setMarkDoneItem(null);
-          router.refresh();
+          reportSaveError();
         }
       }
     },
-    [router],
+    [],
   );
 
   const handleMarkDoneDialogChange = useCallback(
@@ -350,16 +339,10 @@ export function LibraryItemsSection({
           initialVerdict={markDoneItem.verdict}
           onSave={async (rating, verdict) => {
             const patch = { rating_personal: rating, verdict };
-            setItems((prev) =>
-              prev.map((i) => (i.id === markDoneItem.id ? { ...i, ...patch } : i)),
-            );
-            const res = await fetch(`/api/items/${markDoneItem.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(patch),
-            });
-            if (!res.ok) {
-              router.refresh();
+            const undo = applyItemPatch(setItems, markDoneItem.id, patch);
+            if (!(await patchItemRequest(markDoneItem.id, patch))) {
+              undo();
+              reportSaveError();
               return false;
             }
             return true;

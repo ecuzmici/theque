@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { extractSharedUrl } from "@/lib/url/shared-url";
 
 type ExistingItem = {
   id: string;
@@ -52,17 +53,20 @@ function AddForm() {
 
   // Pre-populate from PWA share target (?url=, ?text=, ?title=).
   // Android share sheet may put the URL in any of these fields.
+  const sharedUrl = extractSharedUrl({
+    url: searchParams.get("url"),
+    text: searchParams.get("text"),
+    title: searchParams.get("title"),
+  });
   useEffect(() => {
-    const sharedUrl =
-      searchParams.get("url") ?? searchParams.get("text") ?? "";
     const sharedTitle = searchParams.get("title") ?? "";
     if (sharedUrl) setUrl(sharedUrl);
-    if (sharedTitle) setNote((prev) => prev || sharedTitle);
-  }, [searchParams]);
+    // Skip a title that only carries the link itself.
+    const titleIsLink = sharedUrl !== null && sharedTitle.includes(sharedUrl);
+    if (sharedTitle && !titleIsLink) setNote((prev) => prev || sharedTitle);
+  }, [searchParams, sharedUrl]);
 
-  const isSharedCapture = Boolean(
-    searchParams.get("url") ?? searchParams.get("text"),
-  );
+  const isSharedCapture = sharedUrl !== null;
 
   // Duplicate lookup as you type/paste, debounced.
   useEffect(() => {

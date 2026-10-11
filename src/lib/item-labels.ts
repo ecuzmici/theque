@@ -105,3 +105,14 @@ export const DONE_VERBS: Record<ItemCategory, string> = {
 export function doneVerb(category: ItemCategory | null): string {
   return category ? (DONE_VERBS[category] ?? "done") : "done";
 }
+
+const ENRICHMENT_ERROR_MESSAGES: Record<string, string> = {
+  fetch_blocked_or_sparse: "This site blocked our preview. Edit the details or try Enrich with AI.",
+};
+
+const ENRICHMENT_ERROR_FALLBACK = "We could not fetch details for this page.";
+
+/** Maps a stored `enrichment_error` code to text. A raw error never reaches the page. */
+export function formatEnrichmentError(code: string): string {
+  return ENRICHMENT_ERROR_MESSAGES[code] ?? ENRICHMENT_ERROR_FALLBACK;
+}

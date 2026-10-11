@@ -19,6 +19,7 @@ import {
 import { useDebouncedItemSearch } from "@/hooks/useItems";
 import { CATEGORY_LABELS, STATUS_LABELS, formatCategory, formatStatus } from "@/lib/item-labels";
 import { libraryItemFromSummary } from "@/lib/types/library-item";
+import { applyItemPatch, type ItemPatchHandler } from "@/lib/item-patch";
 import type { ItemCategory, ItemStatus } from "@/lib/database.types";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
@@ -43,17 +44,8 @@ export default function SearchPage() {
     setRows(items.map(libraryItemFromSummary));
   }, [items]);
 
-  const onItemPatch = useCallback(
-    (
-      itemId: string,
-      patch: Partial<LibraryItemRow> & { status?: ItemStatus; category?: ItemCategory | null },
-      opts?: { remove?: boolean },
-    ) => {
-      setRows((prev) => {
-        if (opts?.remove) return prev.filter((i) => i.id !== itemId);
-        return prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i));
-      });
-    },
+  const onItemPatch = useCallback<ItemPatchHandler>(
+    (itemId, patch, opts) => applyItemPatch(setRows, itemId, patch, opts),
     [],
   );
   const activeFilters = (category !== ANY ? 1 : 0) + (status !== ANY ? 1 : 0);

@@ -32,7 +32,7 @@ import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
 import { getHeadlineFacts } from "@/lib/item-detail-display";
-import { doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
+import { doneVerb, formatCategory, formatEnrichmentError, formatStatus } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type {
   AiEnrichmentApplyRequestBody,
@@ -168,7 +168,7 @@ export function ItemDetail({
     try {
       const next = await createAiProposal(item.id);
       if (!next) {
-        setAiProposalError("Gemini could not prepare a rewrite proposal.");
+        setAiProposalError("Could not prepare an AI proposal. Try again later.");
         return;
       }
       setAiProposal(next.proposal);
@@ -371,7 +371,7 @@ export function ItemDetail({
 
           {item.enrichment_error ? (
             <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {item.enrichment_error}
+              {formatEnrichmentError(item.enrichment_error)}
             </p>
           ) : null}
 
