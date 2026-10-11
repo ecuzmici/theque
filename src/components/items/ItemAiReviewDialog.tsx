@@ -64,13 +64,13 @@ export function ItemAiReviewDialog({
         <DialogHeader>
           <DialogTitle>Enrich with AI</DialogTitle>
           <DialogDescription>
-            Review Gemini&apos;s proposed metadata rewrite before applying it to this item.
+            Review the AI&apos;s proposed details before you apply them to this item.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
           <p className="rounded-xl border border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
-            Gemini is preparing a rewrite proposal…
+            The AI is preparing a proposal…
           </p>
         ) : null}
 
@@ -84,7 +84,7 @@ export function ItemAiReviewDialog({
           <div className="space-y-3">
             {rows.length === 0 ? (
               <p className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                Gemini did not propose any changes for this item.
+                The AI did not propose any changes for this item.
               </p>
             ) : (
               rows.map((row) => (

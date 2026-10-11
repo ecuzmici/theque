@@ -76,10 +76,9 @@ export function DangerZone() {
             <DialogHeader>
               <DialogTitle>Delete your account?</DialogTitle>
               <DialogDescription>
-                This permanently deletes your saved items, your collections and their
-                share links, your capture tokens, your recommendation history, your
-                cached cover images, and the account itself. This happens immediately
-                and cannot be undone.
+                This permanently deletes your saved items, your book files, your
+                capture tokens, your recommendation history, your cached cover images,
+                and the account itself. This happens immediately and cannot be undone.
               </DialogDescription>
             </DialogHeader>
 

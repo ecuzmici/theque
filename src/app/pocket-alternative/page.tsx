@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 const COMPARISON = [
   { feature: "What a save looks like", pocket: "A text list entry", theque: "A visual card with cover art" },
   { feature: "Organization", pocket: "Tags you add by hand", theque: "Auto-sorted onto shelves" },
-  { feature: "Feed / recommendations", pocket: "Sponsored discover feed", theque: "None, it's just your library" },
+  { feature: "Feed / recommendations", pocket: "Sponsored discover feed", theque: "Suggestions from your own ratings, no sponsored feed" },
   { feature: "Ads", pocket: "Yes", theque: "Never" },
   { feature: "Privacy", pocket: "Browsing fed recommendations", theque: "Private by design" },
   { feature: "Capture", pocket: "Extension / share", theque: "One click, Chrome or phone" },
