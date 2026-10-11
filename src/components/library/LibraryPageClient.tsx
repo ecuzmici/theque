@@ -214,7 +214,7 @@ export function LibraryPageClient({
           shelf-aware "Made for you" banner render above the keyed grid on every
           shelf, so switching shelves never pops the top of the page. The band
           stays whole-library; the banner adapts its featured category to the
-          active shelf. See docs/adr/0013-persistent-shelf-aware-library-header.md. */}
+          active shelf. See docs/adr/0019-persistent-shelf-aware-library-header.md. */}
       <LibrarySpineBand />
       <RecommendUnlockBanner
         booksEnabled={recommendBooksEnabled}

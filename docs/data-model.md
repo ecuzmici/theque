@@ -7,8 +7,8 @@ Postgres on Supabase. All user tables in `public` with **RLS enabled**. Use `aut
 ```sql
 -- Seven live categories. `gifts`, `music`, `apps`, and `videos` are retired from
 -- the documented taxonomy (see docs/adr/0004-fewer-shelves-retired-categories.md).
--- Per ADR 0004, retired values may remain dormant in the Postgres enum (nothing
--- writes them once the classifier rules are gone); the live taxonomy is these seven.
+-- The production enum still holds the dormant values `music`, `videos`, and `apps`.
+-- Nothing writes them. The live taxonomy is these seven.
 create type item_category as enum (
   'books',
   'movies_and_tv',
@@ -22,7 +22,6 @@ create type item_category as enum (
 create type item_status as enum (
   'inbox',
   'want',
-  'planned',
   'done',
   'dismissed'
 );
@@ -74,7 +73,7 @@ Central entity. One row per saved URL per user (deduped by fingerprint).
 | `category_source` | `category_source` | |
 | `status` | `item_status` NOT NULL | Default `inbox` |
 | `source` | `item_source` NOT NULL | |
-| `note` | `text` | User note at capture or later |
+| `note` | `text` | User note. Encrypted at rest (see Field encryption) |
 | `processing_status` | `processing_status` NOT NULL | Default `pending` |
 | `enrichment_error` | `text` | Last error message |
 | `enrichment_attempts` | `smallint` NOT NULL | Default 0, max 3 |
@@ -84,6 +83,20 @@ Central entity. One row per saved URL per user (deduped by fingerprint).
 | `display` | `jsonb` NOT NULL | Default `{}` — UI overrides |
 | `created_at` | `timestamptz` NOT NULL | Default `now()` |
 | `updated_at` | `timestamptz` NOT NULL | Default `now()` |
+| `dominant_color` | `text` | Hex color of the cover, from `sharp` |
+| `dominant_hue` | `smallint` | Hue of `dominant_color`, for the color sort |
+| `rating_personal` | `smallint` | 1 to 5 (check constraint) |
+| `verdict` | `text` | The user's verdict. Encrypted at rest |
+| `done_at` | `timestamptz` | Set when the item is marked done |
+| `search_vector` | `tsvector` | Generated. `simple` config over title (A), subtitle (B), description (C), domain (D). Never the note |
+| `file_drive_id` | `text` | Google Drive id of the book file |
+| `file_name` | `text` | |
+| `file_bytes` | `integer` | Greater than 0 |
+| `file_sha256` | `text` | 64 hex characters |
+| `file_uploaded_at` | `timestamptz` | |
+
+The five `file_*` columns are all set or all null (check constraint). Only the accounts in
+`BOOK_FILE_USER_IDS` can use them (`src/lib/book-file-access.ts`).
 
 **Constraints**
 
@@ -99,6 +112,9 @@ create index items_user_id_category_idx on items (user_id, category);
 create index items_user_id_created_at_idx on items (user_id, created_at desc);
 create index items_processing_pending_idx on items (processing_status)
   where processing_status in ('pending', 'processing');
+create index items_search_vector_idx on items using gin (search_vector);
+create index items_user_id_file_drive_id_idx on items (user_id)
+  where file_drive_id is not null;
 ```
 
 > **Removed tables:** `tags`, `item_tags`, `collections`, and `collection_items` were dropped in
@@ -126,6 +142,28 @@ unique (token_hash)
 
 Token format: `bmly_<32 random bytes base64url>`. Show plaintext once on create.
 
+### `recommendation_outcomes`
+
+One row per recommendation that the "Made for you" deck showed. The recommender uses the
+rows to skip titles that the user saw, saved, or dismissed.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `uuid` PK | |
+| `user_id` | `uuid` NOT NULL | FK → `auth.users(id)` ON DELETE CASCADE |
+| `category` | `text` NOT NULL | `books` or `movies_and_tv` |
+| `external_id` | `text` | Provider id, for example a TMDB or Hardcover id |
+| `title_norm` | `text` NOT NULL | Normalized title, for dedup |
+| `outcome` | `text` NOT NULL | `shown`, `saved`, or `dismissed` |
+| `dismiss_reason` | `text` | `not_my_thing`, `already_seen`, or `not_right_now` |
+| `shown_at` | `timestamptz` NOT NULL | Default `now()` |
+| `acted_at` | `timestamptz` | |
+
+```sql
+create index recommendation_outcomes_user_category_idx on recommendation_outcomes (user_id, category);
+create index recommendation_outcomes_user_shown_at_idx on recommendation_outcomes (user_id, shown_at desc);
+```
+
 ## RLS policies
 
 Enable RLS on all tables. Pattern for user-owned rows:
@@ -133,20 +171,22 @@ Enable RLS on all tables. Pattern for user-owned rows:
 ```sql
 -- items: SELECT, INSERT, UPDATE, DELETE
 create policy items_select_own on items for select to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 create policy items_insert_own on items for insert to authenticated
-  with check (user_id = auth.uid());
+  with check (user_id = (select auth.uid()));
 
 create policy items_update_own on items for update to authenticated
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()));
 
 create policy items_delete_own on items for delete to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 ```
 
-Apply the same `user_id = auth.uid()` pattern to `capture_tokens`.
+Apply the same pattern to `capture_tokens` and `recommendation_outcomes`. Write
+`(select auth.uid())`, not `auth.uid()`: Postgres then evaluates the function one time per
+query, not one time per row (Supabase advisor `auth_rls_initplan`).
 
 **Capture API note:** Route handlers accept either a web session or a `bmly_...` Bearer token. Token-authenticated requests use the service role only inside server code to insert on behalf of the validated user. Do not expose service role to clients.
 
@@ -154,24 +194,25 @@ Apply the same `user_id = auth.uid()` pattern to `capture_tokens`.
 
 ```sql
 -- updated_at on items
-create trigger items_updated_at before update on items
-  for each row execute function moddatetime(updated_at);
+create trigger items_set_updated_at before update on items
+  for each row execute function public.set_updated_at();
 ```
 
 ## Storage
 
-Bucket: `item-images` (private)
+Bucket: `item-images` (public, no storage policies)
 
 - Path: `{user_id}/{item_id}/cover.{ext}`
-- RLS: user can read/write only their prefix
-- Used when proxying remote images
+- The server writes and removes objects with the service role. Clients only read the public URL.
+- `DELETE /api/items/:id` removes the objects of the item. Account deletion removes the prefix of the user.
+- `scripts/purge-orphan-covers.ts` removes objects that no row points at.
 
 ## Dedup behavior
 
 On capture, compute `url_fingerprint` from `canonical_url`. If row exists for `(user_id, url_fingerprint)`:
 
 - Return existing item (`200`, `created: false`)
-- Ignore duplicate notes/tags/collections/hints and return the existing row
+- Ignore duplicate notes and hints, and return the existing row
 
 ## Status defaults after enrichment
 
@@ -186,6 +227,22 @@ User can always override.
 
 The deterministic pipeline remains the default source of truth. When `LLM_ENRICHMENT_ENABLED=true` and AI Gateway auth is present, the enrichment job may call an LLM through the AI Gateway to fill sparse structured fields and can set `category_source = 'llm'` only when the eligibility gate allows a category suggestion. User-set `manual` categories are preserved except for intentionally sparse/blocked metadata recovery paths documented in `docs/category-schemas.md`.
 
+## Field encryption
+
+`note` and `verdict` are encrypted with AES-256-GCM before they reach the database
+(ADR 0013, `src/lib/crypto/field-crypto.ts`). A stored value starts with `enc.v1.`. Every
+route and server component that sends a row to the client calls `decryptItemFields`.
+`PATCH /api/items/:id` rejects a value that starts with `enc.v`, so a client cannot send
+ciphertext back and get it encrypted again. Production and local development share one
+database, so they must use the same `FIELD_ENCRYPTION_KEY`.
+
 ## Realtime
 
-Subscribe to `items` changes for `user_id = auth.uid()` so cards update when `processing_status` → `ready`.
+`items` is in the `supabase_realtime` publication. Clients subscribe to `UPDATE` events with
+the filter `user_id=eq.<uid>`, so cards update when `processing_status` → `ready`.
+
+- Set the session token on the socket before the channel joins
+  (`src/lib/supabase/realtime-subscribe.ts`). A join without it runs as `anon`, and RLS drops
+  every event.
+- The event payload holds ciphertext `note` and `verdict`. Use it only for the row id, the
+  status, and the category. Fetch `GET /api/items/:id` for the decrypted row.

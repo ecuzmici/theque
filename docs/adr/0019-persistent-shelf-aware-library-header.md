@@ -5,6 +5,8 @@ supersedes: 0012-library-spine-band.md
 
 # Persistent, shelf-aware library masthead
 
+> Renumbered from 0013 on 2026-10-11 (number collision with ADR 0013 field encryption).
+
 [ADR 0012](0012-library-spine-band.md) introduced the Spine Band and, alongside the
 "Made for you" banner, gated **both** to the `all` shelf ("a whole-library palette +
 `N spines` total is semantically wrong when you've filtered to one category"). In

@@ -46,7 +46,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 | `src/middleware.ts` | Session-aware route guards and auth redirects |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
-| `src/app/api/jobs/digest` | Weekly "saved and forgot" digest (needs `CRON_SECRET`; sends via Resend when configured) |
+| `src/app/api/jobs/digest` | Manual "saved and forgot" digest for one account (needs `CRON_SECRET` and `DIGEST_USER_ID`; no cron runs it; sends via Resend when configured) |
 | `src/lib/enrichment/` | Fetch HTML, `extract.ts`, parsers (`imdb`, `goodreads`, `generic`) |
 | `src/lib/classify/` | Domain + schema.org + hints → `ItemCategory` |
 | `src/lib/shelves.ts` | Shelf definitions (All, Books, Watch, Articles, Other, Inbox) |
@@ -78,7 +78,7 @@ Structured field display: `src/components/items/StructuredFields.tsx` + `docs/ca
 
 - **Web**: `/login` is a hybrid screen. **OAuth** (`signInWithOAuth({ provider })` for `github`/`google`) redirects to the provider and back to `/auth/callback`, which calls `exchangeCodeForSession` and sets cookies on the redirect. **Email code** is the fallback: `signInWithOtp` sends the code (no `emailRedirectTo`, so no clickable link); `verifyOtp({ type: "email" })` signs in with the copied code, verified client-side. `src/app/login/login-utils.ts` normalizes 6-10 digit tokens and keeps `next` redirects local. The email-code send is gated by Turnstile when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set; OAuth is not captcha-gated.
 - **Identity linking** is automatic by verified email, so GitHub / Google / email-code for one person resolve to one Profile (`supabase/templates/magic_link.html` is the code-only email). There is no magic link and no `/auth/confirm` interstitial — both were removed in ADR 0010.
-- **Middleware**: `src/middleware.ts` protects `/library`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
+- **Middleware**: `src/middleware.ts` protects `/library`, `/stats`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
 - **Capture API**: `Authorization: Bearer <capture_token>`; create tokens in **Settings → Capture tokens** (shown once).
 
 Supabase redirect URLs must include production and localhost app/callback URLs (see `supabase/config.toml`). Use `npm run supabase:sync-auth` after changing the hosted auth template or redirect allow-list; it reads `SUPABASE_ACCESS_TOKEN` from the environment or `.env.local`.
@@ -124,6 +124,9 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
 - LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus AI Gateway auth (`AI_GATEWAY_API_KEY` locally, OIDC on Vercel); deterministic extraction must still work without it. Models and reasoning settings live in `src/lib/enrichment/llm/llm-config.ts` (ADR 0017). The `gemini-*` file names are historical; only grounded search still calls Gemini (`GEMINI_API_KEY`).
+- Background LLM enrichment has a daily cap per user (`ENRICH_LLM_DAILY_LIMIT`, default 100); past the cap it keeps the deterministic result and sets `raw_metadata.llm_skipped = "daily_cap"`. "Enrich with AI" proposals cap at `AI_PROPOSAL_DAILY_LIMIT` (default 30). `AI_LIMIT_ELEVATED_USER_IDS` raises both.
+- Book files (the "Kobo file" block, `POST|DELETE /api/items/:id/file`) are limited to the user ids in `BOOK_FILE_USER_IDS` (`src/lib/book-file-access.ts`; code default when unset). Item and account deletion also delete the Drive file.
+- `note` and `verdict` are ciphertext in the database and in Realtime payloads (ADR 0013). Decrypt with `decryptItemFields` at every boundary, and refetch `GET /api/items/:id` on a Realtime event instead of merging the payload.
 - Free category resolvers live in `src/lib/enrichment/resolvers/` (TMDB, Google Books, iTunes, YouTube oEmbed, GitHub); they run after classify when important fields are sparse and rank above LLM output. Add a new source by adding a `CategoryResolver` and registering it in `resolvers/index.ts`.
 - Blocked/sparse, snapshot-less pages can fall back to Jina Reader (`JINA_READER_ENABLED`) and Gemini Google Search grounding (`LLM_GROUNDING_ENABLED`); both opt-in, default off, fail-open. Grounding is skipped when the URL already contains a canonical entity id (`src/lib/enrichment/url-identity.ts`).
 - Do not commit secrets, `.env.local`, or `.vercel/`.

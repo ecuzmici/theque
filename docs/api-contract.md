@@ -104,12 +104,17 @@ List items for authenticated user.
 
 | Param | Type | Notes |
 |-------|------|-------|
+| `shelf` | string | Shelf id (`all`, `books`, `watch`, `articles`, `other`, `inbox`). Uses the shelf filter from `src/lib/shelves.ts`, page size 24 |
+| `sort` | string | With `shelf`: `recent` (default), `color`, or `title` |
+| `offset` | int | Row offset. It wins over `cursor` |
 | `status` | string | Comma-separated statuses |
 | `category` | string | Comma-separated categories |
-| `q` | string | Search title, description, domain, note; max 200 chars |
+| `q` | string | Prefix search over title, subtitle, description, and domain (`simple` index). The note is not searchable. Max 200 chars |
 | `processing_status` | string | Filter pipeline state |
 | `cursor` | string | Opaque pagination cursor |
 | `limit` | int | Default 24, max 100 |
+
+`note` and `verdict` in the response are decrypted (ADR 0013).
 
 **Response `200`**
 
@@ -137,6 +142,31 @@ List items for authenticated user.
   "display": { "card_aspect": "2/3" }
 }
 ```
+
+---
+
+### `GET /api/items/random`
+
+A random item that is still wanted, for "Tonight's pick".
+
+**Auth:** Session
+
+**Query:** `shelf` (shelf id).
+
+**Response `200`:** `{ "item": LibraryItem | null }`. `400 unknown_shelf` for an unknown shelf.
+
+---
+
+### `GET /api/items/check-url`
+
+Duplicate lookup before a capture. The server normalizes the URL with the capture rules.
+
+**Auth:** Session
+
+**Query:** `url` (required).
+
+**Response `200`:** `{ "existing": { "id", "title", "domain", "status", "created_at" } | null }`.
+`400 invalid_url` for a missing, too long, or non-http(s) URL.
 
 ---
 
@@ -181,6 +211,34 @@ Setting `category` sets `category_source` to `manual` and `category_confidence` 
 Hard delete item and join rows.
 
 **Response `204`**
+
+---
+
+### `POST /api/items/:id/file`
+
+Upload a book file (EPUB) for the Kobo feature. The server writes the item metadata into
+the file, converts it to KEPUB, uploads it to Google Drive, and records the five `file_*`
+columns.
+
+**Auth:** Session. Only the accounts in `BOOK_FILE_USER_IDS` (see
+`src/lib/book-file-access.ts`). Other accounts get `404 not_found`.
+
+**Body:** `multipart/form-data` with the field `file`. Max 30 MB. Max 20 uploads per hour.
+
+**Response `200`:** `{ "file": { "name", "bytes", "uploaded_at" } }`.
+
+**Errors** (`{ "error": "<code>" }`): `401 unauthorized`, `404 not_found`, `400 missing_file`,
+`413 file_too_large`, `422 invalid_epub`, `422 conversion_failed`, `429 rate_limited`,
+`502 upload_failed`, `503 drive_not_configured`.
+
+### `DELETE /api/items/:id/file`
+
+Remove the book file from Drive and clear the `file_*` columns.
+
+**Auth:** Same as the upload.
+
+**Response `200`:** `{ "file": null }`. `502 delete_failed` keeps the columns, so a second
+request can retry.
 
 ---
 
@@ -251,6 +309,47 @@ Validates and applies a proposal returned by `ai-enrichment-proposal`. Writes ac
 
 ---
 
+### `POST /api/recommend`
+
+Build a "Made for you" deck from the user's own library and ratings.
+
+**Auth:** Session
+
+**Body:** `{ "shelfId": "books" | "watch" }`. A body with `items` is rejected: the server
+builds the taste profile.
+
+**Response `200`:** `{ "cards": ResolvedRecommendation[], "reason"?: string }`. `reason` is
+present only when `cards` is empty. Each card has an `outcome_id`. The server writes one
+`recommendation_outcomes` row (`shown`) per card.
+
+**Errors** (`{ "error": "<text>" }`): `400` for a bad body, `429` after the daily limit
+(`Retry-After` in seconds), `503` when recommendations are not configured.
+
+### `POST /api/recommend/outcomes`
+
+Record what the user did with a card.
+
+**Auth:** Session
+
+**Body:** `{ "outcomeId": "uuid", "outcome": "saved" | "dismissed", "dismissReason"?: "not_my_thing" | "already_seen" | "not_right_now" }`
+
+---
+
+### `POST /api/account/delete`
+
+Delete the account. The server removes the cover objects and the Drive book files, then
+deletes the auth user. The FK cascade removes every row of the user.
+
+**Auth:** Session. The route reads the user id from the session, never from the body.
+
+**Body:** `{ "confirm": "delete" }`
+
+**Response `200`:** `{ "deleted": true, "orphanedFileCount": 0, "orphanedDriveFileCount": 0 }`.
+The counts report files that the purge could not remove. `400 invalid_confirmation`,
+`500 delete_failed`.
+
+---
+
 ### `GET /api/capture-tokens`
 
 **Auth:** Session
@@ -302,6 +401,19 @@ Claims up to 10 `pending` items, processes sequentially.
 ```
 
 Returns `401 unauthorized` without the configured secret.
+
+### `GET|POST /api/jobs/digest`
+
+Compose the "saved and forgot" digest: the 5 oldest `want` items, saved 30 or more days ago.
+No cron runs it.
+
+**Auth:** `Authorization: Bearer <CRON_SECRET>`
+
+**Config:** `DIGEST_USER_ID` names the one account to read. Without it the route answers
+`503 { "code": "digest_not_configured" }`. With `RESEND_API_KEY` and `DIGEST_EMAIL_TO` it
+sends the email (`{ "sent": true, "items": n }`). Otherwise it returns the HTML.
+
+---
 
 ## Internal: enrichment job
 

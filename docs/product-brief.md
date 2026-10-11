@@ -11,7 +11,7 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 ## Solution
 
 1. **Capture** — Chrome extension, iOS Shortcut, or paste URL (optional note).
-2. **Enrich** — Server fetches OG/schema.org metadata, classifies the item, and can optionally ask Gemini to fill sparse category-specific fields.
+2. **Enrich** — Server fetches OG/schema.org metadata, classifies the item, and can optionally ask an LLM (through the Vercel AI Gateway) to fill sparse category-specific fields.
 3. **Library** — Image-forward shelves (smart views by category).
 4. **Inbox** — Secondary triage queue for low-confidence or unprocessed items.
 
@@ -46,7 +46,7 @@ While browsing, you find things you want to remember later: a book on Goodreads,
 
 - Multi-user product, public lists, social features
 - Native iOS app / Share Extension (Shortcut only)
-- Always-on AI-driven category decisions. The default pipeline is deterministic; Gemini enrichment is optional, server-side, and gated by env vars.
+- Always-on AI-driven category decisions. The default pipeline is deterministic; LLM enrichment is optional, server-side, and gated by env vars.
 - Google Places API (restaurants may have sparse cards)
 - Offline sync, email import, collaborative editing
 - Full-text search engine beyond Postgres

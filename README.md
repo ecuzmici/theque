@@ -1,6 +1,6 @@
 # Theque
 
-Personal visual taste library: capture URLs from Chrome, the web app, API clients, or an iOS Shortcut; enrich them into category-aware cards; browse them through code-defined shelves and user collections.
+Personal visual taste library: capture URLs from Chrome, the web app, API clients, or an iOS Shortcut; enrich them into category-aware cards; browse them through code-defined shelves.
 
 **Public app:** https://theque.app<br>
 **Vercel deployment:** https://theque.vercel.app
@@ -12,7 +12,7 @@ See `docs/product-brief.md`, `docs/data-model.md`, and `docs/api-contract.md` fo
 - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4
 - Supabase Auth, Postgres, RLS, and server-side service-role jobs
 - Chrome MV3 extension in `extension/`
-- Optional Gemini enrichment behind `LLM_ENRICHMENT_ENABLED=true`
+- Optional LLM enrichment through the Vercel AI Gateway behind `LLM_ENRICHMENT_ENABLED=true`
 
 ## Setup
 
