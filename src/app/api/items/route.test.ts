@@ -26,6 +26,7 @@ function makeQuery(rows: Record<string, unknown>[]) {
     order: vi.fn(() => query),
     in: vi.fn(() => query),
     textSearch: vi.fn(() => query),
+    contains: vi.fn(() => query),
     range: vi.fn().mockResolvedValue({ data: rows, error: null }),
   };
   return query;
@@ -46,6 +47,7 @@ function makeShelfQuery(rows: Record<string, unknown>[]) {
     neq: vi.fn(() => query),
     in: vi.fn(() => query),
     lt: vi.fn(() => query),
+    contains: vi.fn(() => query),
     order: vi.fn(() => query),
     range: vi.fn(() => query),
     then: (resolve: (result: { data: unknown; error: null }) => void) =>
@@ -334,5 +336,86 @@ describe("GET /api/items?q=... (prefix search on the simple index)", () => {
     const [, tsquery] = (query.textSearch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(tsquery).toBe("a:* & b:* & c:* & d:* & e:* & f:*");
     expect(tsquery).not.toMatch(/[!|()]/);
+  });
+});
+
+describe("GET /api/items genre and mood filters (ADR 0020)", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.FIELD_ENCRYPTION_KEY = TEST_FIELD_ENCRYPTION_KEY;
+    mocks.getSessionUserOrNull.mockReset();
+    mocks.from.mockReset();
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+  });
+
+  async function get(search: string, rows: Record<string, unknown>[] = []) {
+    const shelfQuery = makeShelfQuery(rows);
+    const listQuery = makeQuery(rows);
+    mocks.from.mockImplementation(() => (search.includes("shelf=") ? shelfQuery : listQuery));
+    const { GET } = await import("./route");
+    const res = await GET(new Request(`https://theque.app/api/items?${search}`));
+    return { res, shelfQuery, listQuery };
+  }
+
+  it("filters a shelf by genre and mood with array containment", async () => {
+    const { res, shelfQuery } = await get("shelf=books&genre=scifi&mood=eerie", [makeLibraryRow()]);
+    expect(res.status).toBe(200);
+    expect(shelfQuery.contains).toHaveBeenCalledWith("genre_keys", ["scifi"]);
+    expect(shelfQuery.contains).toHaveBeenCalledWith("mood_keys", ["eerie"]);
+  });
+
+  it("uses the Watch genre list on the watch shelf", async () => {
+    const { res, shelfQuery } = await get("shelf=watch&genre=scifi-fantasy");
+    expect(res.status).toBe(200);
+    expect(shelfQuery.contains).toHaveBeenCalledWith("genre_keys", ["scifi-fantasy"]);
+  });
+
+  it("does not filter when the params are absent or empty", async () => {
+    const { res, shelfQuery } = await get("shelf=books&genre=&mood=");
+    expect(res.status).toBe(200);
+    expect(shelfQuery.contains).not.toHaveBeenCalled();
+  });
+
+  it("rejects a genre key from the other category list", async () => {
+    const { res } = await get("shelf=watch&genre=scifi");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ code: "invalid_genre" });
+  });
+
+  it("rejects a genre on a shelf without taste chips", async () => {
+    const { res } = await get("shelf=all&genre=horror");
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an unknown mood key", async () => {
+    const { res } = await get("shelf=books&mood=spicy");
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ code: "invalid_mood" });
+  });
+
+  it("accepts a mood on any shelf", async () => {
+    const { res, shelfQuery } = await get("shelf=all&mood=cozy");
+    expect(res.status).toBe(200);
+    expect(shelfQuery.contains).toHaveBeenCalledWith("mood_keys", ["cozy"]);
+  });
+
+  it("filters the search path by genre and mood", async () => {
+    const { res, listQuery } = await get("q=dune&category=books&genre=scifi&mood=epic");
+    expect(res.status).toBe(200);
+    expect(listQuery.textSearch).toHaveBeenCalled();
+    expect(listQuery.contains).toHaveBeenCalledWith("genre_keys", ["scifi"]);
+    expect(listQuery.contains).toHaveBeenCalledWith("mood_keys", ["epic"]);
+  });
+
+  it("validates the search genre against the single category", async () => {
+    const { res } = await get("q=dune&category=movies_and_tv&genre=scifi");
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a search genre when the category is not one value", async () => {
+    const { res } = await get("q=dune&genre=scifi");
+    expect(res.status).toBe(400);
+    const second = await get("q=dune&category=books,movies_and_tv&genre=horror");
+    expect(second.res.status).toBe(400);
   });
 });

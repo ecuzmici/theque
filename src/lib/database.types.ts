@@ -70,6 +70,9 @@ export type Database = {
           rating_personal: number | null;
           verdict: string | null;
           done_at: string | null;
+          genre_keys: string[];
+          mood_keys: string[];
+          taste_tagged_at: string | null;
           file_drive_id: string | null;
           file_name: string | null;
           file_bytes: number | null;
@@ -109,6 +112,9 @@ export type Database = {
           rating_personal?: number | null;
           verdict?: string | null;
           done_at?: string | null;
+          genre_keys?: string[];
+          mood_keys?: string[];
+          taste_tagged_at?: string | null;
           file_drive_id?: string | null;
           file_name?: string | null;
           file_bytes?: number | null;
@@ -147,6 +153,9 @@ export type Database = {
           rating_personal?: number | null;
           verdict?: string | null;
           done_at?: string | null;
+          genre_keys?: string[];
+          mood_keys?: string[];
+          taste_tagged_at?: string | null;
           file_drive_id?: string | null;
           file_name?: string | null;
           file_bytes?: number | null;

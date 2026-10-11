@@ -15,8 +15,11 @@ export async function fetchLibraryItemsPage(
   shelfId: ShelfId,
   offset = 0,
   sort: LibrarySort = "recent",
+  taste: { genre?: string | null; mood?: string | null } = {},
 ): Promise<{ items: LibraryItemRow[]; hasMore: boolean }> {
   const params = new URLSearchParams({ shelf: shelfId, sort, offset: String(offset) });
+  if (taste.genre) params.set("genre", taste.genre);
+  if (taste.mood) params.set("mood", taste.mood);
   const res = await fetch(`/api/items?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`Failed to load the ${shelfId} shelf (${res.status})`);
