@@ -7,8 +7,16 @@ import { extractPageText } from "@/lib/enrichment/page-text";
 import { readCaptureSnapshot } from "@/lib/enrichment/snapshot-adapter";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import type { AiEnrichmentProposalResponseBody } from "@/lib/types/api";
+import { aiDailyLimitForUser } from "@/lib/ai/limits";
 import { rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
+
+const DEFAULT_AI_PROPOSAL_DAILY_LIMIT = 30;
+
+function proposalDailyLimit(): number {
+  const parsed = Number.parseInt(process.env.AI_PROPOSAL_DAILY_LIMIT ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_AI_PROPOSAL_DAILY_LIMIT;
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -38,6 +46,19 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return Response.json(
       { code: "rate_limited" },
       { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 60) } },
+    );
+  }
+
+  // Each proposal is one model call. The per-minute limit alone allows 14,400 a day.
+  const daily = await rateLimit(
+    `ai-proposal-day:${user.id}`,
+    aiDailyLimitForUser(user.id, proposalDailyLimit()),
+    86400,
+  );
+  if (!daily.ok) {
+    return Response.json(
+      { code: "daily_limit_reached" },
+      { status: 429, headers: { "Retry-After": String(daily.retryAfter ?? 3600) } },
     );
   }
 

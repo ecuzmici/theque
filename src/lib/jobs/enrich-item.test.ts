@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -11,7 +11,27 @@ const mocks = vi.hoisted(() => ({
   resolveCategoryEvidence: vi.fn(),
   cacheItemImage: vi.fn(),
   extractDominantColorForUrl: vi.fn(),
+  forceLlmEligible: false,
+  rateLimit: vi.fn(async () => ({ ok: true })),
+  enhanceCategoryWithGemini: vi.fn(async () => ({ status: "skipped", reason: "test" })),
 }));
+
+vi.mock("@/lib/rate-limit", () => ({ rateLimit: mocks.rateLimit }));
+vi.mock("@/lib/enrichment/llm/gemini-category-enhancer", () => ({
+  enhanceCategoryWithGemini: mocks.enhanceCategoryWithGemini,
+}));
+vi.mock("@/lib/enrichment/llm/eligibility", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/enrichment/llm/eligibility")>();
+  return {
+    ...actual,
+    decideLlmEligibility: (input: Parameters<typeof actual.decideLlmEligibility>[0]) => {
+      const real = actual.decideLlmEligibility(input);
+      return mocks.forceLlmEligible
+        ? { ...real, eligible: true, reason: "sparse", groundingRecommended: false }
+        : real;
+    },
+  };
+});
 
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminClient }));
 vi.mock("@/lib/enrichment/fetch", () => ({ fetchPage: mocks.fetchPage }));
@@ -185,6 +205,45 @@ describe("enrichItem cover cache", () => {
     expect(mocks.cacheItemImage).not.toHaveBeenCalled();
     expect(mocks.extractDominantColorForUrl).toHaveBeenCalledWith(PAGE_IMAGE);
     expect(finalUpdate(updates)?.dominant_color).toBe("#445566");
+  });
+});
+
+describe("enrichItem LLM daily cap", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.forceLlmEligible = true;
+    mocks.enrichOpenLibraryWork.mockResolvedValue(null);
+    mocks.fetchViaJinaReader.mockResolvedValue(null);
+    mocks.resolveCategoryEvidence.mockResolvedValue(null);
+    mocks.cacheItemImage.mockResolvedValue(null);
+    mocks.extractDominantColorForUrl.mockResolvedValue(null);
+    mocks.enhanceCategoryWithGemini.mockResolvedValue({ status: "skipped", reason: "test" });
+    mocks.fetchPage.mockImplementation(async (url: string) => ({
+      html: "<html><head><title>Some page title</title></head><body></body></html>",
+      finalUrl: url,
+      statusCode: 200,
+    }));
+  });
+
+  afterEach(() => {
+    mocks.forceLlmEligible = false;
+  });
+
+  it("calls the LLM while the user is under the daily cap", async () => {
+    mocks.rateLimit.mockResolvedValue({ ok: true });
+    stubAdmin(makeRow());
+    await enrichItem("item-1");
+    expect(mocks.rateLimit).toHaveBeenCalledWith("llm-enrich:user-1", 100, 86400);
+    expect(mocks.enhanceCategoryWithGemini).toHaveBeenCalled();
+  });
+
+  it("skips the LLM and records the reason when the cap is reached", async () => {
+    mocks.rateLimit.mockResolvedValue({ ok: false });
+    const updates = stubAdmin(makeRow());
+    const outcome = await enrichItem("item-1");
+    expect(outcome).toBe("ready");
+    expect(mocks.enhanceCategoryWithGemini).not.toHaveBeenCalled();
+    expect(finalUpdate(updates)?.raw_metadata).toMatchObject({ llm_skipped: "daily_cap" });
   });
 });
 

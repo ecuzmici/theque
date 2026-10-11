@@ -100,13 +100,54 @@ function parseIndex(value: string | null): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+export type ZipLimits = {
+  maxTotalBytes: number;
+  maxEntryBytes: number;
+  maxEntries: number;
+};
+
+/**
+ * Limits for the decompressed archive. A 30 MB upload can expand to many GB
+ * (a zip bomb) and exhaust the memory of the function. JSZip reads the sizes
+ * from the zip directory, and it rejects an entry whose real size differs.
+ */
+export const DEFAULT_ZIP_LIMITS: ZipLimits = {
+  maxTotalBytes: 200 * 1024 * 1024,
+  maxEntryBytes: 50 * 1024 * 1024,
+  maxEntries: 5000,
+};
+
+type SizedEntry = { _data?: { uncompressedSize?: number } };
+
+function assertWithinLimits(zip: JSZip, limits: ZipLimits): void {
+  const entries = Object.values(zip.files);
+  if (entries.length > limits.maxEntries) throw new EpubFormatError("too_many_entries");
+  let total = 0;
+  for (const entry of entries) {
+    if (entry.dir) continue;
+    // Internal JSZip field (3.x). A missing size counts as too large.
+    const size = (entry as unknown as SizedEntry)._data?.uncompressedSize;
+    if (typeof size !== "number" || size > limits.maxEntryBytes) {
+      throw new EpubFormatError("entry_too_large");
+    }
+    total += size;
+    if (total > limits.maxTotalBytes) throw new EpubFormatError("archive_too_large");
+  }
+}
+
 /** Open the archive. The KEPUB converter opens the same way. */
-export async function loadEpubZip(bytes: Uint8Array): Promise<JSZip> {
+export async function loadEpubZip(
+  bytes: Uint8Array,
+  limits: ZipLimits = DEFAULT_ZIP_LIMITS,
+): Promise<JSZip> {
+  let zip: JSZip;
   try {
-    return await JSZip.loadAsync(bytes);
+    zip = await JSZip.loadAsync(bytes);
   } catch {
     throw new EpubFormatError("not_a_zip");
   }
+  assertWithinLimits(zip, limits);
+  return zip;
 }
 
 async function readOpfPath(zip: JSZip): Promise<string> {

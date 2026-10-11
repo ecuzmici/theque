@@ -5,7 +5,12 @@ vi.mock("server-only", () => ({}));
 
 import JSZip from "jszip";
 
-import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "@/lib/epub/metadata";
+import {
+  EpubFormatError,
+  loadEpubZip,
+  readEpubMetadata,
+  writeEpubMetadata,
+} from "@/lib/epub/metadata";
 
 const CONTAINER = `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -242,3 +247,36 @@ describe("writeEpubMetadata", () => {
     expect(after.files["OEBPS/"]?.dir).toBe(true);
   });
 });
+
+describe("loadEpubZip limits", () => {
+  async function zipWith(files: Record<string, string>): Promise<Uint8Array> {
+    const zip = new JSZip();
+    for (const [name, body] of Object.entries(files)) zip.file(name, body);
+    return zip.generateAsync({ type: "uint8array", compression: "DEFLATE" });
+  }
+
+  const SMALL = { maxTotalBytes: 1000, maxEntryBytes: 600, maxEntries: 3 };
+
+  it("opens an archive inside the limits", async () => {
+    const bytes = await zipWith({ a: "x".repeat(100), b: "y".repeat(100) });
+    await expect(loadEpubZip(bytes, SMALL)).resolves.toBeDefined();
+  });
+
+  it("rejects an entry that expands past the entry limit", async () => {
+    const bytes = await zipWith({ a: "x".repeat(700) });
+    await expect(loadEpubZip(bytes, SMALL)).rejects.toThrow("entry_too_large");
+  });
+
+  it("rejects an archive that expands past the total limit", async () => {
+    const bytes = await zipWith({ a: "x".repeat(500), b: "y".repeat(500), c: "z".repeat(500) });
+    await expect(loadEpubZip(bytes, SMALL)).rejects.toThrow("archive_too_large");
+  });
+
+  it("rejects too many entries", async () => {
+    const bytes = await zipWith({ a: "1", b: "2", c: "3", d: "4" });
+    const error = await loadEpubZip(bytes, SMALL).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(EpubFormatError);
+    expect((error as Error).message).toBe("too_many_entries");
+  });
+});
+

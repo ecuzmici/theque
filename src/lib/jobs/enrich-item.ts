@@ -17,7 +17,16 @@ import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/sna
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { resolveCategoryEvidence } from "@/lib/enrichment/resolvers/index";
+import { aiDailyLimitForUser } from "@/lib/ai/limits";
+import { rateLimit } from "@/lib/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
+
+const DEFAULT_ENRICH_LLM_DAILY_LIMIT = 100;
+
+function enrichLlmDailyLimit(): number {
+  const parsed = Number.parseInt(process.env.ENRICH_LLM_DAILY_LIMIT ?? "", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_ENRICH_LLM_DAILY_LIMIT;
+}
 
 export type EnrichOutcome = "ready" | "pending_retry" | "failed" | "skipped";
 
@@ -259,7 +268,22 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
       canonicalUrl: fetchResult.finalUrl,
     });
 
-    if (llmEligibility.eligible) {
+    // Daily backstop per user. Background enrichment runs without a person at
+    // the keyboard, so a capture loop could otherwise spend the AI budget.
+    const llmWithinCap =
+      llmEligibility.eligible &&
+      (
+        await rateLimit(
+          `llm-enrich:${row.user_id}`,
+          aiDailyLimitForUser(row.user_id, enrichLlmDailyLimit()),
+          86400,
+        )
+      ).ok;
+    if (llmEligibility.eligible && !llmWithinCap) {
+      mergedRawMetadata = { ...mergedRawMetadata, llm_skipped: "daily_cap" };
+    }
+
+    if (llmWithinCap) {
       const llmResult = await enhanceCategoryWithGemini({
         finalUrl: fetchResult.finalUrl,
         category: mergedCategory,
