@@ -134,11 +134,19 @@ export function buildGenreKeyProposal(rows: readonly BackfillItemRow[]): Proposa
  * Book genre backfill for one book: merge found genres into `structured.genres`
  * and derive genre keys. Returns null when no genre was found or the book
  * already has genres.
+ * With `replace`, the function replaces genres that an earlier backfill wrote.
+ * It returns null when the found genres are the same as the saved genres.
  */
-export function bookGenreChange(row: BackfillItemRow, foundGenres: readonly string[]): ProposalRow | null {
+export function bookGenreChange(
+  row: BackfillItemRow,
+  foundGenres: readonly string[],
+  { replace = false }: { replace?: boolean } = {},
+): ProposalRow | null {
   if (row.category !== "books" || foundGenres.length === 0) return null;
   const structured = asRecord(row.structured);
-  if (stringList(structured.genres).length > 0) return null;
+  const saved = stringList(structured.genres);
+  if (saved.length > 0 && !replace) return null;
+  if (replace && sameKeys(saved, foundGenres)) return null;
 
   const genres = [...foundGenres];
   const before: TasteFields = { structured: { genres: structured.genres ?? null } };
@@ -285,6 +293,8 @@ export type BackfillArgs = {
   outDir: string;
   limit: number | null;
   maxCalls: number;
+  /** A book-genres backup file. The dry run looks up only the books in it again. */
+  refreshFrom: string | null;
 };
 
 function readOption(args: readonly string[], name: string): string | null {
@@ -308,11 +318,14 @@ export function parseBackfillArgs(args: readonly string[]): BackfillArgs {
   const from = readOption(args, "from");
   if (apply && !from) throw new Error("--apply needs --from <proposal.json>");
   if (!apply && from) throw new Error("--from works only with --apply");
+  const refreshFrom = readOption(args, "refresh-from");
+  if (apply && refreshFrom) throw new Error("--refresh-from works only in a dry run");
   return {
     apply,
     from,
     outDir: readOption(args, "out-dir") ?? ".backfill",
     limit: readCount(args, "limit"),
     maxCalls: readCount(args, "max-calls") ?? 40,
+    refreshFrom,
   };
 }

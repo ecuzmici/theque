@@ -66,6 +66,18 @@ describe("bookGenreChange", () => {
     expect(bookGenreChange(row({ structured: { genres: ["Horror"] } }), ["Fantasy"])).toBeNull();
     expect(bookGenreChange(row({ category: "movies_and_tv" }), ["Fantasy"])).toBeNull();
   });
+
+  it("replaces saved genres with replace", () => {
+    const saved = row({ structured: { genres: ["Fantasy", "Science Fiction"] }, genre_keys: ["fantasy", "scifi"] });
+    const change = bookGenreChange(saved, ["Fantasy"], { replace: true });
+    expect(change?.before).toEqual({ structured: { genres: ["Fantasy", "Science Fiction"] }, genre_keys: ["fantasy", "scifi"] });
+    expect(change?.after).toEqual({ structured: { genres: ["Fantasy"] }, genre_keys: ["fantasy"] });
+  });
+
+  it("returns null with replace when the genres are the same", () => {
+    const saved = row({ structured: { genres: ["Fantasy"] }, genre_keys: ["fantasy"] });
+    expect(bookGenreChange(saved, ["Fantasy"], { replace: true })).toBeNull();
+  });
 });
 
 describe("needsBookGenres", () => {
@@ -194,7 +206,14 @@ describe("buildApplyPlan", () => {
 
 describe("parseBackfillArgs", () => {
   it("uses the defaults", () => {
-    expect(parseBackfillArgs([])).toEqual({ apply: false, from: null, outDir: ".backfill", limit: null, maxCalls: 40 });
+    expect(parseBackfillArgs([])).toEqual({
+      apply: false,
+      from: null,
+      outDir: ".backfill",
+      limit: null,
+      maxCalls: 40,
+      refreshFrom: null,
+    });
   });
 
   it("reads both option forms", () => {
@@ -206,6 +225,11 @@ describe("parseBackfillArgs", () => {
     expect(() => parseBackfillArgs(["--apply"])).toThrow();
     expect(() => parseBackfillArgs(["--from", "p.json"])).toThrow();
     expect(parseBackfillArgs(["--apply", "--from", "p.json"])).toMatchObject({ apply: true, from: "p.json" });
+  });
+
+  it("reads --refresh-from only in a dry run", () => {
+    expect(parseBackfillArgs(["--refresh-from", "b.json"])).toMatchObject({ refreshFrom: "b.json" });
+    expect(() => parseBackfillArgs(["--apply", "--from", "p.json", "--refresh-from", "b.json"])).toThrow();
   });
 
   it("rejects a bad count", () => {

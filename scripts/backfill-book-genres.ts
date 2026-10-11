@@ -9,18 +9,24 @@
  * Usage:
  *   npm run backfill:book-genres                                  # dry run (default): writes nothing to the database
  *   npm run backfill:book-genres -- --limit 10 --max-calls 1      # small dry run
+ *   npm run backfill:book-genres -- --refresh-from <backup.json>  # dry run that also looks up the books in an earlier backup again
  *   npm run backfill:book-genres -- --apply --from <proposal.json>
  *
  * Options:
  *   --out-dir <dir>   Folder for the proposal and the backup (default .backfill)
  *   --limit N         Scan at most N books
  *   --max-calls N     Send at most N Hardcover requests (default 40)
+ *   --refresh-from B  Also look up the books in backup B again, and replace
+ *                     the genres that the earlier backfill wrote. Use it after
+ *                     a change to the Hardcover genre rules.
  *   --apply --from F  Write exactly the rows in proposal F. No Hardcover call.
  *
  * Run this script before backfill:taste-tags. Apply its proposal first.
  * Requires NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and
  * HARDCOVER_API_KEY in env (or .env.local).
  */
+
+import { readFileSync } from "node:fs";
 
 import { loadEnvConfig } from "@next/env";
 
@@ -37,6 +43,13 @@ const DELAY_MS = 1200;
 function authorsOf(structured: unknown): string[] {
   const authors = (structured as { authors?: unknown } | null)?.authors;
   return Array.isArray(authors) ? authors.filter((a): a is string => typeof a === "string") : [];
+}
+
+/** The item ids in a book-genres backup file. */
+function readBackupIds(file: string): Set<string> {
+  const rows = JSON.parse(readFileSync(file, "utf8")) as unknown;
+  if (!Array.isArray(rows)) throw new Error(`${file}: expected an array of rows`);
+  return new Set(rows.map((row) => (row as { id?: unknown }).id).filter((id): id is string => typeof id === "string"));
 }
 
 async function run() {
@@ -60,8 +73,11 @@ async function run() {
   }
 
   const rows = (data ?? []) as BackfillItemRow[];
-  const targets = rows.filter((row) => needsBookGenres(row) && row.title?.trim());
-  console.log(`Scanned ${rows.length} books; ${targets.length} have no genres (dry run, no writes)`);
+  const refreshIds = args.refreshFrom ? readBackupIds(args.refreshFrom) : new Set<string>();
+  const targets = rows.filter((row) => (needsBookGenres(row) || refreshIds.has(row.id)) && row.title?.trim());
+  console.log(
+    `Scanned ${rows.length} books; ${targets.length} to look up, ${refreshIds.size} from the refresh backup (dry run, no writes)`,
+  );
 
   const proposal: ProposalRow[] = [];
   const misses: string[] = [];
@@ -80,7 +96,7 @@ async function run() {
       );
       for (const row of batch) {
         const found = result.genres.get(row.id);
-        const change = found ? bookGenreChange(row, found) : null;
+        const change = found ? bookGenreChange(row, found, { replace: refreshIds.has(row.id) }) : null;
         if (change) proposal.push(change);
         else misses.push(`${row.title} (${row.id}): ${result.misses.get(row.id) ?? "no change"}`);
       }

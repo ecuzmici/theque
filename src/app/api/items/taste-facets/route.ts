@@ -3,34 +3,17 @@ import { applyShelfFilter } from "@/lib/library-items-for-shelf";
 import { getShelf, type ShelfId } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/server";
 import {
-  MOODS,
-  genreListForCategory,
-  tasteShelfCategory,
-  type TasteListEntry,
-} from "@/lib/taste/taste-lists";
+  countKeys,
+  countPairs,
+  type TasteFacets,
+  type TastePairCounts,
+} from "@/lib/taste/taste-facets";
+import { MOODS, genreListForCategory, tasteShelfCategory } from "@/lib/taste/taste-lists";
 
 const PAGE = 1000;
 const MAX_PAGES = 10;
 
-export type TasteFacet = { key: string; label: string; count: number };
-export type TasteFacetsResponseBody = { genres: TasteFacet[]; moods: TasteFacet[] };
-
-/** Count each known key once for each item. Drop keys that have a count of 0. */
-function countKeys(
-  rows: (string[] | null | undefined)[],
-  list: readonly TasteListEntry[],
-): TasteFacet[] {
-  const counts = new Map<string, number>();
-  for (const keys of rows) {
-    if (!Array.isArray(keys)) continue;
-    for (const key of new Set(keys)) counts.set(key, (counts.get(key) ?? 0) + 1);
-  }
-  return list
-    .map((entry, order) => ({ ...entry, count: counts.get(entry.key) ?? 0, order }))
-    .filter((f) => f.count > 0)
-    .sort((a, b) => b.count - a.count || a.order - b.order)
-    .map(({ key, label, count }) => ({ key, label, count }));
-}
+export type TasteFacetsResponseBody = TasteFacets & { pairs: TastePairCounts };
 
 /** GET /api/items/taste-facets?shelf=books|watch: chip counts for a shelf. */
 export async function GET(req: Request) {
@@ -45,8 +28,7 @@ export async function GET(req: Request) {
   const shelf = getShelf(shelfParam as ShelfId);
 
   const supabase = await createClient();
-  const genreRows: (string[] | null)[] = [];
-  const moodRows: (string[] | null)[] = [];
+  const allRows: { genre_keys: string[] | null; mood_keys: string[] | null }[] = [];
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
     const from = page * PAGE;
@@ -64,16 +46,15 @@ export async function GET(req: Request) {
       return Response.json({ code: "query_failed" }, { status: 500 });
     }
     const rows = data ?? [];
-    for (const row of rows) {
-      genreRows.push(row.genre_keys);
-      moodRows.push(row.mood_keys);
-    }
+    allRows.push(...rows);
     if (rows.length < PAGE) break;
   }
 
+  const genreList = genreListForCategory(category);
   const body: TasteFacetsResponseBody = {
-    genres: countKeys(genreRows, genreListForCategory(category)),
-    moods: countKeys(moodRows, MOODS),
+    genres: countKeys(allRows.map((row) => row.genre_keys), genreList),
+    moods: countKeys(allRows.map((row) => row.mood_keys), MOODS),
+    pairs: countPairs(allRows, genreList, MOODS),
   };
   return Response.json(body);
 }

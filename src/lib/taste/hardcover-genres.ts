@@ -16,6 +16,16 @@ const ENDPOINT = "https://api.hardcover.app/v1/graphql";
 const TIMEOUT_MS = 10000;
 const ROW_LIMIT = 300;
 const MAX_GENRES = 5;
+/**
+ * Keep a genre tag only when its vote count is at least this share of the top
+ * tag count. Readers add "Science Fiction" to many fantasy books with few votes.
+ */
+const MIN_VOTE_SHARE = 0.25;
+/**
+ * Ignore the genre tags of a book when its top tag has fewer votes than this.
+ * Few votes give noisy tags, and the LLM tagger gives better genres.
+ */
+const MIN_TOP_VOTES = 5;
 
 const GENRE_QUERY = `query ThequeBookGenres($where: [books_bool_exp!]!, $limit: Int!) {
   books(where: {_or: $where}, order_by: {users_count: desc}, limit: $limit) {
@@ -48,17 +58,54 @@ function ilikeLiteral(title: string): string {
   return title.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-/** Genre labels from `cached_tags.Genre`, in Hardcover order, without duplicates. */
+/**
+ * Genre labels from `cached_tags.Genre`, in Hardcover order, without duplicates.
+ * A tag with a vote count below MIN_VOTE_SHARE of the top count is dropped.
+ * When the top count is below MIN_TOP_VOTES, the function returns no label.
+ * A tag with no count is kept.
+ */
 export function hardcoverGenreLabels(row: HardcoverBookRow, max = MAX_GENRES): string[] {
   const tags = row.cached_tags as { Genre?: unknown } | null | undefined;
   if (!tags || !Array.isArray(tags.Genre)) return [];
+  const entries = tags.Genre.map((entry) => entry as { tag?: unknown; count?: unknown } | null);
+  const counts = entries.map((e) => (typeof e?.count === "number" ? e.count : null));
+  const top = Math.max(0, ...counts.map((c) => c ?? 0));
+  if (counts.some((c) => c !== null) && top < MIN_TOP_VOTES) return [];
   const out: string[] = [];
-  for (const entry of tags.Genre) {
-    const tag = (entry as { tag?: unknown } | null)?.tag;
-    if (typeof tag === "string" && tag.trim() && !out.includes(tag.trim())) out.push(tag.trim());
-    if (out.length >= max) break;
-  }
+  entries.forEach((entry, i) => {
+    const tag = entry?.tag;
+    const count = counts[i];
+    if (out.length >= max || typeof tag !== "string" || !tag.trim()) return;
+    if (count !== null && count < top * MIN_VOTE_SHARE) return;
+    if (!out.includes(tag.trim())) out.push(tag.trim());
+  });
   return out;
+}
+
+const SERIES_SUFFIX = /\s*\([^()]*#\s*\d+(\.\d+)?\)\s*$/;
+const SUBTITLE = /\s*:\s.*$/;
+
+/**
+ * Titles to look up for one book, most exact first:
+ *   1. The saved title.
+ *   2. The title without a Goodreads series suffix, "Dune (Dune, #1)" → "Dune".
+ *   3. The title without a subtitle, "Into Thin Air: A Personal Account" → "Into Thin Air".
+ * The subtitle variant needs an author, because a short title clashes more.
+ */
+export function lookupTitles(book: Pick<GenreLookupBook, "title" | "authors">): string[] {
+  const full = book.title.trim();
+  const noSeries = full.replace(SERIES_SUFFIX, "").trim();
+  const out = [full, noSeries];
+  if (book.authors.length > 0) out.push(noSeries.replace(SUBTITLE, "").trim());
+  return [...new Set(out.filter(Boolean))];
+}
+
+function pickForBook(rows: HardcoverBookRow[], book: GenreLookupBook): HardcoverBookRow | null {
+  for (const title of lookupTitles(book)) {
+    const row = pickHardcoverRow(rows, { title, creator: book.authors.join(", ") });
+    if (row) return row;
+  }
+  return null;
 }
 
 /**
@@ -68,7 +115,7 @@ export function hardcoverGenreLabels(row: HardcoverBookRow, max = MAX_GENRES): s
 export function matchGenreRows(rows: HardcoverBookRow[], books: GenreLookupBook[]): GenreLookupResult {
   const result: GenreLookupResult = { genres: new Map(), misses: new Map() };
   for (const book of books) {
-    const row = pickHardcoverRow(rows, { title: book.title, creator: book.authors.join(", ") });
+    const row = pickForBook(rows, book);
     if (!row) {
       result.misses.set(book.id, "no title match");
       continue;
@@ -91,7 +138,7 @@ export function matchGenreRows(rows: HardcoverBookRow[], books: GenreLookupBook[
 export async function lookupBookGenres(books: GenreLookupBook[]): Promise<GenreLookupResult> {
   const token = readToken();
   if (!token) throw new Error("HARDCOVER_API_KEY is not set");
-  const titles = [...new Set(books.map((b) => b.title.trim()).filter(Boolean))];
+  const titles = [...new Set(books.flatMap(lookupTitles))];
   if (titles.length === 0) return { genres: new Map(), misses: new Map() };
 
   const url = new URL(ENDPOINT);

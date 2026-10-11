@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { tasteHref } from "@/lib/library-search";
+import { narrowFacets, type TasteFacets } from "@/lib/taste/taste-facets";
 import { parseShelfParam, type ShelfId } from "@/lib/shelves";
 import {
   isGenreKeyFor,
@@ -11,8 +12,7 @@ import {
   tasteShelfCategory,
 } from "@/lib/taste/taste-lists";
 
-export type TasteFacet = { key: string; label: string; count: number };
-export type TasteFacets = { genres: TasteFacet[]; moods: TasteFacet[] };
+export type { TasteFacet, TasteFacets } from "@/lib/taste/taste-facets";
 
 export type TasteSelection = { genre: string | null; mood: string | null };
 
@@ -93,6 +93,7 @@ export function useTasteFilter(shelfId: ShelfId) {
           next = {
             genres: Array.isArray(body.genres) ? body.genres : [],
             moods: Array.isArray(body.moods) ? body.moods : [],
+            pairs: body.pairs && typeof body.pairs === "object" ? body.pairs : undefined,
           };
         }
       } catch {
@@ -130,8 +131,8 @@ export function useTasteFilter(shelfId: ShelfId) {
     genre: selection.genre,
     mood: selection.mood,
     active: selection.genre !== null || selection.mood !== null,
-    /** Null while loading or when the load failed. */
-    facets: facetsState && facetsState !== "error" ? facetsState : null,
+    /** Counts narrowed to the active filter. Null while loading or when the load failed. */
+    facets: facetsState && facetsState !== "error" ? narrowFacets(facetsState, selection) : null,
     facetsLoading: category !== null && facetsState === undefined,
     setGenre,
     setMood,

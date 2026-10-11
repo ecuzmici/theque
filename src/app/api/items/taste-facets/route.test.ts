@@ -82,6 +82,10 @@ describe("GET /api/items/taste-facets (ADR 0020)", () => {
         { key: "cozy", label: "Cozy", count: 1 },
         { key: "dark", label: "Dark", count: 1 },
       ],
+      pairs: {
+        scifi: { epic: 2, dark: 1 },
+        fantasy: { epic: 1, cozy: 1 },
+      },
     });
   });
 
@@ -111,13 +115,14 @@ describe("GET /api/items/taste-facets (ADR 0020)", () => {
     expect(await res.json()).toEqual({
       genres: [{ key: "scifi-fantasy", label: "Sci-Fi & Fantasy", count: 1 }],
       moods: [{ key: "eerie", label: "Eerie", count: 2 }],
+      pairs: {},
     });
   });
 
   it("returns empty lists for an empty shelf", async () => {
     mocks.from.mockReturnValue(makeQuery([]));
     const res = await call("?shelf=books");
-    expect(await res.json()).toEqual({ genres: [], moods: [] });
+    expect(await res.json()).toEqual({ genres: [], moods: [], pairs: {} });
   });
 
   it("returns 500 when the query fails", async () => {
