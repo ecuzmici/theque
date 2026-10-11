@@ -40,10 +40,13 @@ function formatNeverTitle(title: string): string {
 
 /**
  * Build the identity-only recommendation prompt for the given shelf and taste profile.
+ * `steer` is the cleaned mood text (see steer.ts). An empty or missing steer
+ * leaves the prompt unchanged.
  */
 export function buildRecommendPrompt(
   shelfId: RecommendShelfId,
   profile: TasteProfile,
+  steer?: string,
 ): string {
   const label = SHELF_LABELS[shelfId];
   const creatorLabel = CREATOR_LABELS[shelfId];
@@ -92,6 +95,13 @@ export function buildRecommendPrompt(
       "",
       `NEVER suggest these titles:`,
       profile.never.map(formatNeverTitle).join("\n"),
+    );
+  }
+
+  if (steer) {
+    sections.push(
+      "",
+      `REQUEST FOR THIS RUN: the user is in the mood for "${steer}". Every suggestion must fit this request. Use the taste profile to choose among titles that fit it.`,
     );
   }
 

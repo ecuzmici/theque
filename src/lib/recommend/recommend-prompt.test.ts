@@ -131,6 +131,42 @@ describe("buildRecommendPrompt", () => {
     });
   });
 
+  describe("steer", () => {
+    const REQUEST = (steer: string) =>
+      `REQUEST FOR THIS RUN: the user is in the mood for "${steer}". Every suggestion must fit this request. Use the taste profile to choose among titles that fit it.`;
+
+    it("adds the request section when a steer is set", () => {
+      const prompt = buildRecommendPrompt("books", lovedProfile, "eerie Horror");
+      expect(prompt).toContain(REQUEST("eerie Horror"));
+    });
+
+    it("places the section after the taste sections and before the rules", () => {
+      const prompt = buildRecommendPrompt(
+        "books",
+        { ...lovedProfile, owned: ["Piranesi"] },
+        "cozy",
+      );
+      const at = prompt.indexOf("REQUEST FOR THIS RUN");
+      expect(at).toBeGreaterThan(prompt.indexOf("NEVER suggest these titles:"));
+      expect(at).toBeGreaterThan(prompt.indexOf("ALREADY IN THEIR LIBRARY"));
+      expect(at).toBeLessThan(prompt.indexOf("Rules:"));
+    });
+
+    it("omits the section for an empty or missing steer", () => {
+      expect(buildRecommendPrompt("books", lovedProfile)).not.toContain("REQUEST FOR THIS RUN");
+      expect(buildRecommendPrompt("books", lovedProfile, "")).not.toContain(
+        "REQUEST FOR THIS RUN",
+      );
+    });
+
+    it("keeps the rules the same with a steer", () => {
+      const rules = (p: string) => p.slice(p.indexOf("Rules:"));
+      expect(rules(buildRecommendPrompt("books", lovedProfile, "cozy"))).toBe(
+        rules(buildRecommendPrompt("books", lovedProfile)),
+      );
+    });
+  });
+
   describe("verdict note pass-through", () => {
     it("includes verdictNote verbatim (truncation is taste-profile's responsibility)", () => {
       const note = "beautifully strange";

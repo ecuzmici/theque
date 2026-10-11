@@ -73,6 +73,8 @@ export type ResolvedRecommendation = {
 /** POST /api/recommend request body. */
 export type RecommendRequest = {
   shelfId: RecommendShelfId;
+  /** Optional mood text. The server cleans it and cuts it to 80 characters. */
+  steer?: string;
 };
 
 /**
