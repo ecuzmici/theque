@@ -18,7 +18,7 @@ type RecommendPillProps = {
  * The floating indicator that stands in for a minimized recommendation run.
  * Loading and ready states reopen the deck on tap; the error state offers an
  * inline retry. The × always dismisses. Sits bottom-right on desktop and clears
- * the mobile bottom nav via `--ks-nav-height` + `env(safe-area-inset-bottom)`.
+ * the floating + button via `--ks-fab-clearance` + `env(safe-area-inset-bottom)`.
  */
 export function RecommendPill({
   status,
@@ -37,7 +37,7 @@ export function RecommendPill({
     <div
       className={cn(
         "fixed right-4 z-40 flex items-center gap-1 rounded-full border px-3 shadow-lg backdrop-blur",
-        "bottom-[calc(var(--ks-nav-height)+env(safe-area-inset-bottom)+0.75rem)] lg:bottom-6 lg:right-6",
+        "bottom-[calc(var(--ks-fab-clearance)+env(safe-area-inset-bottom))] lg:bottom-[calc(var(--ks-fab-clearance)+0.75rem)] lg:right-8",
         "animate-in fade-in-0 slide-in-from-bottom-2 duration-200",
         status === "ready" && "border-amber-500/40 bg-amber-500/10 ring-2 ring-amber-500/30",
         status === "loading" && "border-border bg-card/95",
