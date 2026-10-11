@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
-import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import { CaptureProvider, useCapture } from "@/components/capture/CaptureProvider";
 import { SaveErrorRegion } from "@/components/feedback/SaveErrorRegion";
+import { NotchHeader } from "@/components/layout/NotchHeader";
 import { ShellSheet } from "@/components/layout/ShellSheet";
 import { YouPanel } from "@/components/layout/YouPanel";
 import { createClient } from "@/lib/supabase/client";
@@ -54,7 +54,7 @@ function CaptureButton() {
 }
 
 /**
- * App chrome (ADR 0019, decision 4): a header with the wordmark and a "You"
+ * App chrome (ADR 0019, decision 4): a notch header with the wordmark and a "You"
  * avatar, and a floating + that opens the capture sheet. No sidebar, no bottom bar.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -65,12 +65,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <CaptureProvider>
       <div className="flex min-h-full flex-col">
-        <header
-          className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur"
-          style={{ viewTransitionName: "app-header" }}
-        >
-          <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4">
-            <ThequeLogo size="md" href="/library" />
+        <NotchHeader
+          trailing={
             <button
               type="button"
               aria-label="You"
@@ -90,8 +86,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {initial}
               </span>
             </button>
-          </div>
-        </header>
+          }
+        />
 
         {/* Bottom padding keeps the last row of content clear of the floating +. */}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 lg:pb-32">
