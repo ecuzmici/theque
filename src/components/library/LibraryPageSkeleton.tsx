@@ -2,35 +2,28 @@ import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * Loading skeleton for /library. Mirrors LibraryPageClient's masthead box model
- * EXACTLY — title + Spine Band + "Made for you" banner + shelf tabs + toolbar — so
- * whichever Suspense fallback shows (route `loading.tsx` or the in-page fallback in
- * `page.tsx`), the skeleton → real-page swap lands the grid in the same place with
- * ZERO jump. Verified: skeleton grid-top == loaded grid-top (505px). CLS can't see
- * this shift (it's a subtree replacement), so it must be prevented structurally.
- * Keep in sync with the masthead in `LibraryPageClient.tsx` (band/banner heights
- * mirror those components' own reserved states).
+ * Loading skeleton for /library. Mirrors the top of LibraryPageClient (Up next
+ * row, shelf tabs, toolbar) so the swap to the real page does not move the grid.
+ * Keep in sync with `UpNextRow.tsx` and `LibraryPageClient.tsx`.
  */
 export function LibraryPageSkeleton() {
   return (
     <div aria-busy="true" aria-live="polite">
-      {/* PageHeader title="Library" — mb-6, h1 text-3xl, no description */}
-      <header className="mb-6">
-        <Skeleton className="h-9 w-40 rounded-lg" />
-      </header>
-
-      {/* LibrarySpineBand reserved height (band + caption line + rule) */}
-      <div className="mb-5" aria-hidden="true">
-        <div className="mb-3 h-11 w-full rounded-lg bg-muted/20" />
-        <div className="h-5 w-48 max-w-[60%] rounded bg-muted/20" />
-        <div className="mt-4 border-t border-border" />
+      {/* UpNextRow: heading row + 4 tiles (cover, eyebrow, title) */}
+      <div className="mb-4" aria-hidden="true">
+        <div className="mb-2 flex h-7 items-center justify-between">
+          <Skeleton className="h-6 w-24 rounded" />
+        </div>
+        <div className="flex gap-3 overflow-hidden pb-1 pt-1 lg:px-1">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="w-24 shrink-0 lg:w-32">
+              <Skeleton className="aspect-[2/3] w-full rounded-lg" />
+              <div className="mt-1.5 h-[15px]" />
+              <div className="h-4" />
+            </div>
+          ))}
+        </div>
       </div>
-
-      {/* "Made for you" banner reserved height */}
-      <div
-        className="mb-5 min-h-[6.125rem] rounded-2xl border border-border bg-muted/20"
-        aria-hidden="true"
-      />
 
       {/* Shelf tabs (min-h-11 pills) + ScrollArea pb-4 */}
       <div className="flex gap-2 overflow-hidden py-1.5 pb-2">

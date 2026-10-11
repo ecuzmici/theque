@@ -8,10 +8,7 @@ import { Eye, EyeOff, Images, Layers } from "lucide-react";
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
-import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
-import { ShuffleButton } from "@/components/library/ShuffleButton";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { RecommendUnlockBanner } from "@/components/recommend/RecommendUnlockBanner";
+import { UpNextRow } from "@/components/library/UpNextRow";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -214,19 +211,13 @@ export function LibraryPageClient({
 
   return (
     <div>
-      <PageHeader title="Library" />
+      <h1 className="sr-only">Library</h1>
 
-      {/* Persistent masthead: the Spine Band (whole-library identity) and the
-          shelf-aware "Made for you" banner render above the keyed grid on every
-          shelf, so switching shelves never pops the top of the page. The band
-          stays whole-library; the banner adapts its featured category to the
-          active shelf. See docs/adr/0019-persistent-shelf-aware-library-header.md. */}
-      <LibrarySpineBand />
-      <RecommendUnlockBanner
-        booksEnabled={recommendBooksEnabled}
-        watchEnabled={recommendWatchEnabled}
-        activeShelf={activeShelf}
-        items={cachedItems ?? []}
+      {/* The Up next row sits above the shelf chips on every shelf and does not
+          change with the active shelf. See docs/adr/0019, decision 1. */}
+      <UpNextRow
+        recommendBooksEnabled={recommendBooksEnabled}
+        recommendWatchEnabled={recommendWatchEnabled}
       />
 
       <ScrollArea className="w-full pb-4">
@@ -306,10 +297,10 @@ export function LibraryPageClient({
         Showing {activeLabel} shelf
       </p>
 
-      {/* Shelf toolbar: shuffle pick, AI recommendations, wall mode */}
+      {/* Shelf toolbar: inbox triage, hide done, wall mode */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         {activeShelf !== "inbox" ? (
-          <ShuffleButton key={activeShelf} shelfId={activeShelf} />
+          <span />
         ) : (
           <Button
             type="button"
@@ -324,8 +315,6 @@ export function LibraryPageClient({
           </Button>
         )}
         <div className="flex items-center gap-2">
-          {/* Recommend CTA lives in the persistent "Made for you" masthead banner
-              above (shelf-aware), so the toolbar no longer duplicates it. */}
           {activeShelf !== "inbox" ? (
             <Button
               type="button"
