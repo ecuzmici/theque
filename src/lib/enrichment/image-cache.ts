@@ -137,19 +137,29 @@ async function extractDominantColor(
   }
 }
 
+const MAX_IMAGE_REDIRECTS = 3;
+
 const NO_IMAGE: CachedImage = { storagePath: null, dominantColor: null, dominantHue: null };
 
 async function fetchValidatedImageBuffer(
   imageUrl: string,
 ): Promise<{ buffer: Uint8Array; contentType: string } | null> {
-  const url = new URL(imageUrl);
-  await assertSafeFetchUrl(url);
-
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(10000),
-    redirect: "follow",
-    headers: { Accept: "image/*" },
-  });
+  // Follow redirects by hand and check each hop. With `redirect: "follow"` a
+  // public image URL can redirect to an internal address (SSRF).
+  let current = new URL(imageUrl);
+  let res: Response | null = null;
+  for (let redirectCount = 0; ; redirectCount += 1) {
+    await assertSafeFetchUrl(current);
+    res = await fetch(current, {
+      signal: AbortSignal.timeout(10000),
+      redirect: "manual",
+      headers: { Accept: "image/*" },
+    });
+    if (res.status < 300 || res.status >= 400) break;
+    const location = res.headers.get("location");
+    if (!location || redirectCount >= MAX_IMAGE_REDIRECTS) return null;
+    current = new URL(location, current);
+  }
 
   if (!res.ok) return null;
 

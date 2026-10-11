@@ -46,10 +46,13 @@ function renderDigestHtml(items: DigestItem[], appUrl: string): string {
 }
 
 /**
- * GET/POST /api/jobs/digest (cron) — picks the oldest still-wanted items and
- * composes the weekly "saved and forgotten" digest. Sends via Resend when
- * RESEND_API_KEY + DIGEST_EMAIL_TO are configured; otherwise returns the
- * rendered HTML so the cron stays testable without an email provider.
+ * GET/POST /api/jobs/digest (manual; no cron runs it) — picks the oldest
+ * still-wanted items of one account and composes the "saved and forgotten"
+ * digest. `DIGEST_USER_ID` names that account. Without it the route answers
+ * 503, because the admin client would read the items of every account.
+ * Sends via Resend when RESEND_API_KEY + DIGEST_EMAIL_TO are configured;
+ * otherwise returns the rendered HTML so the job stays testable without an
+ * email provider.
  */
 async function handleDigestJob(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -58,11 +61,17 @@ async function handleDigestJob(req: Request) {
     return Response.json({ code: "unauthorized" }, { status: 401 });
   }
 
+  const userId = process.env.DIGEST_USER_ID?.trim();
+  if (!userId) {
+    return Response.json({ code: "digest_not_configured" }, { status: 503 });
+  }
+
   const cutoff = new Date(Date.now() - STALE_AFTER_DAYS * 86_400_000).toISOString();
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("items")
     .select("id, title, domain, category, created_at")
+    .eq("user_id", userId)
     .eq("status", "want")
     .lt("created_at", cutoff)
     .order("created_at", { ascending: true })

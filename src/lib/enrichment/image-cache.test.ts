@@ -138,6 +138,37 @@ describe("cacheItemImage", () => {
     expect(result).toEqual({ storagePath: null, dominantColor: null, dominantHue: null });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("checks each redirect hop and never fetches an internal target", async () => {
+    fetchMocks.assertSafeFetchUrl.mockImplementation(async (url: URL) => {
+      if (url.hostname === "169.254.169.254") throw new Error("blocked_fetch_url");
+    });
+    fetchMock.mockResolvedValueOnce(
+      new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest" } }),
+    );
+    const { admin, upload } = fakeAdmin();
+
+    const result = await cacheItemImage(admin, "user-1", "item-1", "https://covers.example/a.jpg");
+
+    expect(result).toEqual({ storagePath: null, dominantColor: null, dominantHue: null });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMocks.assertSafeFetchUrl).toHaveBeenCalledTimes(2);
+    expect(upload).not.toHaveBeenCalled();
+  });
+
+  it("follows a safe redirect to the image", async () => {
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 301, headers: { location: "/b.jpg" } }))
+      .mockResolvedValueOnce(fakeImageResponse());
+    sharpMocks.toBuffer.mockResolvedValue(rawPixels([{ rgb: [200, 30, 30], count: 10 }]));
+    const { admin, upload } = fakeAdmin();
+
+    const result = await cacheItemImage(admin, "user-1", "item-1", "https://covers.example/a.jpg");
+
+    expect(String(fetchMock.mock.calls[1][0])).toBe("https://covers.example/b.jpg");
+    expect(result.storagePath).toBe("user-1/item-1/cover.jpg");
+    expect(upload).toHaveBeenCalled();
+  });
 });
 
 describe("extractDominantColorForUrl", () => {

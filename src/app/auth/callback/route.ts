@@ -2,15 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { sanitizeRedirectPath } from "@/app/login/login-utils";
 import type { Database } from "@/lib/database.types";
-
-function sanitizeRedirectPath(value: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) {
-    return "/library";
-  }
-
-  return value;
-}
 
 // OAuth (GitHub, Google) redirects back here with a `code` to exchange for a session.
 // The email-code path no longer routes through here — it verifies client-side on /login.
@@ -58,7 +51,7 @@ export async function GET(request: Request) {
 
   if (error) {
     console.error("[auth/callback] session exchange:", error.message);
-    return NextResponse.redirect(`${origin}/login?error=auth&reason=${encodeURIComponent(error.message)}`, {
+    return NextResponse.redirect(`${origin}/login?error=auth&reason=exchange_failed`, {
       status: 307,
     });
   }

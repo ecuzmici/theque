@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThequeLogo } from "@/components/brand/ThequeLogo";
 import {
+  authReasonMessage,
   getAuthErrorMessage,
   isValidOtpToken,
   normalizeOtpToken,
@@ -47,7 +48,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const safeNext = sanitizeRedirectPath(searchParams.get("next"));
   const authError = searchParams.get("error") === "auth";
-  const authReason = searchParams.get("reason");
+  const authReason = authReasonMessage(searchParams.get("reason"));
   const accountDeleted = searchParams.get("deleted") === "1";
 
   const [email, setEmail] = useState("");

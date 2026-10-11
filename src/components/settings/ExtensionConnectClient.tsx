@@ -26,15 +26,20 @@ function getChromeRuntime() {
 export function ExtensionConnectClient({
   extensionId,
   email,
+  unknownExtension = false,
 }: {
   extensionId: string;
   email: string;
+  /** The link named an extension id that is not a thèque build. */
+  unknownExtension?: boolean;
 }) {
   const [status, setStatus] = useState<Status>(extensionId ? "idle" : "error");
   const [message, setMessage] = useState(
     extensionId
       ? "Ready to connect this browser extension."
-      : "Missing extension id. Open this page from the Chrome extension popup.",
+      : unknownExtension
+        ? "Unknown extension. Open this page from the thèque extension popup."
+        : "Missing extension id. Open this page from the Chrome extension popup.",
   );
   const attemptedRef = useRef(false);
 

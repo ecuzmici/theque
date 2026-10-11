@@ -15,3 +15,15 @@ export const KNOWN_EXTENSION_IDS = [CHROME_EXTENSION_ID] as const;
 
 /** Chrome Web Store listing — the "Add to Chrome" destination. */
 export const CHROME_STORE_URL = `https://chromewebstore.google.com/detail/${CHROME_EXTENSION_ID}`;
+
+const UNPACKED_EXTENSION_ID = /^[a-p]{32}$/;
+
+/**
+ * True when the connect page may send a capture token to this extension id.
+ * A crafted link can name any installed extension, so production accepts the
+ * published ids only. Development also accepts an unpacked build id.
+ */
+export function isAllowedExtensionId(id: string, nodeEnv = process.env.NODE_ENV): boolean {
+  if ((KNOWN_EXTENSION_IDS as readonly string[]).includes(id)) return true;
+  return nodeEnv === "development" && UNPACKED_EXTENSION_ID.test(id);
+}
