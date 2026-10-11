@@ -41,7 +41,7 @@ export function LibrarySearchRow({
   const placeholder = shelfLabel ? `Search ${shelfLabel}` : "Search your library";
 
   return (
-    <div className="sticky top-14 z-10 -mx-4 mb-4 border-b border-border bg-background/92 px-4 pb-2.5 pt-3 backdrop-blur-md lg:top-0">
+    <div className="sticky top-14 z-10 -mx-4 mb-4 border-b border-border bg-background/92 px-4 pb-2.5 pt-3 backdrop-blur-md">
       <div role="search" className="relative">
         <label htmlFor={LIBRARY_SEARCH_INPUT_ID} className="sr-only">
           Search your library

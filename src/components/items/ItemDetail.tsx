@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
+import { cleanDisplayTitle } from "@/lib/display-title";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { getDisplayImageUrl } from "@/lib/item-display";
 import { doneVerb, formatCategory, formatEnrichmentError } from "@/lib/item-labels";
@@ -45,9 +46,6 @@ import type {
 } from "@/lib/types/api";
 
 export type ItemDetailModel = ItemDetailResponseBody;
-
-// TODO(adr-0019): use cleanDisplayTitle from @/lib/display-title
-const displayTitle = (title: string): string => title;
 
 /** Backdrop and cover tint for items without a sampled `dominant_color`. */
 const FALLBACK_TINT = "#78716c";
@@ -258,7 +256,7 @@ export function ItemDetail({
   const refreshLabel =
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
-  const title = displayTitle(item.title ?? item.domain);
+  const title = cleanDisplayTitle(item.title ?? item.domain);
   const byline = getDetailByline(item.category, item.subtitle, item.structured);
   const omitDetailKeys = [
     ...(item.description ? ["description"] : []),
@@ -279,7 +277,7 @@ export function ItemDetail({
       <div
         aria-hidden
         data-testid="item-ambient"
-        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[85vh] overflow-hidden lg:left-56"
+        className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[85vh] overflow-hidden"
         style={{
           maskImage: "linear-gradient(to bottom, black 35%, transparent)",
           WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent)",

@@ -6,6 +6,7 @@ import { Dices } from "lucide-react";
 
 import { MadeForYouTile } from "@/components/library/MadeForYouTile";
 import { Button } from "@/components/ui/button";
+import { cleanDisplayTitle } from "@/lib/display-title";
 import { getDisplayImageUrl } from "@/lib/item-display";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -38,7 +39,7 @@ function UpNextCover({ item, highlight }: { item: LibraryItemRow; highlight?: bo
         <img src={src} alt="" className="absolute inset-0 size-full object-cover" />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center p-2 text-center font-serif text-xs text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]">
-          {item.title ?? item.domain}
+          {cleanDisplayTitle(item.title ?? item.domain)}
         </span>
       )}
     </span>
@@ -142,7 +143,7 @@ export function UpNextRow({
         ) : null}
       </div>
       <p className="sr-only" aria-live="polite">
-        {shuffled ? `Tonight's pick: ${shuffled.title ?? shuffled.domain}` : ""}
+        {shuffled ? `Tonight's pick: ${cleanDisplayTitle(shuffled.title ?? shuffled.domain)}` : ""}
       </p>
       <ul className="-mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 pt-1 [scrollbar-width:none] lg:mx-0 lg:scroll-px-1 lg:px-1">
         {source == null
@@ -169,7 +170,7 @@ export function UpNextRow({
                     {eyebrow}
                   </span>
                   <span className="line-clamp-1 text-xs font-medium">
-                    {item.title ?? item.domain}
+                    {cleanDisplayTitle(item.title ?? item.domain)}
                   </span>
                 </Link>
               </li>
