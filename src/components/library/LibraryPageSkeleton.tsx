@@ -1,4 +1,5 @@
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { COVER_GRID_CLASS } from "@/components/items/ItemGrid";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -46,8 +47,8 @@ export function LibraryPageSkeleton() {
         <Skeleton className="h-11 w-11 rounded-lg" />
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-        {Array.from({ length: 8 }, (_, i) => (
+      <ul className={COVER_GRID_CLASS}>
+        {Array.from({ length: 10 }, (_, i) => (
           <li key={i}>
             <ItemCardSkeleton />
           </li>
