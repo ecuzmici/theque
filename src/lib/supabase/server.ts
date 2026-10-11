@@ -23,7 +23,7 @@ export async function createClient() {
           });
           void headers;
         } catch {
-          /* Server Components cannot always mutate cookies — middleware refreshes session */
+          /* Server Components cannot always mutate cookies — the proxy (src/proxy.ts) refreshes the session */
         }
       },
     },

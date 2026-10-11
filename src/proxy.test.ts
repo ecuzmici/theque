@@ -8,13 +8,13 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: () => ({ auth: { getUser } }),
 }));
 
-describe("middleware", () => {
+describe("proxy", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
   it("derives all Supabase auth cookie names that can hold stale sessions", async () => {
-    const { getSupabaseAuthCookieNames } = await import("./middleware");
+    const { getSupabaseAuthCookieNames } = await import("./proxy");
 
     expect(getSupabaseAuthCookieNames("https://project-ref.supabase.co")).toEqual([
       "sb-project-ref-auth-token",
@@ -28,9 +28,9 @@ describe("middleware", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://project-ref.supabase.co");
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon");
     getUser.mockResolvedValue({ data: { user: { id: "user-1" } }, error: null });
-    const { middleware } = await import("./middleware");
+    const { proxy } = await import("./proxy");
 
-    const res = await middleware(new NextRequest("https://theque.app/login?next=/%09/evil.com"));
+    const res = await proxy(new NextRequest("https://theque.app/login?next=/%09/evil.com"));
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("https://theque.app/library");

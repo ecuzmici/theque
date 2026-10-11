@@ -43,7 +43,7 @@ Chrome extension: `npm run build` then load unpacked from `extension/` (not repo
 |------|---------|
 | `src/app/(app)/` | Authenticated UI: library, item detail, add, search, settings |
 | `src/app/login` + `src/app/auth/callback` | Hybrid login (GitHub/Google OAuth + email code); `/auth/callback` is the OAuth code-exchange route |
-| `src/middleware.ts` | Session-aware route guards and auth redirects |
+| `src/proxy.ts` | Session-aware route guards and auth redirects (Next 16 proxy, formerly `middleware.ts`) |
 | `src/app/api/capture` | Token-authenticated URL capture |
 | `src/app/api/jobs/enrich` | Cron/manual enrichment (needs `CRON_SECRET`) |
 | `src/app/api/jobs/digest` | Manual "saved and forgot" digest for one account (needs `CRON_SECRET` and `DIGEST_USER_ID`; no cron runs it; sends via Resend when configured) |
@@ -78,7 +78,7 @@ Structured field display: `src/components/items/StructuredFields.tsx` + `docs/ca
 
 - **Web**: `/login` is a hybrid screen. **OAuth** (`signInWithOAuth({ provider })` for `github`/`google`) redirects to the provider and back to `/auth/callback`, which calls `exchangeCodeForSession` and sets cookies on the redirect. **Email code** is the fallback: `signInWithOtp` sends the code (no `emailRedirectTo`, so no clickable link); `verifyOtp({ type: "email" })` signs in with the copied code, verified client-side. `src/app/login/login-utils.ts` normalizes 6-10 digit tokens and keeps `next` redirects local. The email-code send is gated by Turnstile when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is set; OAuth is not captcha-gated.
 - **Identity linking** is automatic by verified email, so GitHub / Google / email-code for one person resolve to one Profile (`supabase/templates/magic_link.html` is the code-only email). There is no magic link and no `/auth/confirm` interstitial — both were removed in ADR 0010.
-- **Middleware**: `src/middleware.ts` protects `/library`, `/stats`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
+- **Proxy**: `src/proxy.ts` protects `/library`, `/stats`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
 - **Capture API**: `Authorization: Bearer <capture_token>`; create tokens in **Settings → Capture tokens** (shown once).
 
 Supabase redirect URLs must include production and localhost app/callback URLs (see `supabase/config.toml`). Use `npm run supabase:sync-auth` after changing the hosted auth template or redirect allow-list; it reads `SUPABASE_ACCESS_TOKEN` from the environment or `.env.local`.
