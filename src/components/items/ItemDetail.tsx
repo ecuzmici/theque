@@ -272,15 +272,16 @@ export function ItemDetail({
 
   return (
     <article className="relative pb-12">
-      {/* Ambient backdrop: a blurred, tinted copy of the cover behind the main
-          column. It starts right of the desktop sidebar (w-56). */}
+      {/* Ambient backdrop: a blurred, tinted copy of the cover behind the page.
+          Every layer fills the masked box, so the fade ends at the box edge and
+          no layer stops short of it. */}
       <div
         aria-hidden
         data-testid="item-ambient"
         className="pointer-events-none fixed inset-x-0 top-0 z-0 h-[85vh] overflow-hidden"
         style={{
-          maskImage: "linear-gradient(to bottom, black 35%, transparent)",
-          WebkitMaskImage: "linear-gradient(to bottom, black 35%, transparent)",
+          maskImage: "linear-gradient(to bottom, black 30%, transparent 95%)",
+          WebkitMaskImage: "linear-gradient(to bottom, black 30%, transparent 95%)",
         }}
       >
         {imgSrc ? (
@@ -288,16 +289,16 @@ export function ItemDetail({
           <img
             src={imgSrc}
             alt=""
-            className="absolute -inset-x-[10%] top-0 h-[80vh] w-[120%] scale-110 object-cover opacity-70 blur-3xl saturate-150"
+            className="absolute -inset-x-[10%] inset-y-0 h-full w-[120%] scale-110 object-cover opacity-70 blur-3xl saturate-150"
           />
         ) : null}
         <div
-          className="absolute inset-x-0 top-0 h-[80vh]"
+          className="absolute inset-0"
           style={{
             background: `radial-gradient(120% 70% at 50% 0%, color-mix(in oklab, ${tint} 80%, transparent), transparent 70%)`,
           }}
         />
-        <div className="absolute inset-x-0 top-0 h-[80vh] bg-gradient-to-b from-transparent via-background/60 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-background/60 to-background" />
       </div>
 
       <div className="relative z-10">
