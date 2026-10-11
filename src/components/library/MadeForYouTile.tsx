@@ -1,17 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Clapperboard, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { ItemCategory } from "@/lib/database.types";
 import { RECOMMEND_MIN_ITEMS } from "@/lib/recommend/recommend-config";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
@@ -23,23 +15,17 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-import {
-  madeForYouAction,
-  madeForYouEyebrow,
-  type RecommendOption,
-} from "./up-next";
+import { MadeForYouSheet } from "./MadeForYouSheet";
+import { madeForYouEyebrow, type RecommendOption } from "./up-next";
 
 type CategoryMeta = {
   shelfId: RecommendShelfId;
   category: ItemCategory;
-  label: string;
-  noun: string;
-  Icon: typeof BookOpen;
 };
 
 const CATEGORIES: CategoryMeta[] = [
-  { shelfId: "books", category: "books", label: "Books", noun: "books", Icon: BookOpen },
-  { shelfId: "watch", category: "movies_and_tv", label: "Watch", noun: "titles", Icon: Clapperboard },
+  { shelfId: "books", category: "books" },
+  { shelfId: "watch", category: "movies_and_tv" },
 ];
 
 /**
@@ -91,9 +77,10 @@ const TILE_CLASS =
   "block w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 /**
- * The "Made for you" tile at the end of the Up next row. It opens the
- * recommendation deck (see RecommendationProvider). Render it only when at
- * least one recommendation category is enabled.
+ * The "Made for you" tile at the end of the Up next row. A tap opens the
+ * pre-run sheet (MadeForYouSheet). The sheet starts the recommendation run,
+ * and the deck opens from the provider (see RecommendationProvider). Render it
+ * only when at least one recommendation category is enabled.
  */
 export function MadeForYouTile({
   booksEnabled,
@@ -107,6 +94,7 @@ export function MadeForYouTile({
 }) {
   const { start } = useRecommendationContext();
   const options = useRecommendOptions(booksEnabled, watchEnabled);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const face = (
     <>
@@ -146,48 +134,22 @@ export function MadeForYouTile({
     );
   }
 
-  const action = madeForYouAction(options);
-  if (action.kind === "none") return null;
-  if (action.kind === "start") {
-    return (
-      <button type="button" className={TILE_CLASS} onClick={() => start(action.shelfId)}>
-        {face}
-      </button>
-    );
-  }
+  if (options.length === 0) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger render={<button type="button" className={TILE_CLASS} />}>
+    <>
+      <button type="button" className={TILE_CLASS} onClick={() => setSheetOpen(true)}>
         {face}
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Recommend from…</DropdownMenuLabel>
-          {options.map((o) => {
-            const meta = CATEGORIES.find((c) => c.shelfId === o.shelfId);
-            if (!meta) return null;
-            return (
-              <DropdownMenuItem
-                key={o.shelfId}
-                disabled={!o.ready}
-                onClick={o.ready ? () => start(o.shelfId) : undefined}
-                className="flex-col items-start gap-0.5 py-2"
-              >
-                <span className="flex items-center gap-2 font-medium">
-                  <meta.Icon className="size-4" aria-hidden />
-                  {meta.label}
-                </span>
-                {!o.ready ? (
-                  <span className="pl-6 text-xs text-muted-foreground">
-                    Add {RECOMMEND_MIN_ITEMS}+ {meta.noun} to unlock
-                  </span>
-                ) : null}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </button>
+      <MadeForYouSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        options={options}
+        onSubmit={(shelfId, steer) => {
+          setSheetOpen(false);
+          start(shelfId, steer);
+        }}
+      />
+    </>
   );
 }

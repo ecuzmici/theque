@@ -6,7 +6,6 @@ import type { LibraryItemRow } from "@/lib/types/library-item";
 import {
   dailyIndex,
   dayNumber,
-  madeForYouAction,
   madeForYouEyebrow,
   monthsWaiting,
   selectUpNext,
@@ -183,31 +182,6 @@ describe("monthsWaiting", () => {
     const now = Date.parse("2026-10-11T00:00:00.000Z");
     expect(monthsWaiting("2026-10-01T00:00:00.000Z", now)).toBe(1);
     expect(monthsWaiting("2026-01-01T00:00:00.000Z", now)).toBe(9);
-  });
-});
-
-describe("madeForYouAction", () => {
-  it("does nothing without categories", () => {
-    expect(madeForYouAction([])).toEqual({ kind: "none" });
-  });
-
-  it("starts the only ready category at once", () => {
-    expect(madeForYouAction([{ shelfId: "books", saved: 5, ready: true }])).toEqual({
-      kind: "start",
-      shelfId: "books",
-    });
-  });
-
-  it("opens the menu for a locked category or for two categories", () => {
-    expect(madeForYouAction([{ shelfId: "books", saved: 1, ready: false }])).toEqual({
-      kind: "menu",
-    });
-    expect(
-      madeForYouAction([
-        { shelfId: "books", saved: 5, ready: true },
-        { shelfId: "watch", saved: 5, ready: true },
-      ]),
-    ).toEqual({ kind: "menu" });
   });
 });
 

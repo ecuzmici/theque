@@ -21,6 +21,7 @@ import {
   pickWatchRegion,
 } from "@/lib/recommend/recommend-config";
 import { dedupRecommendations, normalizeTitle } from "@/lib/recommend/dedup";
+import { sanitizeSteer } from "@/lib/recommend/steer";
 import { isSuppressedOutcome } from "@/lib/recommend/suppression";
 import {
   RECOMMEND_RESPONSE_SCHEMA,
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
   }
 
   const { shelfId } = parsed;
+  const steer = sanitizeSteer(parsed.steer);
 
   if (shelfId !== "books" && shelfId !== "watch") {
     return jsonResponse(
@@ -176,7 +178,7 @@ export async function POST(req: Request) {
 
   let candidates: LlmCandidate[];
   try {
-    const prompt = buildRecommendPrompt(shelfId, tasteProfile);
+    const prompt = buildRecommendPrompt(shelfId, tasteProfile, steer);
     const { data } = await generateJsonWithFallback<{ candidates?: unknown[] }>({
       models: RECOMMEND_MODELS,
       prompt,

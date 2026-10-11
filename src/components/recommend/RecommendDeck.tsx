@@ -206,6 +206,7 @@ export function RecommendDeck({ run }: RecommendDeckProps) {
   const { runStatus, cards, errorMessage, emptyReason, cursor } = run;
   const { index, outcomes, askReason } = cursor;
   const shelfId = run.shelf ?? "books";
+  const steer = run.steer;
 
   const total = cards.length;
   const done = runStatus === "ready" && total > 0 && index >= total;
@@ -220,6 +221,11 @@ export function RecommendDeck({ run }: RecommendDeckProps) {
         <div>
           <h2 className="font-serif text-lg text-foreground">Recommendations for you</h2>
           <p className="text-xs text-muted-foreground">{shelfLabel} · AI-generated picks</p>
+          {steer ? (
+            <p className="mt-0.5 text-xs text-muted-foreground" title={steer}>
+              In the mood for: <span className="font-medium text-foreground">{steer}</span>
+            </p>
+          ) : null}
         </div>
         {/* Explicit minimize — the only way to minimize on mobile, where the
             full-screen deck leaves no backdrop to click. Sits left of the
