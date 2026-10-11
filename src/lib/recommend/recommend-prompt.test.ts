@@ -159,7 +159,8 @@ describe("buildRecommendPrompt", () => {
 
     it("schema requires title, creator, description, reason", () => {
       const itemRequired =
-        (RECOMMEND_RESPONSE_SCHEMA.properties.candidates.items as { required: string[] }).required;
+        (RECOMMEND_RESPONSE_SCHEMA.properties.candidates.items as { required: readonly string[] })
+          .required;
       expect(itemRequired).toContain("title");
       expect(itemRequired).toContain("creator");
       expect(itemRequired).toContain("description");

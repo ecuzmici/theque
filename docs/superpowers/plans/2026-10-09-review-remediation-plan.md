@@ -32,8 +32,8 @@ Baseline: tests 875 (88 files), tsc errors 16, eslint errors in src 16, start ti
 - [x] WS2 Enrichment keeps the user's status (shipped 40a78a9, runtime check ok; 1 inconsistent row of another account not repaired)
 - [x] WS3 No ciphertext in the UI, no double encryption (shipped 8887a5f, deploy READY; double encryption: 1 found, 1 fixed, 0 remain; audit: all note/verdict boundaries decrypt; detail realtime joined as anon and got 0 events, now sets the session token first and gets events)
 - [x] WS4 Book file allow-list on the server (shipped c4f40d0, deploy READY; QA account gets 404 on POST and DELETE and no Kobo block; item DELETE removed 1 of 1 cover objects at runtime; also does WS7c step 1; Vercel env var skipped, the code default covers it)
-- [x] WS5 Security fixes (redirect, login text, extension connect, SSRF, digest) (shipped SHA_WS5; callback now sends reason=exchange_failed instead of the raw Supabase message)
-- [ ] WS6 Dependency security upgrade (Next, sharp, audit)
+- [x] WS5 Security fixes (redirect, login text, extension connect, SSRF, digest) (shipped 552c466, deploy READY; callback now sends reason=exchange_failed instead of the raw Supabase message)
+- [x] WS6 Dependency security upgrade (Next, sharp, audit) (shipped SHA_WS6; next 16.2.7 -> 16.3.8, not 16.4.0 (5 days old); sharp 0.35.5; npm audit --omit=dev 19 -> 0; Next 16.3 type-checks tests in the build, so tsc 7 -> 0 here (WS13 step 3); extension/ left the root tsconfig and has tsconfig.test.json)
 - [ ] WS7 Cover pipeline (colors on Vercel, re-cache, orphan covers)
 - [ ] WS8 Data integrity (URL normalization and backfill)
 - [ ] WS9 Reliability and UX

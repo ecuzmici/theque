@@ -23,7 +23,7 @@ describe("applyItemRewriteProposal", () => {
         category: "books",
         category_confidence: 0.93,
         title: "A Drop of Corruption",
-        subtitle: null,
+        subtitle: undefined,
         description: "A detective fantasy sequel.",
         image_url: "https://example.com/book.jpg",
         structured: {
