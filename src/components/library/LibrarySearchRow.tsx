@@ -22,11 +22,14 @@ type LibrarySearchRowProps = {
   onStatusChange: (status: ItemStatus | null) => void;
   /** The shelf chips, rendered between the field and the status chips. */
   children: ReactNode;
+  /** The genre and mood chip row, rendered under the shelf chips. Null hides it. */
+  filters?: ReactNode;
 };
 
 /**
- * Sticky block above the grid: a full-width search field, the shelf chips, and
- * (while a query is active) the status chips. All three stay pinned together.
+ * Sticky block above the grid: a full-width search field, the shelf chips, the
+ * optional genre and mood row, and (while a query is active) the status chips.
+ * All of them stay pinned together.
  */
 export function LibrarySearchRow({
   value,
@@ -37,6 +40,7 @@ export function LibrarySearchRow({
   status,
   onStatusChange,
   children,
+  filters = null,
 }: LibrarySearchRowProps) {
   const placeholder = shelfLabel ? `Search ${shelfLabel}` : "Search your library";
 
@@ -79,6 +83,8 @@ export function LibrarySearchRow({
       </div>
 
       <div className="mt-2.5">{children}</div>
+
+      {filters ? <div className="mt-1.5">{filters}</div> : null}
 
       {showStatus ? (
         <div className="mt-2 flex items-center gap-1.5 text-xs" role="group" aria-label="Status">

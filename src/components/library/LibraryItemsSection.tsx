@@ -32,6 +32,12 @@ type LibraryItemsSectionProps = {
   sort?: LibrarySort;
   /** When set, consumed items are dropped from this shelf's fetches and realtime updates. */
   hideDone?: boolean;
+  /** Genre key of the active chip. Every fetch of this section passes it. */
+  genre?: string | null;
+  /** Mood key of the active chip. Every fetch of this section passes it. */
+  mood?: string | null;
+  /** Called by the "Clear filter" button in the empty state of a filtered list. */
+  onClearFilter?: () => void;
   onItemsChange?: (items: LibraryItemRow[]) => void;
 };
 
@@ -48,6 +54,9 @@ export function LibraryItemsSection({
   initialHasMore = false,
   sort = "recent",
   hideDone = false,
+  genre = null,
+  mood = null,
+  onClearFilter,
   onItemsChange,
 }: LibraryItemsSectionProps) {
   const router = useRouter();
@@ -81,7 +90,7 @@ export function LibraryItemsSection({
       if (inFlight) return;
       inFlight = true;
       try {
-        const { items: rows } = await fetchLibraryItemsPage(shelfId, 0, sort);
+        const { items: rows } = await fetchLibraryItemsPage(shelfId, 0, sort, { genre, mood });
         if (!cancelled) {
           setItems((prev) => {
             // Merge: replace the first page with fresh data while preserving any extra pages
@@ -103,7 +112,7 @@ export function LibraryItemsSection({
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [hasPendingItems, shelfId, sort]);
+  }, [hasPendingItems, shelfId, sort, genre, mood]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -113,6 +122,7 @@ export function LibraryItemsSection({
         shelfId,
         offsetRef.current,
         sort,
+        { genre, mood },
       );
       if (newRows.length > 0) {
         setItems((prev) => {
@@ -129,7 +139,7 @@ export function LibraryItemsSection({
     } finally {
       setLoadingMore(false);
     }
-  }, [loadingMore, hasMore, shelfId, sort]);
+  }, [loadingMore, hasMore, shelfId, sort, genre, mood]);
 
   // IntersectionObserver sentinel
   useEffect(() => {
@@ -249,6 +259,7 @@ export function LibraryItemsSection({
   );
 
   const empty = SHELF_EMPTY[shelfId];
+  const filtered = genre !== null || mood !== null;
   // Everything on the shelf is consumed and "Hide done" is filtering it all out.
   const allHiddenAsDone = displayItems.length === 0 && items.length > 0;
   const moreSkeletons = (count: number) => (
@@ -280,6 +291,24 @@ export function LibraryItemsSection({
                 <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
                   Everything on this shelf is marked done. Turn off “Hide done” to see it again.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : filtered ? (
+          <Card className="border-dashed">
+            <CardContent className="flex w-full flex-col items-center px-6 py-14 text-center sm:px-10">
+              <div className="w-full max-w-md">
+                <h2 className="font-heading text-lg font-medium text-card-foreground">
+                  Nothing matches this filter
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-pretty text-muted-foreground">
+                  No item on this shelf fits the chips you chose.
+                </p>
+                {onClearFilter ? (
+                  <Button type="button" variant="outline" className="mt-6 min-h-11" onClick={onClearFilter}>
+                    Clear filter
+                  </Button>
+                ) : null}
               </div>
             </CardContent>
           </Card>
