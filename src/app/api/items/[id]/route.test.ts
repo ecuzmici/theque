@@ -26,8 +26,17 @@ const mocks = vi.hoisted(() => {
     };
   }
 
-  return { getSessionUserOrNull, from, updateSpy, makeItemsTable };
+  const deleteItemFiles = vi.fn(async () => ({ coverObjectsRemoved: 0, failures: 0 }));
+
+  return { getSessionUserOrNull, from, updateSpy, makeItemsTable, deleteItemFiles };
 });
+
+vi.mock("@/lib/items/delete-item-files", () => ({ deleteItemFiles: mocks.deleteItemFiles }));
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ storage: {} }) }));
+vi.mock("@/lib/drive/client", () => ({
+  deleteDriveFile: vi.fn(),
+  isDriveConfigured: () => true,
+}));
 
 vi.mock("@/lib/auth/session-user", () => ({
   getSessionUserOrNull: mocks.getSessionUserOrNull,
@@ -265,5 +274,53 @@ describe("PATCH /api/items/[id] (ADR 0013 field encryption)", () => {
       category_source: "manual",
       category_confidence: 1,
     });
+  });
+});
+
+describe("DELETE /api/items/[id]", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    mocks.getSessionUserOrNull.mockReset();
+    mocks.from.mockReset();
+    mocks.deleteItemFiles.mockClear();
+  });
+
+  function deleteTable(result: { data: unknown; error: unknown }) {
+    const chain = {
+      delete: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      select: vi.fn().mockResolvedValue(result),
+    };
+    mocks.from.mockImplementation(() => chain);
+  }
+
+  async function callDelete() {
+    const { DELETE } = await import("./route");
+    return DELETE(new Request("https://theque.app/api/items/item-1", { method: "DELETE" }), {
+      params: Promise.resolve({ id: "item-1" }),
+    });
+  }
+
+  it("removes the cover and the Drive file after the row delete", async () => {
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+    deleteTable({ data: [{ id: "item-1", file_drive_id: "drive-1" }], error: null });
+
+    const res = await callDelete();
+
+    expect(res.status).toBe(204);
+    expect(mocks.deleteItemFiles).toHaveBeenCalledWith(
+      { userId: "user-1", itemId: "item-1", driveId: "drive-1" },
+      expect.objectContaining({ deleteDriveFile: expect.any(Function) }),
+    );
+  });
+
+  it("removes no files when no row matched", async () => {
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+    deleteTable({ data: [], error: null });
+
+    const res = await callDelete();
+
+    expect(res.status).toBe(404);
+    expect(mocks.deleteItemFiles).not.toHaveBeenCalled();
   });
 });

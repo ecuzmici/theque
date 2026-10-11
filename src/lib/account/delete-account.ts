@@ -34,9 +34,19 @@ export type AdminAuthClient = {
   deleteUser(userId: string): Promise<{ data: unknown; error: { message: string } | null }>;
 };
 
+/** Book files live in Google Drive, outside Supabase, so no FK cascade removes them. */
+export type BookFileClient = {
+  /** The `file_drive_id` values of the user's items. */
+  listDriveIds(userId: string): Promise<string[]>;
+  /** Removes one Drive file. A missing file counts as success. */
+  deleteFile(driveId: string): Promise<void>;
+};
+
 export type DeleteAccountDeps = {
   storage: StorageClient;
   adminAuth: AdminAuthClient;
+  /** Omit when Drive is not configured. */
+  bookFiles?: BookFileClient;
 };
 
 export type DeleteAccountResult = {
@@ -44,6 +54,8 @@ export type DeleteAccountResult = {
   ok: boolean;
   /** Count of cover-image objects left behind after a partial storage purge failure. Never paths/ids. */
   orphanedFileCount: number;
+  /** Count of Drive book files that the purge could not remove. Never ids. */
+  orphanedDriveFileCount: number;
 };
 
 /**
@@ -61,17 +73,41 @@ export type DeleteAccountResult = {
  */
 export async function deleteAccount(
   userId: string,
-  { storage, adminAuth }: DeleteAccountDeps,
+  { storage, adminAuth, bookFiles }: DeleteAccountDeps,
 ): Promise<DeleteAccountResult> {
   const orphanedFileCount = await purgeUserImages(storage, userId);
+  // The Drive ids live on the item rows, so read them before `deleteUser`
+  // cascades the rows away.
+  const orphanedDriveFileCount = bookFiles ? await purgeBookFiles(bookFiles, userId) : 0;
 
   const { error } = await adminAuth.deleteUser(userId);
   if (error) {
     console.error("[account/delete] deleteUser failed");
-    return { ok: false, orphanedFileCount };
+    return { ok: false, orphanedFileCount, orphanedDriveFileCount };
   }
 
-  return { ok: true, orphanedFileCount };
+  return { ok: true, orphanedFileCount, orphanedDriveFileCount };
+}
+
+async function purgeBookFiles(bookFiles: BookFileClient, userId: string): Promise<number> {
+  let driveIds: string[];
+  try {
+    driveIds = await bookFiles.listDriveIds(userId);
+  } catch {
+    console.error("[account/delete] book file list failed");
+    return 0;
+  }
+
+  let failed = 0;
+  for (const driveId of driveIds) {
+    try {
+      await bookFiles.deleteFile(driveId);
+    } catch {
+      failed += 1;
+    }
+  }
+  if (failed > 0) console.error("[account/delete] book file delete failed, count:", failed);
+  return failed;
 }
 
 async function purgeUserImages(storage: StorageClient, userId: string): Promise<number> {

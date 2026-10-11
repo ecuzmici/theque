@@ -1,5 +1,6 @@
 import { deleteAccount } from "@/lib/account/delete-account";
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { deleteDriveFile, isDriveConfigured } from "@/lib/drive/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,6 +41,20 @@ export async function POST(req: Request) {
   const result = await deleteAccount(user.id, {
     storage: admin.storage,
     adminAuth: admin.auth.admin,
+    bookFiles: isDriveConfigured()
+      ? {
+          async listDriveIds(userId) {
+            const { data, error } = await admin
+              .from("items")
+              .select("file_drive_id")
+              .eq("user_id", userId)
+              .not("file_drive_id", "is", null);
+            if (error) throw new Error(error.message);
+            return (data ?? []).map((row) => row.file_drive_id).filter((id): id is string => !!id);
+          },
+          deleteFile: deleteDriveFile,
+        }
+      : undefined,
   });
 
   if (!result.ok) {
@@ -49,5 +64,7 @@ export async function POST(req: Request) {
   const supabase = await createClient();
   await supabase.auth.signOut();
 
-  return jsonResponse({ deleted: true, orphanedFileCount: result.orphanedFileCount });
+  return jsonResponse({ deleted: true, orphanedFileCount: result.orphanedFileCount,
+    orphanedDriveFileCount: result.orphanedDriveFileCount,
+  });
 }

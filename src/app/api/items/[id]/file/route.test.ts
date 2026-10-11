@@ -169,6 +169,8 @@ beforeEach(() => {
   mocks.uploadEpub.mockReset();
   mocks.deleteDriveFile.mockReset();
 
+  vi.unstubAllEnvs();
+  vi.stubEnv("BOOK_FILE_USER_IDS", SESSION_USER.id);
   mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
   mocks.isDriveConfigured.mockReturnValue(true);
   mocks.uploadEpub.mockResolvedValue({ id: "drive-new", name: "stored-name.epub" });
@@ -177,6 +179,19 @@ beforeEach(() => {
 });
 
 describe("POST /api/items/[id]/file", () => {
+  it("answers 404 for a user who is not on the allow-list", async () => {
+    vi.stubEnv("BOOK_FILE_USER_IDS", "someone-else");
+    useRow({ row: ROW });
+    const { POST } = await loadRoute();
+
+    const res = await POST(uploadRequest(fileForm(await buildEpub())), params);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "not_found" });
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.uploadEpub).not.toHaveBeenCalled();
+  });
+
   it("rejects a signed-out caller", async () => {
     mocks.getSessionUserOrNull.mockResolvedValue(null);
     const { POST } = await loadRoute();
@@ -416,6 +431,17 @@ describe("POST /api/items/[id]/file", () => {
 });
 
 describe("DELETE /api/items/[id]/file", () => {
+  it("answers 404 for a user who is not on the allow-list", async () => {
+    vi.stubEnv("BOOK_FILE_USER_IDS", "someone-else");
+    useRow({ row: { ...ROW, file_drive_id: "drive-old" } });
+    const { DELETE } = await loadRoute();
+
+    const res = await DELETE(deleteRequest(), params);
+
+    expect(res.status).toBe(404);
+    expect(mocks.deleteDriveFile).not.toHaveBeenCalled();
+  });
+
   it("rejects a signed-out caller", async () => {
     mocks.getSessionUserOrNull.mockResolvedValue(null);
     const { DELETE } = await loadRoute();

@@ -152,4 +152,43 @@ describe("deleteAccount", () => {
 
     expect(result.ok).toBe(false);
   });
+
+  it("deletes the Drive book files before it deletes the user", async () => {
+    const { storage } = makeFakeStorage({ "user-1/": [] });
+    const { adminAuth, deleteUser } = makeFakeAdminAuth();
+    const order: string[] = [];
+    deleteUser.mockImplementation(async () => {
+      order.push("deleteUser");
+      return { data: null, error: null };
+    });
+    const bookFiles = {
+      listDriveIds: vi.fn(async () => ["drive-a", "drive-b"]),
+      deleteFile: vi.fn(async (id: string) => {
+        order.push(`drive:${id}`);
+      }),
+    };
+
+    const result = await deleteAccount("user-1", { storage, adminAuth, bookFiles });
+
+    expect(bookFiles.listDriveIds).toHaveBeenCalledWith("user-1");
+    expect(order).toEqual(["drive:drive-a", "drive:drive-b", "deleteUser"]);
+    expect(result).toMatchObject({ ok: true, orphanedDriveFileCount: 0 });
+  });
+
+  it("counts failed Drive deletes and still deletes the user", async () => {
+    const { storage } = makeFakeStorage({ "user-1/": [] });
+    const { adminAuth, deleteUser } = makeFakeAdminAuth();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const bookFiles = {
+      listDriveIds: vi.fn(async () => ["drive-a", "drive-b"]),
+      deleteFile: vi.fn(async (id: string) => {
+        if (id === "drive-a") throw new Error("drive down");
+      }),
+    };
+
+    const result = await deleteAccount("user-1", { storage, adminAuth, bookFiles });
+
+    expect(deleteUser).toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: true, orphanedDriveFileCount: 1 });
+  });
 });

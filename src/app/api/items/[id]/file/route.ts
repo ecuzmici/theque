@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { canUseBookFile } from "@/lib/book-file-access";
 import type { Json } from "@/lib/database.types";
 import { deleteDriveFile, DriveError, isDriveConfigured, uploadEpub } from "@/lib/drive/client";
 import { buildKoboFilename, KEPUB_EXTENSION } from "@/lib/epub/filename";
@@ -8,6 +9,7 @@ import { epubPatchFromItem } from "@/lib/epub/from-item";
 import { convertEpubToKepub, KepubConversionError } from "@/lib/epub/kepub";
 import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "@/lib/epub/metadata";
 import { MAX_BOOK_FILE_BYTES } from "@/lib/input-limits";
+import { rateLimit } from "@/lib/rate-limit";
 import { createClient } from "@/lib/supabase/server";
 
 /** Every zip file starts with these four bytes. An EPUB is a zip file. */
@@ -53,6 +55,18 @@ async function removeQuietly(driveId: string): Promise<void> {
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserOrNull();
   if (!user) return fail("unauthorized", 401);
+
+  // Answer 404 for a user who is not on the allow-list, the same answer as for
+  // a hidden row. The route does not tell other users that the feature exists.
+  if (!canUseBookFile(user.id)) return fail("not_found", 404);
+
+  const rl = await rateLimit(`book-file:${user.id}`, 20, 3600);
+  if (!rl.ok) {
+    return Response.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter ?? 3600) } },
+    );
+  }
 
   // Test the configuration first. Without Drive the upload cannot finish, so the
   // route must not spend memory and time on the file.
@@ -199,6 +213,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const user = await getSessionUserOrNull();
   if (!user) return fail("unauthorized", 401);
+  if (!canUseBookFile(user.id)) return fail("not_found", 404);
 
   const { id } = await ctx.params;
   const supabase = await createClient();

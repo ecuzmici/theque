@@ -6,6 +6,9 @@ import {
   MAX_NOTE_LENGTH,
   MAX_TITLE_LENGTH,
 } from "@/lib/input-limits";
+import { deleteDriveFile, isDriveConfigured } from "@/lib/drive/client";
+import { deleteItemFiles } from "@/lib/items/delete-item-files";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 // Only non-null, non-empty strings are ciphertext candidates — mirrors
@@ -200,7 +203,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     .delete()
     .eq("id", id)
     .eq("user_id", user.id)
-    .select("id");
+    .select("id, file_drive_id");
 
   if (error) {
     console.error("[api/items/:id] delete_failed:", error.message);
@@ -210,6 +213,16 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   if (!deleted?.length) {
     return Response.json({ code: "not_found" }, { status: 404 });
   }
+
+  // No row points at the cover or the book file now, so remove them here.
+  // Deleting the item also removes its book file from Drive and the Kobo.
+  await deleteItemFiles(
+    { userId: user.id, itemId: id, driveId: deleted[0].file_drive_id ?? null },
+    {
+      storage: createAdminClient().storage,
+      deleteDriveFile: isDriveConfigured() ? deleteDriveFile : undefined,
+    },
+  );
 
   return new Response(null, { status: 204 });
 }

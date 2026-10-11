@@ -14,6 +14,11 @@ vi.mock("@/lib/account/delete-account", () => ({
   deleteAccount: mocks.deleteAccount,
 }));
 
+vi.mock("@/lib/drive/client", () => ({
+  deleteDriveFile: vi.fn(),
+  isDriveConfigured: () => false,
+}));
+
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
     storage: { from: vi.fn() },
@@ -81,13 +86,13 @@ describe("POST /api/account/delete", () => {
 
   it("signs the user out and reports the orphaned-file count on success", async () => {
     mocks.getSessionUserOrNull.mockResolvedValue({ id: "user-1" });
-    mocks.deleteAccount.mockResolvedValue({ ok: true, orphanedFileCount: 2 });
+    mocks.deleteAccount.mockResolvedValue({ ok: true, orphanedFileCount: 2, orphanedDriveFileCount: 0 });
 
     const { POST } = await import("./route");
     const res = await POST(req({ confirm: "delete" }));
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({ deleted: true, orphanedFileCount: 2 });
+    await expect(res.json()).resolves.toEqual({ deleted: true, orphanedFileCount: 2, orphanedDriveFileCount: 0 });
     expect(mocks.signOut).toHaveBeenCalledTimes(1);
   });
 
