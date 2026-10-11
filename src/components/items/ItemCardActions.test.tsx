@@ -104,5 +104,66 @@ describe("ItemCardActions", () => {
     window.removeEventListener(SAVE_ERROR_EVENT, onSaveError);
     vi.unstubAllGlobals();
   });
+
+  async function openMenu(element: React.ReactElement) {
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(element);
+    });
+    await act(async () => {
+      document.querySelector("button")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    return [...document.querySelectorAll('[role="menuitem"]')];
+  }
+
+  it("offers mark done with the category verb, or edit verdict when done", async () => {
+    const onOpenMarkDone = vi.fn();
+    let items = await openMenu(
+      <ItemCardActions item={makeItem()} shelfId="all" onOpenMarkDone={onOpenMarkDone} />,
+    );
+    expect(items.some((el) => el.textContent === "Mark read")).toBe(true);
+    act(() => root?.unmount());
+    container?.remove();
+
+    items = await openMenu(
+      <ItemCardActions item={makeItem({ status: "done" })} shelfId="all" onOpenMarkDone={onOpenMarkDone} />,
+    );
+    expect(items.some((el) => el.textContent === "Edit verdict")).toBe(true);
+  });
+
+  it("shows the cleaned title as the menu label", async () => {
+    await openMenu(
+      <ItemCardActions item={makeItem({ title: "Tremors (1990) - IMDb" })} shelfId="all" />,
+    );
+    expect(document.body.textContent).toContain("Tremors");
+    expect(document.body.textContent).not.toContain("IMDb");
+  });
+
+  it("offers inbox triage for an inbox item and drops it from the inbox shelf on keep", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+    const onItemPatch = vi.fn();
+    const onOpenMarkDone = vi.fn();
+    const items = await openMenu(
+      <ItemCardActions
+        item={makeItem({ status: "inbox" })}
+        shelfId="inbox"
+        onItemPatch={onItemPatch}
+        onOpenMarkDone={onOpenMarkDone}
+      />,
+    );
+    expect(document.body.textContent).toContain("Wrong type…");
+    expect(document.body.textContent).not.toContain("Change status");
+    expect(items.some((el) => el.textContent?.startsWith("Mark"))).toBe(false);
+
+    const keep = items.find((el) => el.textContent === "Keep · Want");
+    await act(async () => {
+      keep?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 6; i++) await Promise.resolve();
+    });
+    expect(onItemPatch).toHaveBeenCalledWith("item-1", { status: "want" }, { remove: true });
+    vi.unstubAllGlobals();
+  });
 });
 

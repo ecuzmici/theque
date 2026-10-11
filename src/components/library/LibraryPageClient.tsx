@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { Eye, EyeOff, Images, Layers } from "lucide-react";
+import { Eye, EyeOff, Layers } from "lucide-react";
 
 import { InboxTriageStack } from "@/components/inbox/InboxTriageStack";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
+import { COVER_GRID_CLASS } from "@/components/items/ItemGrid";
 import { LibraryItemsSection } from "@/components/library/LibraryItemsSection";
 import { LibrarySpineBand } from "@/components/library/LibrarySpineBand";
 import { ShuffleButton } from "@/components/library/ShuffleButton";
@@ -43,8 +44,8 @@ type LibraryPageClientProps = {
 
 function LibraryGridSkeleton() {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-      {Array.from({ length: 8 }, (_, i) => (
+    <ul className={COVER_GRID_CLASS}>
+      {Array.from({ length: 10 }, (_, i) => (
         <li key={i}>
           <ItemCardSkeleton />
         </li>
@@ -72,7 +73,6 @@ export function LibraryPageClient({
   const [inboxCount, setInboxCount] = useState<number | null>(null);
   const [otherCount, setOtherCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [wall, setWall] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const [triageMode, setTriageMode] = useState(false);
 
@@ -102,15 +102,9 @@ export function LibraryPageClient({
   // Presentation prefs survive reloads; read post-mount to keep hydration clean.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is read after mount so hydration stays clean
-    setWall(window.localStorage.getItem("theque_wall_mode") === "1");
     setHideDone(window.localStorage.getItem("theque_hide_done") === "1");
     prefsLoaded.current = true;
   }, []);
-
-  useEffect(() => {
-    if (!prefsLoaded.current) return;
-    window.localStorage.setItem("theque_wall_mode", wall ? "1" : "0");
-  }, [wall]);
 
   // "Hide done" is a client-side display filter (see LibraryItemsSection), so
   // toggling it never refetches — it just re-renders the cached shelf.
@@ -306,7 +300,7 @@ export function LibraryPageClient({
         Showing {activeLabel} shelf
       </p>
 
-      {/* Shelf toolbar: shuffle pick, AI recommendations, wall mode */}
+      {/* Shelf toolbar: shuffle pick, triage, hide done */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         {activeShelf !== "inbox" ? (
           <ShuffleButton key={activeShelf} shelfId={activeShelf} />
@@ -343,23 +337,11 @@ export function LibraryPageClient({
               {hideDone ? "Show done" : "Hide done"}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant={wall ? "secondary" : "outline"}
-            size="icon"
-            aria-pressed={wall}
-            aria-label="Toggle wall mode (covers only)"
-            title="Wall mode (covers only)"
-            className="min-h-11 min-w-11 lg-fine:min-h-9 lg-fine:min-w-9"
-            onClick={() => setWall((w) => !w)}
-          >
-            <Images className="size-4" aria-hidden />
-          </Button>
         </div>
       </div>
 
-      {/* Keyed by shelf so a shelf swap replays a soft fade; wall-mode and
-          triage toggles keep `activeShelf` stable, so they don't re-animate.
+      {/* Keyed by shelf so a shelf swap replays a soft fade; the triage
+          toggle keeps `activeShelf` stable, so it does not re-animate.
           Reduced-motion users get no animation (see `.ks-shelf-enter`). */}
       <div key={activeShelf} className="ks-shelf-enter">
       {loadError != null && cachedItems === undefined ? (
@@ -402,7 +384,6 @@ export function LibraryPageClient({
           shelfId={activeShelf}
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
-          wall={wall}
           hideDone={hideDone}
           onItemsChange={updateActiveShelfItems}
         />

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ItemGrid } from "@/components/items/ItemGrid";
+import { COVER_GRID_CLASS, ItemGrid } from "@/components/items/ItemGrid";
 import { ItemCardSkeleton } from "@/components/items/ItemCardSkeleton";
 import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
@@ -29,7 +29,6 @@ type LibraryItemsSectionProps = {
   initialItems: LibraryItemRow[];
   initialHasMore?: boolean;
   sort?: LibrarySort;
-  wall?: boolean;
   /** When set, consumed items are dropped from this shelf's fetches and realtime updates. */
   hideDone?: boolean;
   onItemsChange?: (items: LibraryItemRow[]) => void;
@@ -47,7 +46,6 @@ export function LibraryItemsSection({
   initialItems,
   initialHasMore = false,
   sort = "recent",
-  wall = false,
   hideDone = false,
   onItemsChange,
 }: LibraryItemsSectionProps) {
@@ -253,7 +251,7 @@ export function LibraryItemsSection({
   // Everything on the shelf is consumed and "Hide done" is filtering it all out.
   const allHiddenAsDone = displayItems.length === 0 && items.length > 0;
   const moreSkeletons = (count: number) => (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+    <ul className={COVER_GRID_CLASS}>
       {Array.from({ length: count }, (_, i) => (
         <li key={i}>
           <ItemCardSkeleton />
@@ -307,12 +305,11 @@ export function LibraryItemsSection({
             items={displayItems}
             shelfId={shelfId}
             itemActionsEnabled
-            wall={wall}
             selectedId={selectedItem?.id ?? null}
             onItemPatch={onItemPatch}
             onOpenMarkDone={openMarkDoneItem}
           />
-          {loadingMore ? <div className="mt-3">{moreSkeletons(4)}</div> : null}
+          {loadingMore ? <div className="mt-5 lg:mt-7">{moreSkeletons(5)}</div> : null}
         </>
       )}
 

@@ -1,14 +1,12 @@
-import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+/** Placeholder for one cover-wall card: a 2:3 cover, a title line, and a byline line. */
 export function ItemCardSkeleton() {
   return (
-    <Card className="gap-0 overflow-hidden py-0">
-      <Skeleton className="aspect-[2/3] w-full rounded-none" />
-      <div className="space-y-2 p-3">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-3 w-2/3" />
-      </div>
-    </Card>
+    <div>
+      <Skeleton className="aspect-[2/3] w-full rounded-md" />
+      <Skeleton className="mt-1.5 h-3.5 w-4/5" />
+      <Skeleton className="mt-1 h-3 w-1/2" />
+    </div>
   );
 }

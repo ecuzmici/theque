@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, MoreHorizontal, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, MoreHorizontal, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -20,22 +20,35 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { ItemStatus } from "@/lib/database.types";
-import { formatStatus } from "@/lib/item-labels";
+import type { ItemCategory, ItemStatus } from "@/lib/database.types";
+import { CATEGORY_LABELS, doneVerb, formatCategory, formatStatus } from "@/lib/item-labels";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-import type { ItemPatchHandler } from "@/lib/item-patch";
+import type { ItemPatch, ItemPatchHandler } from "@/lib/item-patch";
 import { patchItemRequest, reportSaveError } from "@/lib/save-error";
+import { cn } from "@/lib/utils";
+
+import { cardTitle } from "./ItemCardCover";
 
 const STATUS_ACTIONS: ItemStatus[] = ["want", "dismissed"];
+const CATEGORIES = Object.keys(CATEGORY_LABELS) as ItemCategory[];
 
 type ItemCardActionsProps = {
   item: LibraryItemRow;
   shelfId: ShelfId;
   onItemPatch?: ItemPatchHandler;
+  /** Opens the mark-done / verdict dialog. The menu hides the entry when this is missing. */
+  onOpenMarkDone?: (item: LibraryItemRow) => void;
+  /** Controlled open state, so a long-press on the card can open the menu. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerClassName?: string;
 };
 
 function safeHttpUrl(url: string | null): string | null {
@@ -49,18 +62,27 @@ function safeHttpUrl(url: string | null): string | null {
   }
 }
 
-export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsProps) {
+/** Quick actions for one card: mark done, open original, status or inbox triage, delete. */
+export function ItemCardActions({
+  item,
+  shelfId,
+  onItemPatch,
+  onOpenMarkDone,
+  open,
+  onOpenChange,
+  triggerClassName,
+}: ItemCardActionsProps) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const originalUrl = useMemo(() => safeHttpUrl(item.canonical_url), [item.canonical_url]);
-  const title = item.title ?? item.domain;
+  const title = cardTitle(item);
+  const inbox = item.status === "inbox";
 
-  const applyStatus = useCallback(
-    async (status: ItemStatus) => {
-      const patch = { status };
+  const applyPatch = useCallback(
+    async (patch: ItemPatch) => {
       const undo = onItemPatch?.(item.id, patch, {
         remove: !itemMatchesShelf({ ...item, ...patch }, shelfId),
       });
@@ -98,14 +120,17 @@ export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsP
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={onOpenChange ? (next) => onOpenChange(next) : undefined}>
         <DropdownMenuTrigger
           render={
             <Button
               type="button"
-              size="xs"
+              size="icon-sm"
               variant="secondary"
-              className="h-11 min-h-11 w-[3.125rem] min-w-[3.125rem] rounded-full gap-1 bg-card/95 px-3 shadow-sm backdrop-blur lg-fine:h-7 lg-fine:min-h-7 lg-fine:w-auto lg-fine:min-w-0 lg-fine:rounded-[min(var(--radius-md),10px)]"
+              className={cn(
+                "rounded-full bg-card/90 shadow-sm backdrop-blur pointer-coarse:min-h-7",
+                triggerClassName,
+              )}
               disabled={busy || deleteBusy}
               aria-label="Item actions"
               onClick={(e) => {
@@ -115,11 +140,17 @@ export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsP
             />
           }
         >
-          <MoreHorizontal className="size-3.5" />
+          <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuGroup>
-            <DropdownMenuLabel>Item</DropdownMenuLabel>
+            <DropdownMenuLabel className="truncate">{title}</DropdownMenuLabel>
+            {onOpenMarkDone && !inbox ? (
+              <DropdownMenuItem onClick={() => onOpenMarkDone(item)}>
+                <CheckCircle2 className="size-4" />
+                {item.status === "done" ? "Edit verdict" : `Mark ${doneVerb(item.category)}`}
+              </DropdownMenuItem>
+            ) : null}
             {originalUrl ? (
               <DropdownMenuItem render={<a href={originalUrl} target="_blank" rel="noopener noreferrer" />}>
                 <ExternalLink className="size-4" />
@@ -128,19 +159,46 @@ export function ItemCardActions({ item, shelfId, onItemPatch }: ItemCardActionsP
             ) : null}
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Change status</DropdownMenuLabel>
-            {STATUS_ACTIONS.map((status) => (
-              <DropdownMenuItem
-                key={status}
-                disabled={busy || item.status === status}
-                className={item.status === status ? "font-semibold text-accent-foreground" : undefined}
-                onClick={() => void applyStatus(status)}
-              >
-                {formatStatus(status)}
+          {inbox ? (
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Inbox</DropdownMenuLabel>
+              <DropdownMenuItem disabled={busy} onClick={() => void applyPatch({ status: "want" })}>
+                Keep · Want
               </DropdownMenuItem>
-            ))}
-          </DropdownMenuGroup>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Wrong type…</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="max-h-48 overflow-y-auto">
+                  {CATEGORIES.map((c) => (
+                    <DropdownMenuItem
+                      key={c}
+                      disabled={busy}
+                      className={item.category === c ? "font-semibold text-accent-foreground" : undefined}
+                      onClick={() => void applyPatch({ category: c, status: "want" })}
+                    >
+                      {formatCategory(c)}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuItem disabled={busy} onClick={() => void applyPatch({ status: "dismissed" })}>
+                Dismiss
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          ) : (
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Change status</DropdownMenuLabel>
+              {STATUS_ACTIONS.map((status) => (
+                <DropdownMenuItem
+                  key={status}
+                  disabled={busy || item.status === status}
+                  className={item.status === status ? "font-semibold text-accent-foreground" : undefined}
+                  onClick={() => void applyPatch({ status })}
+                >
+                  {formatStatus(status)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
