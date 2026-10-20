@@ -1,4 +1,5 @@
 import type { EpubMetadataPatch } from "@/lib/epub/metadata";
+import { genreLabel, moodLabel } from "@/lib/taste/taste-lists";
 
 const MAX_CREATORS = 5;
 
@@ -7,7 +8,26 @@ export type BookItemFields = {
   title: string | null;
   description: string | null;
   structured: Record<string, unknown>;
+  genre_keys?: string[] | null;
+  mood_keys?: string[] | null;
 };
+
+/**
+ * The genre labels, then each mood as `Mood: <Label>`. KOReader and calibre
+ * show these as tags. An unknown key drops out.
+ */
+function subjectsFromTaste(item: BookItemFields): string[] {
+  const out: string[] = [];
+  const add = (value: string | null) => {
+    if (value && !out.includes(value)) out.push(value);
+  };
+  for (const key of item.genre_keys ?? []) add(genreLabel("books", key));
+  for (const key of item.mood_keys ?? []) {
+    const label = moodLabel(key);
+    add(label ? `Mood: ${label}` : null);
+  }
+  return out;
+}
 
 function text(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -80,6 +100,10 @@ export function epubPatchFromItem(item: BookItemFields): EpubMetadataPatch {
     const seriesIndex = positiveNumber(item.structured.series_index);
     if (seriesIndex !== null) patch.seriesIndex = seriesIndex;
   }
+
+  // Without a known genre or mood, the EPUB keeps its own subjects.
+  const subjects = subjectsFromTaste(item);
+  if (subjects.length > 0) patch.subjects = subjects;
 
   return patch;
 }

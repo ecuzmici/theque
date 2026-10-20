@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import type { BookFileTarget } from "@/lib/book-file-access";
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
 
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -19,6 +20,7 @@ const DELETE_TIMEOUT_MS = 8000;
 const FOLDER_TIMEOUT_MS = 8000;
 // An EPUB is a few megabytes, so the upload gets far more time than a token call.
 const UPLOAD_TIMEOUT_MS = 60000;
+const DOWNLOAD_TIMEOUT_MS = 60000;
 
 const MAX_RETRIES = 2;
 const BACKOFF_MS = 250;
@@ -33,6 +35,7 @@ export type DriveErrorCode =
   | "token_exchange_failed"
   | "upload_failed"
   | "delete_failed"
+  | "download_failed"
   | "folder_create_failed"
   | "folder_share_failed"
   | "network_error";
@@ -76,16 +79,26 @@ function readCredentials(): DriveCredentials | null {
   return { clientId, clientSecret, refreshToken };
 }
 
-function readConfig(): DriveConfig | null {
+/**
+ * Each target reads its own folder variable. A target never borrows the folder
+ * of the other target: the Kobo folder is public, and a Kobo device syncs every
+ * file in it.
+ */
+const FOLDER_VARIABLES: Record<BookFileTarget, string> = {
+  kobo: "GOOGLE_DRIVE_FOLDER_ID",
+  kindle: "GOOGLE_DRIVE_KINDLE_FOLDER_ID",
+};
+
+function readConfig(target: BookFileTarget): DriveConfig | null {
   const credentials = readCredentials();
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID?.trim();
+  const folderId = process.env[FOLDER_VARIABLES[target]]?.trim();
   if (!credentials || !folderId) return null;
   return { ...credentials, folderId };
 }
 
-/** True when all four Drive variables are set. Callers hide the sync UI otherwise. */
-export function isDriveConfigured(): boolean {
-  return readConfig() !== null;
+/** True when the three OAuth variables and the folder of the target are set. Callers hide the sync UI otherwise. */
+export function isDriveConfigured(target: BookFileTarget = "kobo"): boolean {
+  return readConfig(target) !== null;
 }
 
 /**
@@ -103,12 +116,12 @@ function requireCredentials(): DriveCredentials {
   return credentials;
 }
 
-function requireConfig(): DriveConfig {
-  const config = readConfig();
+function requireConfig(target: BookFileTarget = "kobo"): DriveConfig {
+  const config = readConfig(target);
   if (!config) {
     throw new DriveError(
       "drive_not_configured",
-      "Drive sync needs GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, GOOGLE_DRIVE_REFRESH_TOKEN and GOOGLE_DRIVE_FOLDER_ID.",
+      `Drive sync needs GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, GOOGLE_DRIVE_REFRESH_TOKEN and ${FOLDER_VARIABLES[target]}.`,
     );
   }
   return config;
@@ -243,9 +256,15 @@ function shareFailure(folderId: string, status?: number): DriveError {
  * it fails with a 404. Thus the app must make the folder itself.
  *
  * The folder becomes readable by anybody who holds the link, because KoboCloud
- * reads a public share link and cannot sign in.
+ * reads a public share link and cannot sign in. Pass `{ share: false }` for the
+ * private Kindle folder (GOOGLE_DRIVE_KINDLE_FOLDER_ID). KOReader reads that
+ * folder through the OPDS catalog, so nobody needs the link.
  */
-export async function createSyncFolder(name: string): Promise<{ id: string; webViewLink: string }> {
+export async function createSyncFolder(
+  name: string,
+  options: { share?: boolean } = {},
+): Promise<{ id: string; webViewLink: string }> {
+  const share = options.share ?? true;
   const credentials = requireCredentials();
 
   const folderName = name.trim();
@@ -290,6 +309,8 @@ export async function createSyncFolder(name: string): Promise<{ id: string; webV
     typeof payload.webViewLink === "string" && payload.webViewLink.trim()
       ? payload.webViewLink.trim()
       : `${FOLDER_BROWSER_BASE}/${id}`;
+
+  if (!share) return { id, webViewLink };
 
   let shared: Response;
   try {
@@ -341,8 +362,13 @@ function multipartBody(boundary: string, metadata: string, bytes: Uint8Array): U
  * store the file and still fail the reply. A duplicate book is worse than an error
  * the caller can see, so the caller decides whether to send the file again.
  */
-export async function uploadEpub(args: { name: string; bytes: Uint8Array }): Promise<{ id: string; name: string }> {
-  const config = requireConfig();
+export async function uploadEpub(args: {
+  name: string;
+  bytes: Uint8Array;
+  /** The folder of this target receives the file. The default is the Kobo folder. */
+  target?: BookFileTarget;
+}): Promise<{ id: string; name: string }> {
+  const config = requireConfig(args.target ?? "kobo");
 
   const fileName = args.name.trim();
   if (!fileName) throw new DriveError("upload_failed", "The upload needs a file name.");
@@ -413,4 +439,37 @@ export async function deleteDriveFile(id: string): Promise<void> {
     throw new DriveError("delete_failed", "Drive rejected the access token.", 401);
   }
   if (!res.ok) throw new DriveError("delete_failed", "Drive refused the delete.", res.status);
+}
+
+/**
+ * Read the bytes of one file. The file id is enough, so this call does not
+ * need a folder variable. The drive.file scope shows the app only the files
+ * that the app made, and every book file is one of them.
+ */
+export async function downloadDriveFile(id: string): Promise<Uint8Array> {
+  const credentials = requireCredentials();
+
+  const fileId = id.trim();
+  if (!fileId) throw new DriveError("download_failed", "The download needs a file id.");
+
+  const token = await getAccessToken(credentials);
+
+  const res = await driveFetch(
+    new URL(`${FILES_ENDPOINT}/${encodeURIComponent(fileId)}?alt=media`),
+    { method: "GET", headers: { authorization: `Bearer ${token}` } },
+    // A read changes nothing, so a repeat after a 5xx is safe.
+    { timeoutMs: DOWNLOAD_TIMEOUT_MS, retryServerErrors: true },
+  );
+
+  if (res.status === 401) {
+    invalidateToken();
+    throw new DriveError("download_failed", "Drive rejected the access token.", 401);
+  }
+  if (!res.ok) throw new DriveError("download_failed", "Drive refused the download.", res.status);
+
+  try {
+    return new Uint8Array(await res.arrayBuffer());
+  } catch (error) {
+    throw new DriveError("network_error", `Drive download stopped: ${failureReason(error)}.`, res.status);
+  }
 }

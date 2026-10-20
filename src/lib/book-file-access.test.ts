@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canUseBookFile } from "./book-file-access";
+import { bookFileTarget, canUseBookFile } from "./book-file-access";
 
 const OWNER = "6ff65b3e-9e28-40fe-9819-624168713cc8";
 
@@ -28,5 +28,22 @@ describe("canUseBookFile", () => {
 
   it("falls back to the default when the variable is empty", () => {
     expect(canUseBookFile(OWNER, { BOOK_FILE_USER_IDS: " , " })).toBe(true);
+  });
+});
+
+describe("bookFileTarget", () => {
+  it("gives the owner the kindle target when the variable is unset", () => {
+    expect(bookFileTarget(OWNER, {})).toBe("kindle");
+  });
+
+  it("gives every other user the kobo target", () => {
+    expect(bookFileTarget("8ae33297-7924-4e00-b7c6-94fab97e1323", {})).toBe("kobo");
+    expect(bookFileTarget(null, {})).toBe("kobo");
+  });
+
+  it("uses the variable instead of the default when it is set", () => {
+    const env = { BOOK_FILE_KINDLE_USER_IDS: " USER-A " };
+    expect(bookFileTarget("user-a", env)).toBe("kindle");
+    expect(bookFileTarget(OWNER, env)).toBe("kobo");
   });
 });

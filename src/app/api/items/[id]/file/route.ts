@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
-import { canUseBookFile } from "@/lib/book-file-access";
+import { bookFileTarget, canUseBookFile } from "@/lib/book-file-access";
 import type { Json } from "@/lib/database.types";
 import { deleteDriveFile, DriveError, isDriveConfigured, uploadEpub } from "@/lib/drive/client";
-import { buildKoboFilename, KEPUB_EXTENSION } from "@/lib/epub/filename";
+import { buildKoboFilename, EPUB_EXTENSION, KEPUB_EXTENSION } from "@/lib/epub/filename";
 import { epubPatchFromItem } from "@/lib/epub/from-item";
 import { convertEpubToKepub, KepubConversionError } from "@/lib/epub/kepub";
 import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "@/lib/epub/metadata";
@@ -69,8 +69,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   // Test the configuration first. Without Drive the upload cannot finish, so the
-  // route must not spend memory and time on the file.
-  if (!isDriveConfigured()) return fail("drive_not_configured", 503);
+  // route must not spend memory and time on the file. Each target needs its own
+  // folder. A kindle upload never falls back to the public Kobo folder.
+  const target = bookFileTarget(user.id);
+  if (!isDriveConfigured(target)) return fail("drive_not_configured", 503);
 
   // Stop an oversized body before the route reads it into memory.
   const declaredBytes = Number(req.headers.get("content-length"));
@@ -108,6 +110,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     title: row.title,
     description: row.description,
     structured,
+    genre_keys: row.genre_keys,
+    mood_keys: row.mood_keys,
   });
 
   let bytes: Uint8Array;
@@ -127,29 +131,33 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   // The route does not test the size again here. MAX_BOOK_FILE_BYTES states what
   // a person may upload, and the conversion adds about one percent. A rejection
   // after a file that met the stated limit would confuse the user.
-  let converted: Awaited<ReturnType<typeof convertEpubToKepub>>;
-  try {
-    converted = await convertEpubToKepub(bytes);
-  } catch (error) {
-    if (error instanceof EpubFormatError || error instanceof KepubConversionError) {
-      console.error("[api/items/:id/file] conversion_failed:", reason(error));
-      return fail("conversion_failed", 422);
+  //
+  // The kindle target skips this step. KOReader opens a plain EPUB.
+  if (target === "kobo") {
+    let converted: Awaited<ReturnType<typeof convertEpubToKepub>>;
+    try {
+      converted = await convertEpubToKepub(bytes);
+    } catch (error) {
+      if (error instanceof EpubFormatError || error instanceof KepubConversionError) {
+        console.error("[api/items/:id/file] conversion_failed:", reason(error));
+        return fail("conversion_failed", 422);
+      }
+      throw error;
     }
-    throw error;
-  }
-  bytes = converted.bytes;
+    bytes = converted.bytes;
 
-  if (converted.skipped.length > 0) {
-    // Name the documents that keep no Kobo spans. The book still opens.
-    console.warn(
-      "[api/items/:id/file] conversion_partial:",
-      converted.skipped.map((entry) => `${entry.path} (${entry.reason})`).join(", "),
-    );
+    if (converted.skipped.length > 0) {
+      // Name the documents that keep no Kobo spans. The book still opens.
+      console.warn(
+        "[api/items/:id/file] conversion_partial:",
+        converted.skipped.map((entry) => `${entry.path} (${entry.reason})`).join(", "),
+      );
+    }
   }
 
   // Build the file name from the same item data as the metadata patch, so the
-  // name and the metadata agree. The name must carry `.kepub.epub`, because the
-  // device reads a `.epub` name as a plain EPUB whatever the file holds.
+  // name and the metadata agree. A Kobo name must carry `.kepub.epub`, because
+  // the device reads a `.epub` name as a plain EPUB whatever the file holds.
   const name = buildKoboFilename(
     {
       // Take the title from the patch, not the row. The patch drops a series
@@ -159,7 +167,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       series: patch.series ?? null,
       seriesIndex: patch.seriesIndex ?? null,
     },
-    KEPUB_EXTENSION,
+    target === "kobo" ? KEPUB_EXTENSION : EPUB_EXTENSION,
   );
 
   // Hash the bytes that go to Drive, not the bytes that came from the browser.
@@ -168,7 +176,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   let uploaded: { id: string; name: string };
   try {
-    uploaded = await uploadEpub({ name, bytes });
+    uploaded = await uploadEpub({ name, bytes, target });
   } catch (error) {
     console.error("[api/items/:id/file] upload_failed:", reason(error));
     return fail("upload_failed", 502);

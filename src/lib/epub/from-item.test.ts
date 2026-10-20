@@ -205,4 +205,21 @@ describe("epubPatchFromItem", () => {
     expect(epubPatchFromItem(item({ structured: { series_index: 3 } }))).toEqual({});
     expect(epubPatchFromItem(item({ structured: { series: "   ", series_index: 3 } }))).toEqual({});
   });
+
+  it("writes genre labels, then moods, as subjects", () => {
+    const patch = epubPatchFromItem(
+      item({ genre_keys: ["fantasy", "mystery-crime"], mood_keys: ["cozy", "slow-burn"] }),
+    );
+    expect(patch.subjects).toEqual(["Fantasy", "Mystery & Crime", "Mood: Cozy", "Mood: Slow burn"]);
+  });
+
+  it("ignores unknown keys and a watch-only genre", () => {
+    const patch = epubPatchFromItem(item({ genre_keys: ["comedy", "nope", "horror"], mood_keys: ["sad"] }));
+    expect(patch.subjects).toEqual(["Horror"]);
+  });
+
+  it("omits subjects when the item has no known genre or mood", () => {
+    expect(epubPatchFromItem(item({ genre_keys: [], mood_keys: [] }))).toEqual({});
+    expect(epubPatchFromItem(item({ genre_keys: ["nope"], mood_keys: null }))).toEqual({});
+  });
 });

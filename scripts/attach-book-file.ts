@@ -7,6 +7,10 @@
  * writes the five `file_*` columns in one statement. It uses the service-role
  * client, so it can attach a file to an item that belongs to another profile.
  *
+ * The item owner sets the target (`bookFileTarget`). A kindle owner gets a
+ * plain `.epub` in GOOGLE_DRIVE_KINDLE_FOLDER_ID, with no KEPUB step. A kindle
+ * file never goes to the public Kobo folder.
+ *
  * Usage:
  *   npm run book:attach -- <itemId> <path/to/book.epub>
  *   npm run book:attach -- --manifest books.tsv --dir books
@@ -26,8 +30,9 @@
  * (The npm script passes --conditions=react-server so the "server-only" guard
  * in the imported EPUB and admin modules resolves to its no-op build.)
  *
- * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY +
- * GOOGLE_DRIVE_FOLDER_ID and the Drive OAuth variables in env (or .env.local).
+ * Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + the Drive
+ * OAuth variables in env (or .env.local), plus GOOGLE_DRIVE_FOLDER_ID for a
+ * kobo owner or GOOGLE_DRIVE_KINDLE_FOLDER_ID for a kindle owner.
  */
 
 import { createHash } from "node:crypto";
@@ -36,8 +41,9 @@ import { basename, resolve } from "node:path";
 
 import { loadEnvConfig } from "@next/env";
 
+import { bookFileTarget } from "../src/lib/book-file-access";
 import { deleteDriveFile, DriveError, isDriveConfigured, uploadEpub } from "../src/lib/drive/client";
-import { buildKoboFilename, KEPUB_EXTENSION } from "../src/lib/epub/filename";
+import { buildKoboFilename, EPUB_EXTENSION, KEPUB_EXTENSION } from "../src/lib/epub/filename";
 import { epubPatchFromItem } from "../src/lib/epub/from-item";
 import { convertEpubToKepub, KepubConversionError } from "../src/lib/epub/kepub";
 import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "../src/lib/epub/metadata";
@@ -146,8 +152,17 @@ async function attach(job: Job): Promise<Outcome> {
     return "failed";
   }
 
+  // The owner of the item decides the target, not the operator who runs this.
+  const target = bookFileTarget(row.user_id);
+
   console.log(`• ${row.title ?? job.itemId}`);
-  console.log(`    from ${label}`);
+  console.log(`    from ${label}, target ${target}`);
+
+  // A kindle file must never fall back to the public Kobo folder.
+  if (!dryRun && !isDriveConfigured(target)) {
+    console.error(`    ✗ the Drive folder for the ${target} target is not configured`);
+    return "failed";
+  }
 
   let source: Uint8Array;
   try {
@@ -171,6 +186,8 @@ async function attach(job: Job): Promise<Outcome> {
     title: row.title,
     description: row.description,
     structured: asRecord(row.structured),
+    genre_keys: row.genre_keys,
+    mood_keys: row.mood_keys,
   });
 
   let bytes: Uint8Array;
@@ -184,22 +201,24 @@ async function attach(job: Job): Promise<Outcome> {
   }
 
   // Convert to KEPUB. A Kobo shows a placeholder tile instead of the cover for
-  // a plain EPUB.
-  try {
-    const converted = await convertEpubToKepub(bytes);
-    bytes = converted.bytes;
-    if (converted.skipped.length > 0) {
-      // Name the documents that keep no Kobo spans. The book still opens.
-      console.warn(`    partial conversion: ${converted.skipped.map((entry) => entry.path).join(", ")}`);
+  // a plain EPUB. The kindle target skips this step. KOReader opens a plain EPUB.
+  if (target === "kobo") {
+    try {
+      const converted = await convertEpubToKepub(bytes);
+      bytes = converted.bytes;
+      if (converted.skipped.length > 0) {
+        // Name the documents that keep no Kobo spans. The book still opens.
+        console.warn(`    partial conversion: ${converted.skipped.map((entry) => entry.path).join(", ")}`);
+      }
+    } catch (error) {
+      console.error(`    ✗ ${describe(error)}`);
+      return "failed";
     }
-  } catch (error) {
-    console.error(`    ✗ ${describe(error)}`);
-    return "failed";
   }
 
   // Build the file name from the same item data as the metadata patch, so the
-  // name and the metadata agree. The name must carry `.kepub.epub`, because the
-  // device reads a `.epub` name as a plain EPUB whatever the file holds.
+  // name and the metadata agree. A Kobo name must carry `.kepub.epub`, because
+  // the device reads a `.epub` name as a plain EPUB whatever the file holds.
   const name = buildKoboFilename(
     {
       // Take the title from the patch, not the row. The patch drops a series
@@ -209,7 +228,7 @@ async function attach(job: Job): Promise<Outcome> {
       series: patch.series ?? null,
       seriesIndex: patch.seriesIndex ?? null,
     },
-    KEPUB_EXTENSION,
+    target === "kobo" ? KEPUB_EXTENSION : EPUB_EXTENSION,
   );
 
   // Hash the bytes that go to Drive, not the bytes that came off the disk.
@@ -230,7 +249,7 @@ async function attach(job: Job): Promise<Outcome> {
 
   let uploaded: { id: string; name: string };
   try {
-    uploaded = await uploadEpub({ name, bytes });
+    uploaded = await uploadEpub({ name, bytes, target });
   } catch (error) {
     console.error(`    ✗ upload failed: ${describe(error)}`);
     return "failed";
@@ -281,8 +300,9 @@ async function main(): Promise<void> {
   if (jobs.length === 0) usage(`${manifestPath} holds no lines.`);
 
   // Drive holds every file, so a missing configuration fails every job. Say so
-  // once, before the run spends time on the first book.
-  if (!dryRun && !isDriveConfigured()) {
+  // once, before the run spends time on the first book. Each job then tests the
+  // folder of its own target.
+  if (!dryRun && !isDriveConfigured("kobo") && !isDriveConfigured("kindle")) {
     console.error("Google Drive is not configured. Set the Drive variables, or pass --dry-run.");
     process.exit(1);
   }

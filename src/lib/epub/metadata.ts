@@ -29,6 +29,7 @@ export type EpubMetadata = {
   language: string | null;
   series: string | null;
   seriesIndex: number | null;
+  subjects: string[];
 };
 
 export type EpubMetadataPatch = {
@@ -37,6 +38,8 @@ export type EpubMetadataPatch = {
   description?: string | null;
   series?: string | null;
   seriesIndex?: number | null;
+  /** Replaces every `dc:subject`. An empty array removes them all. */
+  subjects?: string[];
 };
 
 /** Thrown when the archive is not a readable EPUB. Callers reject the upload. */
@@ -269,6 +272,9 @@ export async function readEpubMetadata(bytes: Uint8Array): Promise<EpubMetadata>
     language: textOf(metadata[dcKey(metadata, "language")]),
     series,
     seriesIndex,
+    subjects: asArray(metadata[dcKey(metadata, "subject")])
+      .map(textOf)
+      .filter((value): value is string => Boolean(value)),
   };
 }
 
@@ -308,6 +314,13 @@ function applyPatch(metadata: XmlNode, patch: EpubMetadataPatch): void {
   if (patch.seriesIndex !== undefined) {
     const index = patch.seriesIndex;
     setNamedMeta(metadata, SERIES_INDEX_KEY, index === null ? null : String(index));
+  }
+
+  if (patch.subjects !== undefined) {
+    // One key holds every `dc:subject`, so a single write replaces them all.
+    const key = dcKey(metadata, "subject");
+    if (patch.subjects.length === 0) delete metadata[key];
+    else metadata[key] = patch.subjects.length === 1 ? patch.subjects[0] : [...patch.subjects];
   }
 }
 
