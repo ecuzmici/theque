@@ -215,6 +215,16 @@ describe("createSyncFolder", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("skips the share step for a private folder", async () => {
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(folderResponse());
+
+    const folder = await drive.createSyncFolder("Kindle", { share: false });
+
+    expect(folder.id).toBe("folder-new");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes("/permissions"))).toBe(false);
+  });
+
   it("rejects an empty folder name before it asks for a token", async () => {
     const error = await caught(drive.createSyncFolder("   "));
 
@@ -250,6 +260,29 @@ describe("uploadEpub", () => {
     expect(body).toContain('"mimeType":"application/epub+zip"');
     expect(body).toContain('"name":"Piranesi.epub"');
     expect(body).toContain("fake epub payload");
+  });
+
+  it("posts a kindle upload to the kindle folder", async () => {
+    process.env.GOOGLE_DRIVE_KINDLE_FOLDER_ID = "kindle-folder";
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(uploadResponse());
+
+    await drive.uploadEpub({ name: "Piranesi.epub", bytes: EPUB_BYTES, target: "kindle" });
+    delete process.env.GOOGLE_DRIVE_KINDLE_FOLDER_ID;
+
+    const body = new TextDecoder().decode(callInit(1).body as Uint8Array);
+    expect(body).toContain('"parents":["kindle-folder"]');
+    expect(body).not.toContain("folder-123");
+  });
+
+  it("never sends a kindle upload to the kobo folder", async () => {
+    // GOOGLE_DRIVE_FOLDER_ID is set and GOOGLE_DRIVE_KINDLE_FOLDER_ID is not.
+    expect(drive.isDriveConfigured("kindle")).toBe(false);
+
+    const error = await caught(drive.uploadEpub({ name: "Piranesi.epub", bytes: EPUB_BYTES, target: "kindle" }));
+
+    expect(error.code).toBe("drive_not_configured");
+    expect(error.message).toContain("GOOGLE_DRIVE_KINDLE_FOLDER_ID");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects an empty file before it asks for a token", async () => {
@@ -386,5 +419,32 @@ describe("deleteDriveFile", () => {
     expect(error.code).toBe("delete_failed");
     expect(error.status).toBe(403);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("downloadDriveFile", () => {
+  it("reads the file bytes with alt=media and needs no folder variable", async () => {
+    delete process.env.GOOGLE_DRIVE_FOLDER_ID;
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce({
+      ...response(200),
+      arrayBuffer: async () => EPUB_BYTES.slice().buffer,
+    });
+
+    const bytes = await drive.downloadDriveFile("file-1");
+
+    expect([...bytes]).toEqual([...EPUB_BYTES]);
+    expect(String(fetchMock.mock.calls[1][0])).toBe(
+      "https://www.googleapis.com/drive/v3/files/file-1?alt=media",
+    );
+    expect(callInit(1).headers.authorization).toBe("Bearer access-token");
+  });
+
+  it("throws download_failed with the status on a 404", async () => {
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(response(404));
+
+    const error = await caught(drive.downloadDriveFile("missing"));
+
+    expect(error.code).toBe("download_failed");
+    expect(error.status).toBe(404);
   });
 });

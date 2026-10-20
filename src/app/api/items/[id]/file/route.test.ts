@@ -214,6 +214,37 @@ describe("POST /api/items/[id]/file", () => {
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
+  it("sends a plain EPUB with a .epub name to the kindle folder for a kindle user", async () => {
+    vi.stubEnv("BOOK_FILE_KINDLE_USER_IDS", SESSION_USER.id);
+    useRow({ row: { ...ROW, genre_keys: ["scifi"], mood_keys: ["tense"] } });
+    const { POST } = await loadRoute();
+
+    const res = await POST(uploadRequest(fileForm(await buildEpub())), params);
+
+    expect(res.status).toBe(200);
+    expect(mocks.isDriveConfigured).toHaveBeenCalledWith("kindle");
+    const upload = mocks.uploadEpub.mock.calls[0][0] as { name: string; bytes: Uint8Array; target: string };
+    expect(upload.target).toBe("kindle");
+    expect(upload.name).toBe("James S. A. Corey - Leviathan Wakes (The Expanse 01).epub");
+    const zip = await JSZip.loadAsync(upload.bytes);
+    const chapter = await zip.file("OEBPS/ch1.xhtml")?.async("string");
+    expect(chapter ?? "").not.toContain("koboSpan");
+    expect((await readEpubMetadata(upload.bytes)).subjects).toEqual(["Sci-Fi", "Mood: Tense"]);
+  });
+
+  it("answers drive_not_configured for a kindle user without the kindle folder", async () => {
+    vi.stubEnv("BOOK_FILE_KINDLE_USER_IDS", SESSION_USER.id);
+    mocks.isDriveConfigured.mockImplementation((target: string) => target !== "kindle");
+    useRow({ row: ROW });
+    const { POST } = await loadRoute();
+
+    const res = await POST(uploadRequest(fileForm(await buildEpub())), params);
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "drive_not_configured" });
+    expect(mocks.uploadEpub).not.toHaveBeenCalled();
+  });
+
   it("answers 404 for a missing item", async () => {
     useRow({ row: null });
     const { POST } = await loadRoute();

@@ -3,6 +3,9 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+
 import JSZip from "jszip";
 
 import {
@@ -80,6 +83,7 @@ describe("readEpubMetadata", () => {
       language: "en",
       series: null,
       seriesIndex: null,
+      subjects: [],
     });
   });
 
@@ -146,6 +150,7 @@ describe("writeEpubMetadata", () => {
       language: "en",
       series: "The Expanse",
       seriesIndex: 1,
+      subjects: [],
     });
   });
 
@@ -231,6 +236,36 @@ describe("writeEpubMetadata", () => {
     const after = Object.keys((await JSZip.loadAsync(out)).files).sort();
 
     expect(after).toEqual(before);
+  });
+
+  it("writes subjects and escapes them in the OPF", async () => {
+    const out = await writeEpubMetadata(plain, { subjects: ["Mystery & Crime", "Mood: Cozy"] });
+    const xml = await (await JSZip.loadAsync(out)).file("OEBPS/content.opf")!.async("string");
+
+    expect((await readEpubMetadata(out)).subjects).toEqual(["Mystery & Crime", "Mood: Cozy"]);
+    expect(xml).toContain("<dc:subject>Mystery &amp; Crime</dc:subject>");
+  });
+
+  it("replaces every subject of a real EPUB", async () => {
+    const path = fileURLToPath(new URL("./fixtures/frankenstein.epub", import.meta.url));
+    const source = new Uint8Array(await readFile(path));
+    expect((await readEpubMetadata(source)).subjects).toContain("Gothic fiction");
+
+    const out = await writeEpubMetadata(source, { subjects: ["Horror", "Mood: Dark"] });
+    const meta = await readEpubMetadata(out);
+
+    expect(meta.subjects).toEqual(["Horror", "Mood: Dark"]);
+    expect(meta.title).toBe((await readEpubMetadata(source)).title);
+  });
+
+  it("removes every subject for an empty array and keeps them when omitted", async () => {
+    const tagged = await writeEpubMetadata(plain, { subjects: ["Fantasy", "Mood: Epic"] });
+
+    expect((await readEpubMetadata(await writeEpubMetadata(tagged, { title: "New" }))).subjects).toEqual([
+      "Fantasy",
+      "Mood: Epic",
+    ]);
+    expect((await readEpubMetadata(await writeEpubMetadata(tagged, { subjects: [] }))).subjects).toEqual([]);
   });
 
   it("keeps explicit directory entries the source had", async () => {
