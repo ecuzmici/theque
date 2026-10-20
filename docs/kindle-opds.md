@@ -54,7 +54,32 @@ Upload an EPUB on the item page, or run `npm run book:attach`. A book file that 
 8. Type the capture token as the password.
 9. Select **Save**.
 
-Add a second catalog for the sync mode. Use the URL `https://theque.app/opds/new` and the same username and password. Turn on **Sync catalog** for that catalog.
+## 5. Install the sync plugin
+
+The plugin `koreader/theque.koplugin` downloads new books without a tap. It reads `https://theque.app/opds/new` at these times:
+
+- when the device connects to WiFi,
+- when the device wakes up and WiFi is on,
+- every 15 minutes while the device is awake and online,
+- when you tap **theque: check for new books** in the tools menu.
+
+A sleeping Kindle has no WiFi, so no server can push a book to it. A new book arrives some seconds after the device wakes up.
+
+1. Connect the Kindle by USB. Close KOReader.
+2. Copy `koreader/theque.koplugin` to `koreader/plugins/` on the device.
+3. Make `koreader/settings/theque.lua` on the device:
+
+```lua
+return {
+    ["feed_url"] = "https://theque.app/opds/new",
+    ["username"] = "emil",
+    ["password"] = "bmly_...",
+}
+```
+
+The plugin keeps the links of known books in `known` in the same file. On the first run, the file has no `known` list. The plugin then marks every book in the feed as known and downloads nothing, so it does not copy the library a second time. The plugin writes each new book to the KOReader home folder as `Author - Title.epub`.
+
+Do not turn on **Sync catalog** in the OPDS plugin as well. The two would download the same books.
 
 ## Catalog URLs
 
