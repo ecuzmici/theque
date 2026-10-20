@@ -1,9 +1,9 @@
 /** Header bar height (h-14). */
 export const HEADER_HEIGHT = 56;
 /** How far the notch tab hangs below the bar. */
-export const NOTCH_DROP = 8;
+export const NOTCH_DROP = 12;
 /** Spine stroke width. */
-export const SPINE_STROKE = 5;
+export const SPINE_STROKE = 7;
 /** Target length of one spine along the outline. */
 export const SPINE_PX = 4;
 /** Space between the wordmark and the notch sides, both sides together. */

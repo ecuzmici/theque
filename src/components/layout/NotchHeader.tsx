@@ -98,6 +98,7 @@ export function NotchHeader({ trailing }: { trailing: React.ReactNode }) {
   const logoRef = useRef<HTMLSpanElement>(null);
   const [width, setWidth] = useState(0);
   const [logoWidth, setLogoWidth] = useState(0);
+  const [logoHeight, setLogoHeight] = useState(0);
 
   useLayoutEffect(() => {
     const header = headerRef.current;
@@ -105,7 +106,9 @@ export function NotchHeader({ trailing }: { trailing: React.ReactNode }) {
     if (!header || !logo) return;
     const measure = () => {
       setWidth(header.clientWidth);
-      setLogoWidth(logo.getBoundingClientRect().width);
+      const rect = logo.getBoundingClientRect();
+      setLogoWidth(rect.width);
+      setLogoHeight(rect.height);
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -116,6 +119,9 @@ export function NotchHeader({ trailing }: { trailing: React.ReactNode }) {
 
   const geo = width > 0 && logoWidth > 0 ? notchGeometry(width, logoWidth + NOTCH_PADDING) : null;
   const notchHeight = HEADER_HEIGHT + NOTCH_DROP;
+  // Center the wordmark in the tab above the spine outline. A touch pointer
+  // makes the link taller (tap target), so measure it instead of assuming 28px.
+  const logoTop = logoHeight > 0 ? Math.round((notchHeight - SPINE_STROKE - logoHeight) / 2) : notchHeight / 2 - 14;
 
   return (
     // No view-transition-name on the header itself: it would make the header a
@@ -142,7 +148,7 @@ export function NotchHeader({ trailing }: { trailing: React.ReactNode }) {
         <span
           ref={logoRef}
           className="absolute left-1/2 -translate-x-1/2"
-          style={{ top: notchHeight / 2 - 14 }}
+          style={{ top: logoTop }}
         >
           <ThequeLogo size="md" href="/library" />
         </span>
