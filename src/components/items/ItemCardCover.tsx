@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Star } from "lucide-react";
+import { Check, RefreshCw, Star } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import type { ItemCategory } from "@/lib/database.types";
@@ -161,10 +161,16 @@ function Stars({ value }: { value: number }) {
 }
 
 /** Text a screen reader hears for the status drawn on the cover. */
-export function coverStatusLabel(item: Pick<LibraryItemRow, "status" | "rating_personal">): string | null {
-  if (item.status === "inbox") return "In inbox";
-  if (item.status !== "done") return null;
-  return item.rating_personal != null ? `Done, ${item.rating_personal} of 5 stars` : "Done";
+export function coverStatusLabel(
+  item: Pick<LibraryItemRow, "status" | "rating_personal"> & Partial<Pick<LibraryItemRow, "file_uploaded_at">>,
+): string | null {
+  let label: string | null = null;
+  if (item.status === "inbox") label = "In inbox";
+  else if (item.status === "done") {
+    label = item.rating_personal != null ? `Done, ${item.rating_personal} of 5 stars` : "Done";
+  }
+  if (!item.file_uploaded_at) return label;
+  return label ? `${label}, synced to your e-reader` : "Synced to your e-reader";
 }
 
 /** The 2:3 cover with its image (or typographic cover) and the status marks. */
@@ -188,12 +194,20 @@ export function ItemCardCover({ item, selected }: { item: LibraryItemRow; select
       )}
       {processing ? <div className="pointer-events-none absolute inset-0 ks-shimmer bg-transparent" /> : null}
 
-      {item.status === "inbox" ? (
-        <span
-          data-testid="inbox-dot"
-          className="absolute top-2 left-2 size-2 rounded-full bg-amber-500 ring-2 ring-white/80"
-          aria-hidden
-        />
+      {item.file_uploaded_at || item.status === "inbox" ? (
+        <div className="absolute top-1.5 left-1.5 flex items-center gap-1.5" aria-hidden>
+          {item.file_uploaded_at ? (
+            <span
+              data-testid="synced-mark"
+              className="inline-flex size-5 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-sm"
+            >
+              <RefreshCw className="size-3" strokeWidth={2.5} />
+            </span>
+          ) : null}
+          {item.status === "inbox" ? (
+            <span data-testid="inbox-dot" className="size-2 rounded-full bg-amber-500 ring-2 ring-white/80" />
+          ) : null}
+        </div>
       ) : null}
       {item.status === "done" ? (
         <div

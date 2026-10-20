@@ -72,4 +72,14 @@ describe("coverStatusLabel", () => {
     expect(coverStatusLabel({ status: "done", rating_personal: null })).toBe("Done");
     expect(coverStatusLabel({ status: "done", rating_personal: 5 })).toBe("Done, 5 of 5 stars");
   });
+
+  it("adds the synced state when the item has a book file", () => {
+    const file_uploaded_at = "2026-10-21T00:00:00Z";
+    expect(coverStatusLabel({ status: "want", rating_personal: null, file_uploaded_at })).toBe(
+      "Synced to your e-reader",
+    );
+    expect(coverStatusLabel({ status: "done", rating_personal: 4, file_uploaded_at })).toBe(
+      "Done, 4 of 5 stars, synced to your e-reader",
+    );
+  });
 });

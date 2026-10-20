@@ -21,6 +21,7 @@ export type LibraryItemRow = Pick<
   | "rating_personal"
   | "verdict"
   | "done_at"
+  | "file_uploaded_at"
 >;
 
 export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
@@ -42,6 +43,7 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     rating_personal: summary.rating_personal ?? null,
     verdict: summary.verdict ?? null,
     done_at: summary.done_at ?? null,
+    file_uploaded_at: summary.file_uploaded_at ?? null,
   };
 }
 
@@ -73,5 +75,6 @@ export function libraryItemFromRow(
     rating_personal: row.rating_personal,
     verdict: row.verdict,
     done_at: row.done_at,
+    file_uploaded_at: row.file_uploaded_at,
   };
 }

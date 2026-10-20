@@ -84,6 +84,7 @@ function mapSummary(row: ItemRow): ItemSummaryPayload {
     rating_personal: row.rating_personal,
     verdict: row.verdict,
     done_at: row.done_at,
+    file_uploaded_at: row.file_uploaded_at,
   };
 }
 

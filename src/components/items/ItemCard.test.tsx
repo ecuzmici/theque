@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
 
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
+    file_uploaded_at: null,
     id: "item-1",
     title: "Twin Peaks (TV Series 1990–1991) ⭐ 8.7 | Crime, Drama",
     subtitle: "David Lynch · 1990",
@@ -134,6 +135,18 @@ describe("ItemCard", () => {
     expect(el.querySelector('[data-testid="inbox-dot"]')?.className).toContain("bg-amber-500");
     expect(el.textContent).toContain("In inbox");
     expect(el.querySelector('[data-testid="done-mark"]')).toBeNull();
+  });
+
+  it("marks an item with a book file as synced, next to the inbox dot", async () => {
+    const el = await render(makeItem({ status: "inbox", file_uploaded_at: "2026-10-21T00:00:00Z" }));
+    expect(el.querySelector('[data-testid="synced-mark"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="inbox-dot"]')).not.toBeNull();
+    expect(el.textContent).toContain("In inbox, synced to your e-reader");
+  });
+
+  it("shows no synced mark for an item without a book file", async () => {
+    const el = await render(makeItem());
+    expect(el.querySelector('[data-testid="synced-mark"]')).toBeNull();
   });
 
   it("shows no visible button: the only control is the hidden actions trigger", async () => {

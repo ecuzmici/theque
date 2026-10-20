@@ -63,6 +63,8 @@ export type ItemSummaryPayload = {
   rating_personal: number | null;
   verdict: string | null;
   done_at: string | null;
+  /** Set when the item has a book file that syncs to an e-reader. */
+  file_uploaded_at?: string | null;
 };
 
 export type ItemsListResponseBody = {

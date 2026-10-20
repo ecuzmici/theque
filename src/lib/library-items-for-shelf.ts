@@ -5,7 +5,7 @@ import { SHELVES, olderThanCutoff, type ShelfDefinition, type ShelfId } from "@/
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 export const LIBRARY_ITEM_COLUMNS =
-  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue, rating_personal, verdict, done_at";
+  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue, rating_personal, verdict, done_at, file_uploaded_at";
 
 const PAGE_SIZE = 24;
 

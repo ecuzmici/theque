@@ -16,6 +16,7 @@ const OLD = "2020-01-01T00:00:00.000Z";
 
 function item(id: string, patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
+    file_uploaded_at: null,
     id,
     title: id,
     subtitle: null,

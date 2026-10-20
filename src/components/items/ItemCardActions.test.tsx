@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
+    file_uploaded_at: null,
     id: "item-1",
     title: "Dune",
     subtitle: null,

@@ -27,6 +27,7 @@ vi.mock("@/components/library/MadeForYouTile", () => ({
 
 function item(id: string, patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
+    file_uploaded_at: null,
     id,
     title: `Title ${id}`,
     subtitle: null,

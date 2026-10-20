@@ -29,6 +29,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
+    file_uploaded_at: null,
     id: "item-1",
     title: "Some Title",
     subtitle: null,
