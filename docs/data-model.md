@@ -203,9 +203,10 @@ create trigger items_set_updated_at before update on items
 Bucket: `item-images` (public, no storage policies)
 
 - Path: `{user_id}/{item_id}/cover.{ext}`
+- Thumbnail: `{user_id}/{item_id}/thumb.webp`, at most 512x1024 px, WebP. Image caching writes it with the cover. The grid, strips, and tiles load it (`getCoverImageUrls`). They load the cover when the thumbnail is missing. `npm run backfill:thumbs` adds missing thumbnails.
 - The server writes and removes objects with the service role. Clients only read the public URL.
 - `DELETE /api/items/:id` removes the objects of the item. Account deletion removes the prefix of the user.
-- `scripts/purge-orphan-covers.ts` removes objects that no row points at.
+- `scripts/purge-orphan-covers.ts` removes objects that no row points at. It keeps the thumbnail of a live cover.
 
 ## Dedup behavior
 

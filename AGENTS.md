@@ -17,6 +17,8 @@ Personal **visual taste library**: capture URLs (Chrome extension, API, manual a
 | Production | https://theque.vercel.app | `jucaqjkgyhyzixzaisjr` (dashboard name: **theque**) |
 | Local | http://localhost:3000 | Same project; keys in `.env.local` |
 
+Vercel Functions run in **`dub1`** (Dublin), next to the Supabase project in `eu-west-1` (`vercel.json` `regions`). Keep them in the same region: each Supabase call from a function in another region adds about 70 ms (ADR 0021).
+
 Public thèque URL (users, redirects, Chrome extension default): **`https://theque.app`**. Vercel production deployment hostname (shown above): **`https://theque.vercel.app`** — keep both straight when pairing extension/docs with infra.
 
 GitHub: https://github.com/ecuzmici/theque  
@@ -80,6 +82,7 @@ Structured field display: `src/components/items/StructuredFields.tsx` + `docs/ca
 - **Identity linking** is automatic by verified email, so GitHub / Google / email-code for one person resolve to one Profile (`supabase/templates/magic_link.html` is the code-only email). There is no magic link and no `/auth/confirm` interstitial — both were removed in ADR 0010.
 - **Proxy**: `src/proxy.ts` protects `/library`, `/stats`, `/settings`, `/item`, `/search`, and `/add`; guest redirects include `?next=...`, and signed-in users are redirected from `/` or `/login` to the library while preserving refreshed Supabase cookies.
 - **Capture API**: `Authorization: Bearer <capture_token>`; create tokens in **Settings → Capture tokens** (shown once).
+- **Server session check**: `src/proxy.ts` and `getSessionUserOrNull` (`src/lib/auth/session-user.ts`) use `auth.getClaims()`. It checks the ES256 JWT locally, with no Auth server round trip. Use `getVerifiedSessionUserOrNull` (network `getUser`) before account deletion, a new capture token, or a similar write (ADR 0021).
 
 Supabase redirect URLs must include production and localhost app/callback URLs (see `supabase/config.toml`). Use `npm run supabase:sync-auth` after changing the hosted auth template or redirect allow-list; it reads `SUPABASE_ACCESS_TOKEN` from the environment or `.env.local`.
 
@@ -121,6 +124,7 @@ Canonical five-role vocabulary, names unchanged (`needs-triage`, `needs-info`, `
 - Touch UX uses Tailwind custom variants in `src/app/globals.css`: `pointer-coarse`, `lg-fine`, `--tap-target-min`, and `.ks-pointer-coarse-min-hit`. Prefer `<Button />` for controls so coarse-pointer hit targets stay at roughly 44px without making desktop layouts bulky.
 - Shelves: change filters in `shelves.ts` + `shelf-filter.ts`, not ad-hoc queries in pages. Forgotten is no longer a tab — it is an age-based (`olderThanDays`) nudge surfaced as an "N forgotten" insights chip plus the weekly digest.
 - Taste loop: marking an item done goes through the category-aware verb (`doneVerb`) and stores `rating_personal` / `verdict` / `done_at`; enrichment extracts `dominant_color` / `dominant_hue` (sharp) for palette sort and placeholder tinting.
+- Library performance (ADR 0021): small covers load `thumb.webp` through `CoverImg` (lazy, async decode, fallback to the full cover). `ItemCard` is memoized, so keep its callback props stable. Each card mounts its actions menu on first hover, focus, or long-press. `library-store.ts` keeps loaded shelves, the Up next row, and the scroll position, so Back from an item returns to the same place.
 - Library toolbar: shuffle ("Tonight's pick", `/api/items/random`), sort (recent/color/title via `fetchLibraryItemsForShelf`), wall mode, and Inbox swipe triage are wired in `LibraryPageClient`.
 - New domain parser: add under `src/lib/enrichment/parsers/`, wire in `extract.ts`, add fixture + test in `extract.test.ts`.
 - LLM enrichment is optional and gated by `LLM_ENRICHMENT_ENABLED=true` plus AI Gateway auth (`AI_GATEWAY_API_KEY` locally, OIDC on Vercel); deterministic extraction must still work without it. Models and reasoning settings live in `src/lib/enrichment/llm/llm-config.ts` (ADR 0017). The `gemini-*` file names are historical; only grounded search still calls Gemini (`GEMINI_API_KEY`).
