@@ -49,6 +49,12 @@ type ItemCardActionsProps = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   triggerClassName?: string;
+  /**
+   * False renders a look-alike trigger without the menu root. A wall of cards
+   * mounts much faster this way. The card sets it true on first hover, focus,
+   * or long-press; a click on the stand-in also mounts and opens the menu.
+   */
+  menuMounted?: boolean;
 };
 
 function safeHttpUrl(url: string | null): string | null {
@@ -71,10 +77,16 @@ export function ItemCardActions({
   open,
   onOpenChange,
   triggerClassName,
+  menuMounted = true,
 }: ItemCardActionsProps) {
   const router = useRouter();
+  // The stand-in trigger asks for the menu: open it, or keep focus on the trigger.
+  const [standInUsed, setStandInUsed] = useState<"open" | "focus" | null>(null);
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // The delete dialog mounts on first use. A dialog root in every card made
+  // each grid render and each page of cards heavier.
+  const [deleteUsed, setDeleteUsed] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const originalUrl = useMemo(() => safeHttpUrl(item.canonical_url), [item.canonical_url]);
@@ -118,21 +130,46 @@ export function ItemCardActions({
     }
   }, [item.id, onItemPatch, router]);
 
+  const triggerProps = {
+    type: "button" as const,
+    size: "icon-sm" as const,
+    variant: "secondary" as const,
+    className: cn("rounded-full bg-card/95 shadow-sm pointer-coarse:min-h-7", triggerClassName),
+    "aria-label": "Item actions",
+  };
+
+  if (!menuMounted && standInUsed == null) {
+    return (
+      <Button
+        {...triggerProps}
+        aria-haspopup="menu"
+        onFocus={() => setStandInUsed("focus")}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setStandInUsed("open");
+          onOpenChange?.(true);
+        }}
+      >
+        <MoreHorizontal className="size-4" />
+      </Button>
+    );
+  }
+
   return (
     <>
-      <DropdownMenu open={open} onOpenChange={onOpenChange ? (next) => onOpenChange(next) : undefined}>
+      <DropdownMenu
+        open={open}
+        defaultOpen={standInUsed === "open"}
+        onOpenChange={onOpenChange ? (next) => onOpenChange(next) : undefined}
+      >
         <DropdownMenuTrigger
           render={
             <Button
-              type="button"
-              size="icon-sm"
-              variant="secondary"
-              className={cn(
-                "rounded-full bg-card/90 shadow-sm backdrop-blur pointer-coarse:min-h-7",
-                triggerClassName,
-              )}
+              {...triggerProps}
+              // The stand-in had focus; the real trigger takes it over.
+              autoFocus={standInUsed === "focus"}
               disabled={busy || deleteBusy}
-              aria-label="Item actions"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -204,6 +241,7 @@ export function ItemCardActions({
             variant="destructive"
             onClick={() => {
               setDeleteError(null);
+              setDeleteUsed(true);
               setDeleteOpen(true);
             }}
           >
@@ -213,25 +251,27 @@ export function ItemCardActions({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete item?</DialogTitle>
-            <DialogDescription>
-              Delete &quot;{title}&quot; permanently from your library. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={deleteBusy} onClick={() => setDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" variant="destructive" disabled={deleteBusy} onClick={() => void deleteItem()}>
-              {deleteBusy ? "Deleting..." : "Delete item"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {deleteUsed ? (
+        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete item?</DialogTitle>
+              <DialogDescription>
+                Delete &quot;{title}&quot; permanently from your library. This cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={deleteBusy} onClick={() => setDeleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" disabled={deleteBusy} onClick={() => void deleteItem()}>
+                {deleteBusy ? "Deleting..." : "Delete item"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }

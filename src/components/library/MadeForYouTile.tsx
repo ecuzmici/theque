@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 
+import { CoverImg, type CoverUrls } from "@/components/items/CoverImg";
 import { useRecommendationContext } from "@/components/recommend/RecommendationProvider";
 import type { ItemCategory } from "@/lib/database.types";
 import { RECOMMEND_MIN_ITEMS } from "@/lib/recommend/recommend-config";
@@ -89,8 +90,8 @@ export function MadeForYouTile({
 }: {
   booksEnabled: boolean;
   watchEnabled: boolean;
-  /** Up to 3 cover URLs for the decorative stack. */
-  thumbs: string[];
+  /** Up to 3 covers for the decorative stack. */
+  thumbs: CoverUrls[];
 }) {
   const { start } = useRecommendationContext();
   const options = useRecommendOptions(booksEnabled, watchEnabled);
@@ -101,12 +102,10 @@ export function MadeForYouTile({
       <span className="relative flex aspect-[2/3] w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-border bg-muted/50">
         {thumbs.length > 0 ? (
           <span className="flex -space-x-4" aria-hidden>
-            {thumbs.slice(0, 3).map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy.
-              <img
-                key={src}
-                src={src}
-                alt=""
+            {thumbs.slice(0, 3).map((urls, i) => (
+              <CoverImg
+                key={urls.src}
+                urls={urls}
                 className={cn(
                   "aspect-[2/3] w-8 rounded object-cover shadow-sm ring-1 ring-background",
                   i === 0 && "-rotate-[10deg]",

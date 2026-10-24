@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
+import { boundedRemoteImageUrl, COVER_THUMB_NAME } from "@/lib/item-display";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -137,6 +138,49 @@ async function extractDominantColor(
   }
 }
 
+/** Thumbnail box. A 2:3 cover becomes 512x768: sharp on a 3x phone grid, about 30 KB. */
+const THUMB_MAX_WIDTH = 512;
+const THUMB_MAX_HEIGHT = 1024;
+
+/**
+ * A small WebP copy of a cover for the grid, strips and tiles. Originals can
+ * be 2000+ px wide and several MB, and decoding them blocks scrolling.
+ * Returns null when sharp cannot read the image.
+ */
+export async function createCoverThumbnail(buffer: Uint8Array): Promise<Buffer | null> {
+  try {
+    const { default: sharp } = await import("sharp");
+    return await sharp(buffer)
+      .rotate()
+      .resize(THUMB_MAX_WIDTH, THUMB_MAX_HEIGHT, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 76 })
+      .toBuffer();
+  } catch (err) {
+    console.error(
+      "[image-cache] thumbnail failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return null;
+  }
+}
+
+/**
+ * Stores the thumbnail next to the cover in `folder` (which ends with "/").
+ * Best effort: without it, the client loads the full cover instead.
+ */
+export async function uploadCoverThumbnail(
+  admin: SupabaseClient,
+  folder: string,
+  buffer: Uint8Array,
+): Promise<boolean> {
+  const thumb = await createCoverThumbnail(buffer);
+  if (!thumb) return false;
+  const { error } = await admin.storage
+    .from("item-images")
+    .upload(`${folder}${COVER_THUMB_NAME}`, thumb, { contentType: "image/webp", upsert: true });
+  return !error;
+}
+
 const MAX_IMAGE_REDIRECTS = 3;
 
 const NO_IMAGE: CachedImage = { storagePath: null, dominantColor: null, dominantHue: null };
@@ -215,7 +259,8 @@ export async function cacheItemImage(
   imageUrl: string,
 ): Promise<CachedImage> {
   try {
-    const fetched = await fetchValidatedImageBuffer(imageUrl);
+    // A full-size original can pass the size limit; ask the host for a bounded copy.
+    const fetched = await fetchValidatedImageBuffer(boundedRemoteImageUrl(imageUrl));
     if (!fetched) return NO_IMAGE;
     const { buffer, contentType } = fetched;
 
@@ -229,7 +274,10 @@ export async function cacheItemImage(
 
     // A new cover with another extension leaves the old object behind. No row
     // points at it, so remove it now.
-    if (!error) await removeOtherCovers(admin, folder, `cover.${ext}`);
+    if (!error) {
+      await removeOtherCovers(admin, folder, `cover.${ext}`);
+      await uploadCoverThumbnail(admin, folder, buffer);
+    }
 
     const dominant = await extractDominantColor(buffer);
     return {
@@ -250,7 +298,7 @@ export async function cacheItemImage(
  */
 export async function extractDominantColorForUrl(imageUrl: string): Promise<CachedImage> {
   try {
-    const fetched = await fetchValidatedImageBuffer(imageUrl);
+    const fetched = await fetchValidatedImageBuffer(boundedRemoteImageUrl(imageUrl));
     if (!fetched) return NO_IMAGE;
     const dominant = await extractDominantColor(fetched.buffer);
     return { storagePath: null, dominantColor: dominant?.color ?? null, dominantHue: dominant?.hue ?? null };

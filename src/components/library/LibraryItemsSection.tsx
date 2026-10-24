@@ -10,6 +10,7 @@ import { ItemMarkDoneDialog } from "@/components/items/ItemMarkDoneDialog";
 import { QuickLookDialog } from "@/components/items/QuickLookDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { mergeFreshFirstPage, readOpenedItem, storeOpenedItem } from "@/components/library/library-store";
 import { LIBRARY_SEARCH_INPUT_ID } from "@/components/library/LibrarySearchRow";
 import { useItemRealtime } from "@/hooks/useItemRealtime";
 import type { LibrarySort } from "@/lib/library-items-for-shelf";
@@ -20,9 +21,12 @@ import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
 import type { ShelfId } from "@/lib/shelves";
-import type { LibraryItemRow } from "@/lib/types/library-item";
+import type { ItemDetailResponseBody } from "@/lib/types/api";
+import { libraryItemFromRow, type LibraryItemRow } from "@/lib/types/library-item";
 
 const PENDING_REFRESH_INTERVAL_MS = 2000;
+/** Start the next page this far below the viewport, so a fast scroll rarely meets skeletons. */
+const LOAD_MORE_MARGIN = "1500px";
 
 type LibraryItemsSectionProps = {
   userId: string;
@@ -39,6 +43,11 @@ type LibraryItemsSectionProps = {
   /** Called by the "Clear filter" button in the empty state of a filtered list. */
   onClearFilter?: () => void;
   onItemsChange?: (items: LibraryItemRow[]) => void;
+  /**
+   * True when `initialItems` came from the library store (Back from an item).
+   * The section then refreshes its first page and the item the user opened.
+   */
+  revalidate?: boolean;
 };
 
 function hasPendingEnrichment(items: LibraryItemRow[]): boolean {
@@ -58,6 +67,7 @@ export function LibraryItemsSection({
   mood = null,
   onClearFilter,
   onItemsChange,
+  revalidate = false,
 }: LibraryItemsSectionProps) {
   const router = useRouter();
   const [items, setItems] = useState<LibraryItemRow[]>(() => initialItems);
@@ -90,14 +100,11 @@ export function LibraryItemsSection({
       if (inFlight) return;
       inFlight = true;
       try {
-        const { items: rows } = await fetchLibraryItemsPage(shelfId, 0, sort, { genre, mood });
-        if (!cancelled) {
-          setItems((prev) => {
-            // Merge: replace the first page with fresh data while preserving any extra pages
-            const extra = prev.slice(rows.length);
-            return [...rows, ...extra];
-          });
-        }
+        const { items: rows, hasMore: more } = await fetchLibraryItemsPage(shelfId, 0, sort, {
+          genre,
+          mood,
+        });
+        if (!cancelled) setItems((prev) => mergeFreshFirstPage(prev, rows, more));
       } catch {
         // Keep the current card state; the next interval or Realtime event can still update it.
       } finally {
@@ -113,6 +120,49 @@ export function LibraryItemsSection({
       window.clearInterval(intervalId);
     };
   }, [hasPendingItems, shelfId, sort, genre, mood]);
+
+  // A shelf restored from the library store shows at once. Refresh its first
+  // page, and refetch the item the user opened (it may be changed or deleted).
+  // The section is keyed by shelf and filter, so this runs once per mount.
+  useEffect(() => {
+    if (!revalidate) return;
+    let cancelled = false;
+    const openedId = readOpenedItem(userId);
+
+    void fetchLibraryItemsPage(shelfId, 0, sort, { genre, mood })
+      .then(({ items: rows, hasMore: more }) => {
+        if (!cancelled) setItems((prev) => mergeFreshFirstPage(prev, rows, more));
+      })
+      .catch(() => {
+        // Keep the restored cards; the next scroll or Realtime event updates them.
+      });
+
+    if (openedId) {
+      void fetch(`/api/items/${openedId}`)
+        .then(async (res) => {
+          if (cancelled) return;
+          if (res.status === 404) {
+            setItems((prev) => prev.filter((i) => i.id !== openedId));
+            return;
+          }
+          if (!res.ok) return;
+          const row = libraryItemFromRow((await res.json()) as ItemDetailResponseBody);
+          if (cancelled) return;
+          setItems((prev) =>
+            itemMatchesShelf(row, shelfId)
+              ? prev.map((i) => (i.id === openedId ? { ...i, ...row } : i))
+              : prev.filter((i) => i.id !== openedId),
+          );
+        })
+        .catch(() => {
+          // Best effort, like the first-page refresh.
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [revalidate, userId, shelfId, sort, genre, mood]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
@@ -152,7 +202,7 @@ export function LibraryItemsSection({
           void loadMore();
         }
       },
-      { rootMargin: "200px" },
+      { rootMargin: LOAD_MORE_MARGIN },
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
@@ -192,12 +242,15 @@ export function LibraryItemsSection({
       } else if (e.key === "o" && selectedIdx != null && !quickLookOpen) {
         e.preventDefault();
         const target = displayItems[selectedIdx];
-        if (target) router.push(`/item/${target.id}`);
+        if (target) {
+          storeOpenedItem(userId, target.id);
+          router.push(`/item/${target.id}`);
+        }
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [displayItems, selectedIdx, quickLookOpen, router]);
+  }, [displayItems, selectedIdx, quickLookOpen, router, userId]);
 
   const selectedItem = selectedIdx != null ? (displayItems[selectedIdx] ?? null) : null;
 

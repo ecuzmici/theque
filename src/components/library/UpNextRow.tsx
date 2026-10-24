@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "next-view-transitions";
 import { Dices } from "lucide-react";
 
+import { CoverImg, type CoverUrls } from "@/components/items/CoverImg";
+import { readStoredUpNext, storeUpNext } from "@/components/library/library-store";
 import { MadeForYouTile } from "@/components/library/MadeForYouTile";
 import { Button } from "@/components/ui/button";
 import { cleanDisplayTitle } from "@/lib/display-title";
-import { getDisplayImageUrl } from "@/lib/item-display";
+import { getCoverImageUrls } from "@/lib/item-display";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
@@ -25,7 +27,7 @@ async function loadShelf(shelf: "books" | "watch" | "forgotten"): Promise<Librar
 }
 
 function UpNextCover({ item, highlight }: { item: LibraryItemRow; highlight?: boolean }) {
-  const src = getDisplayImageUrl(item.image_storage_path, item.image_url);
+  const urls = getCoverImageUrls(item.image_storage_path, item.image_url);
   return (
     <span
       className={cn(
@@ -34,9 +36,8 @@ function UpNextCover({ item, highlight }: { item: LibraryItemRow; highlight?: bo
       )}
       style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
     >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy.
-        <img src={src} alt="" className="absolute inset-0 size-full object-cover" />
+      {urls ? (
+        <CoverImg urls={urls} className="absolute inset-0 size-full object-cover" />
       ) : (
         <span className="absolute inset-0 flex items-center justify-center p-2 text-center font-serif text-xs text-white/90 [text-shadow:0_1px_2px_rgb(0_0_0/0.4)]">
           {cleanDisplayTitle(item.title ?? item.domain)}
@@ -54,13 +55,17 @@ type Tile = { key: string; item: LibraryItemRow; eyebrow: string; highlight?: bo
  * Tonight's pick from GET /api/items/random. See ADR 0019, decision 1.
  */
 export function UpNextRow({
+  userId,
   recommendBooksEnabled = false,
   recommendWatchEnabled = false,
 }: {
+  /** Owner of the library store that keeps the row across Back. */
+  userId: string;
   recommendBooksEnabled?: boolean;
   recommendWatchEnabled?: boolean;
 }) {
-  const [source, setSource] = useState<UpNextSource | null>(null);
+  // Back from an item shows the stored row at once, then refreshes it.
+  const [source, setSource] = useState<UpNextSource | null>(() => readStoredUpNext(userId));
   const [shuffled, setShuffled] = useState<LibraryItemRow | null>(null);
   const [shuffling, setShuffling] = useState(false);
   const [now] = useState(() => Date.now());
@@ -73,12 +78,14 @@ export function UpNextRow({
         loadShelf("watch"),
         loadShelf("forgotten"),
       ]);
-      if (!cancelled) setSource({ books, watch, forgotten });
+      if (cancelled) return;
+      setSource({ books, watch, forgotten });
+      storeUpNext(userId, { books, watch, forgotten });
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   const picks = useMemo(
     () => (source ? selectUpNext(source, { day: dayNumber(now), tonight: shuffled }) : null),
@@ -101,8 +108,8 @@ export function UpNextRow({
 
   const recommendEnabled = recommendBooksEnabled || recommendWatchEnabled;
   const thumbs = tiles
-    .map((t) => getDisplayImageUrl(t.item.image_storage_path, t.item.image_url))
-    .filter((u): u is string => Boolean(u))
+    .map((t) => getCoverImageUrls(t.item.image_storage_path, t.item.image_url))
+    .filter((u): u is CoverUrls => u != null)
     .slice(0, 3);
 
   async function shuffle() {

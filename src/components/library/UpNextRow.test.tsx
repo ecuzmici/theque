@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
+import { resetLibraryStore } from "./library-store";
 import { UpNextRow } from "./UpNextRow";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -54,6 +55,7 @@ describe("UpNextRow", () => {
   let container: HTMLDivElement | undefined;
 
   beforeEach(() => {
+    resetLibraryStore();
     shelves.books = [item("b1")];
     shelves.watch = [item("w1", { category: "movies_and_tv" })];
     shelves.forgotten = [];
@@ -71,12 +73,12 @@ describe("UpNextRow", () => {
     vi.unstubAllGlobals();
   });
 
-  async function render(props: Parameters<typeof UpNextRow>[0] = {}) {
+  async function render(props: Partial<Parameters<typeof UpNextRow>[0]> = {}) {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
     await act(async () => {
-      root?.render(<UpNextRow {...props} />);
+      root?.render(<UpNextRow userId="user-1" {...props} />);
     });
   }
 
@@ -143,5 +145,26 @@ describe("UpNextRow", () => {
     const first = container?.querySelector("li a");
     expect(first?.getAttribute("href")).toBe("/item/r1");
     expect(first?.textContent).toContain("Random read");
+  });
+
+  it("shows the stored row at once when the library mounts again", async () => {
+    await render();
+    const first = eyebrows();
+    expect(first.length).toBeGreaterThan(0);
+    act(() => root?.unmount());
+    root = undefined;
+    container?.remove();
+    shelves.books = [];
+    shelves.watch = [];
+
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    act(() => {
+      root?.render(<UpNextRow userId="user-1" />);
+    });
+
+    // The first render already has the tiles; the refresh comes after.
+    expect(eyebrows()).toEqual(first);
   });
 });

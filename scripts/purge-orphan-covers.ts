@@ -1,7 +1,7 @@
 /**
  * Find and remove cover objects in the `item-images` bucket that no item row
  * points at. An object is an orphan when no `items.image_storage_path` equals
- * its name. Deleted items left these objects before item DELETE removed them.
+ * its name, and it is not the `thumb.webp` next to such a cover. Deleted items left these objects before item DELETE removed them.
  *
  * The script uses the Storage API. A delete of `storage.objects` rows in SQL
  * does not delete the files.
@@ -10,6 +10,7 @@
  *   npx tsx --conditions=react-server --env-file=.env.local scripts/purge-orphan-covers.ts [--apply]
  */
 
+import { thumbStoragePath } from "../src/lib/item-display";
 import { createAdminClient } from "../src/lib/supabase/admin";
 
 const BUCKET = "item-images";
@@ -32,7 +33,12 @@ async function run() {
       .order("id")
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`items_query_failed: ${error.message}`);
-    for (const row of data ?? []) if (row.image_storage_path) referenced.add(row.image_storage_path);
+    for (const row of data ?? []) {
+      if (!row.image_storage_path) continue;
+      // The thumbnail next to a live cover is not an orphan.
+      referenced.add(row.image_storage_path);
+      referenced.add(thumbStoragePath(row.image_storage_path));
+    }
     if (!data || data.length < PAGE) break;
   }
 

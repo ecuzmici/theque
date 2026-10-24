@@ -1,8 +1,7 @@
 "use client";
 
 import { Link } from "next-view-transitions";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { ItemCardActions } from "@/components/items/ItemCardActions";
 import type { ShelfId } from "@/lib/shelves";
@@ -93,8 +92,12 @@ function useLongPress(onLongPress: () => void, enabled: boolean) {
   };
 }
 
-/** One cover on the wall: a 2:3 cover, a title line, and a byline line. */
-export function ItemCard({
+/**
+ * One cover on the wall: a 2:3 cover, a title line, and a byline line.
+ * Memoized: a new page of cards or a patch to one card must not re-render
+ * every card already on the wall. Keep the callback props stable.
+ */
+export const ItemCard = memo(function ItemCard({
   item,
   shelfId,
   itemActionsEnabled,
@@ -102,28 +105,27 @@ export function ItemCard({
   onItemPatch,
   onOpenMarkDone,
 }: ItemCardProps) {
-  const router = useRouter();
   const detailHref = `/item/${item.id}`;
   const [menuOpen, setMenuOpen] = useState(false);
-  // Warm the item route on hover, focus, or press so navigation starts promptly.
-  const prefetchDetail = useCallback(() => {
-    router.prefetch(detailHref);
-  }, [router, detailHref]);
+  // The actions menu mounts on first hover or focus of the card (see ItemCardActions).
+  const [actionsWanted, setActionsWanted] = useState(false);
+  const wantActions = useCallback(() => setActionsWanted(true), []);
 
   const openMenu = useCallback(() => setMenuOpen(true), []);
   const press = useLongPress(openMenu, Boolean(itemActionsEnabled));
   const statusLabel = coverStatusLabel(item);
 
   return (
-    <div data-item-card={item.id} className="group relative">
+    <div
+      data-item-card={item.id}
+      className="group relative"
+      onPointerEnter={itemActionsEnabled ? wantActions : undefined}
+      onFocus={itemActionsEnabled ? wantActions : undefined}
+    >
+      {/* Link prefetches the item route in the viewport and again on hover or touch. */}
       <Link
         href={detailHref}
-        onPointerEnter={prefetchDetail}
-        onFocus={prefetchDetail}
-        onPointerDown={(e) => {
-          prefetchDetail();
-          press.onPointerDown?.(e);
-        }}
+        onPointerDown={press.onPointerDown}
         onPointerMove={press.onPointerMove}
         onPointerUp={press.onPointerUp}
         onPointerCancel={press.onPointerCancel}
@@ -156,6 +158,7 @@ export function ItemCard({
           onOpenMarkDone={onOpenMarkDone}
           open={menuOpen}
           onOpenChange={setMenuOpen}
+          menuMounted={actionsWanted || menuOpen}
           // Hidden until hover on a mouse. Touch opens it with a long-press, so the
           // button only anchors the menu there. Keyboard focus shows it.
           triggerClassName={cn(
@@ -167,4 +170,4 @@ export function ItemCard({
       ) : null}
     </div>
   );
-}
+});

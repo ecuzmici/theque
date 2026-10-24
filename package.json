@@ -13,6 +13,7 @@
     "test:e2e": "tsx e2e/tap-targets.spec.ts",
     "seed": "tsx scripts/seed.ts",
     "backfill:images": "tsx --conditions=react-server scripts/backfill-image-cache.ts",
+    "backfill:thumbs": "tsx --conditions=react-server scripts/backfill-cover-thumbs.ts",
     "backfill:crew": "tsx --conditions=react-server scripts/backfill-tmdb-crew.ts",
     "backfill:book-genres": "tsx --conditions=react-server scripts/backfill-book-genres.ts",
     "backfill:taste-tags": "tsx --conditions=react-server scripts/backfill-taste-tags.ts",

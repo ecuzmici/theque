@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Eye, EyeOff, Layers } from "lucide-react";
@@ -14,6 +14,16 @@ import { LibrarySearchRow } from "@/components/library/LibrarySearchRow";
 import { ShelfChips } from "@/components/library/ShelfChips";
 import { TasteChipRow } from "@/components/library/TasteChipRow";
 import { UpNextRow } from "@/components/library/UpNextRow";
+import {
+  readStoredHideDone,
+  readStoredShelves,
+  storeHideDone,
+  storeOpenedItem,
+  storeScroll,
+  storeShelves,
+  takeScrollToRestore,
+  type ShelfCache,
+} from "@/components/library/library-store";
 import { useLibrarySearch } from "@/components/library/useLibrarySearch";
 import { libraryCacheKey, useTasteFilter } from "@/components/library/useTasteFilter";
 import { Button } from "@/components/ui/button";
@@ -30,11 +40,6 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { tasteShelfCategory } from "@/lib/taste/taste-lists";
 import type { LibraryItemRow } from "@/lib/types/library-item";
-
-type ShelfCache = {
-  items: LibraryItemRow[];
-  hasMore: boolean;
-};
 
 type LibraryPageClientProps = {
   userId: string;
@@ -67,17 +72,30 @@ export function LibraryPageClient({
   const search = useLibrarySearch();
 
   // The cache key is the shelf id, plus the genre and mood when a chip is active.
-  // A filtered list never shares a key with the full shelf.
-  const [itemsCache, setItemsCache] = useState<Partial<Record<string, ShelfCache>>>({});
+  // A filtered list never shares a key with the full shelf. The cache starts
+  // from the library store, so Back from an item shows the same cards at once.
+  const [itemsCache, setItemsCache] = useState<Partial<Record<string, ShelfCache>>>(() =>
+    readStoredShelves(userId),
+  );
+  // Shelves restored from the store refresh their first page when they mount.
+  const [restoredKeys] = useState(() => new Set(Object.keys(readStoredShelves(userId))));
   const itemsCacheRef = useRef(itemsCache);
   useEffect(() => {
     itemsCacheRef.current = itemsCache;
-  }, [itemsCache]);
+    storeShelves(userId, itemsCache);
+  }, [userId, itemsCache]);
+
+  // Back from an item returns to the same place on the wall.
+  useLayoutEffect(() => {
+    const y = takeScrollToRestore(userId);
+    if (y != null) window.scrollTo(0, y);
+    return () => storeScroll(userId, window.scrollY);
+  }, [userId]);
 
   const [inboxCount, setInboxCount] = useState<number | null>(null);
   const [otherCount, setOtherCount] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<{ key: string; message: string } | null>(null);
-  const [hideDone, setHideDone] = useState(false);
+  const [hideDone, setHideDone] = useState(() => readStoredHideDone(userId) ?? false);
   const [triageMode, setTriageMode] = useState(false);
 
   // Only Other and Inbox are dynamic; both hide when empty. Prefer the live
@@ -117,7 +135,8 @@ export function LibraryPageClient({
   useEffect(() => {
     if (!prefsLoaded.current) return;
     window.localStorage.setItem("theque_hide_done", hideDone ? "1" : "0");
-  }, [hideDone]);
+    storeHideDone(userId, hideDone);
+  }, [userId, hideDone]);
 
   useEffect(() => {
     if (pendingShelf == null || pendingShelf !== urlShelf) return;
@@ -220,12 +239,20 @@ export function LibraryPageClient({
   const tasteCategory = tasteShelfCategory(activeShelf);
 
   return (
-    <div>
+    // Remember which item the user opens, so Back can refresh that card.
+    <div
+      onClickCapture={(e) => {
+        const href = (e.target as Element).closest?.('a[href^="/item/"]')?.getAttribute("href");
+        const id = href?.split("/")[2];
+        if (id) storeOpenedItem(userId, id);
+      }}
+    >
       <h1 className="sr-only">Library</h1>
 
       {/* The Up next row sits above the shelf chips on every shelf and does not
           change with the active shelf. See docs/adr/0019, decision 1. */}
       <UpNextRow
+        userId={userId}
         recommendBooksEnabled={recommendBooksEnabled}
         recommendWatchEnabled={recommendWatchEnabled}
       />
@@ -359,6 +386,7 @@ export function LibraryPageClient({
           onClearFilter={taste.clear}
           initialItems={cachedItems ?? []}
           initialHasMore={cachedHasMore}
+          revalidate={restoredKeys.has(cacheKey)}
           hideDone={hideDone}
           onItemsChange={updateActiveShelfItems}
         />

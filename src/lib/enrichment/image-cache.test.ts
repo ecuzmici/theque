@@ -13,6 +13,8 @@ const sharpMocks = vi.hoisted(() => ({ toBuffer: vi.fn(), stats: vi.fn() }));
 vi.mock("sharp", () => ({
   default: () => {
     const chain: Record<string, unknown> = {
+      rotate: () => chain,
+      webp: () => chain,
       resize: () => chain,
       toColourspace: () => chain,
       removeAlpha: () => chain,
@@ -77,7 +79,21 @@ describe("cacheItemImage", () => {
     expect(result.storagePath).toBe("user-1/item-1/cover.jpg");
     expect(result.dominantColor).toBe("#c86432");
     expect(result.dominantHue).not.toBeNull();
-    expect(upload).toHaveBeenCalledTimes(1);
+    expect(upload).toHaveBeenCalledTimes(2);
+  });
+
+  it("stores a WebP thumbnail next to the cover", async () => {
+    fetchMock.mockResolvedValue(fakeImageResponse());
+    sharpMocks.toBuffer.mockResolvedValue(rawPixels([{ rgb: [200, 100, 50], count: 16 }]));
+    const { admin, upload } = fakeAdmin();
+
+    await cacheItemImage(admin, "user-1", "item-1", "https://covers.example/a.jpg");
+
+    expect(upload.mock.calls.map((c) => c[0])).toEqual([
+      "user-1/item-1/cover.jpg",
+      "user-1/item-1/thumb.webp",
+    ]);
+    expect(upload.mock.calls[1][2]).toMatchObject({ contentType: "image/webp", upsert: true });
   });
 
   it("ignores a dark background and picks the vivid accent instead", async () => {

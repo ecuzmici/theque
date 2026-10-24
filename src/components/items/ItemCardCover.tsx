@@ -5,10 +5,12 @@ import { useCallback, useState } from "react";
 
 import type { ItemCategory } from "@/lib/database.types";
 import { cleanDisplayTitle } from "@/lib/display-title";
-import { cardAspectRatio, getDisplayImageUrl } from "@/lib/item-display";
+import { cardAspectRatio, getCoverImageUrls } from "@/lib/item-display";
 import { formatCategory } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
+
+import { CoverImg, type CoverUrls } from "./CoverImg";
 
 /** Cleaned title for a card caption or cover. Falls back to the domain. */
 export function cardTitle(item: Pick<LibraryItemRow, "title" | "domain">): string {
@@ -27,7 +29,7 @@ function ratioOf(value: string): number {
   return w > 0 && h > 0 ? w / h : 2 / 3;
 }
 
-/** A ratio wider than this sits on a blurred copy instead of a crop. */
+/** A ratio wider than this sits whole on the cover tint instead of a crop. */
 const LANDSCAPE_MIN_RATIO = 0.9;
 
 /** Expected image shape before the image loads, from the category or stored card aspect. */
@@ -108,7 +110,7 @@ function TypeCover({ item, processing }: { item: LibraryItemRow; processing: boo
   );
 }
 
-function CoverImage({ src, landscapeHint }: { src: string; landscapeHint: boolean }) {
+function CoverImage({ urls, landscapeHint }: { urls: CoverUrls; landscapeHint: boolean }) {
   // Start from the category's expected shape. Correct it once the real image size is known.
   const [landscape, setLandscape] = useState(landscapeHint);
   const measure = useCallback((img: HTMLImageElement | null) => {
@@ -116,37 +118,15 @@ function CoverImage({ src, landscapeHint }: { src: string; landscapeHint: boolea
     setLandscape(img.naturalWidth / img.naturalHeight >= LANDSCAPE_MIN_RATIO);
   }, []);
 
-  if (!landscape) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy.
-      <img
-        ref={measure}
-        src={src}
-        alt=""
-        onLoad={(e) => measure(e.currentTarget)}
-        className="absolute inset-0 size-full object-cover"
-      />
-    );
-  }
+  // A landscape image sits whole on the cover tint. A blurred copy behind it
+  // cost a second image layer and a GPU blur per card while scrolling.
   return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
-      <img
-        src={src}
-        alt=""
-        aria-hidden
-        data-testid="cover-backdrop"
-        className="absolute inset-0 size-full scale-125 object-cover opacity-60 blur-xl"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element -- Remote image hosts are untrusted; avoid the server-side image proxy. */}
-      <img
-        ref={measure}
-        src={src}
-        alt=""
-        onLoad={(e) => measure(e.currentTarget)}
-        className="absolute inset-0 size-full object-contain"
-      />
-    </>
+    <CoverImg
+      ref={measure}
+      urls={urls}
+      onLoad={(e) => measure(e.currentTarget)}
+      className={cn("absolute inset-0 size-full", landscape ? "object-contain" : "object-cover")}
+    />
   );
 }
 
@@ -176,7 +156,7 @@ export function coverStatusLabel(
 /** The 2:3 cover with its image (or typographic cover) and the status marks. */
 export function ItemCardCover({ item, selected }: { item: LibraryItemRow; selected?: boolean }) {
   const processing = item.processing_status === "pending" || item.processing_status === "processing";
-  const src = getDisplayImageUrl(item.image_storage_path, item.image_url);
+  const urls = getCoverImageUrls(item.image_storage_path, item.image_url);
 
   return (
     <div
@@ -187,8 +167,8 @@ export function ItemCardCover({ item, selected }: { item: LibraryItemRow; select
       // The extracted color is the loading base under the image.
       style={item.dominant_color ? { backgroundColor: item.dominant_color } : undefined}
     >
-      {src ? (
-        <CoverImage key={src} src={src} landscapeHint={expectsLandscape(item)} />
+      {urls ? (
+        <CoverImage key={urls.src} urls={urls} landscapeHint={expectsLandscape(item)} />
       ) : (
         <TypeCover item={item} processing={processing} />
       )}

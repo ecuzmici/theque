@@ -100,26 +100,43 @@ describe("ItemCard", () => {
     expect(el.querySelector("img")!.className).toContain("object-cover");
   });
 
-  it("sets a landscape image on a blurred copy of itself", async () => {
+  it("sets a landscape image whole on the cover tint", async () => {
     const el = await render(
       makeItem({ category: "articles", image_url: "https://img.example/hero.jpg" }),
     );
-    expect(el.querySelector('[data-testid="cover-backdrop"]')).not.toBeNull();
     const imgs = el.querySelectorAll("img");
-    expect(imgs).toHaveLength(2);
-    expect(imgs[1].className).toContain("object-contain");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].className).toContain("object-contain");
   });
 
-  it("switches to the blurred backdrop when a book image loads as landscape", async () => {
+  it("stops cropping a book image that loads as landscape", async () => {
     const el = await render(makeItem({ category: "books", image_url: "https://img.example/shot.png" }));
     const img = el.querySelector("img")!;
+    expect(img.className).toContain("object-cover");
     Object.defineProperty(img, "complete", { value: true });
     Object.defineProperty(img, "naturalWidth", { value: 1200 });
     Object.defineProperty(img, "naturalHeight", { value: 630 });
     await act(async () => {
       img.dispatchEvent(new Event("load"));
     });
-    expect(el.querySelector('[data-testid="cover-backdrop"]')).not.toBeNull();
+    expect(el.querySelector("img")!.className).toContain("object-contain");
+  });
+
+  it("loads the cached thumbnail lazily and falls back to the full cover", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://ref.supabase.co");
+    const base = "https://ref.supabase.co/storage/v1/object/public/item-images/u1/item-1";
+    const el = await render(
+      makeItem({ image_storage_path: "u1/item-1/cover.jpg", image_url: "https://img.example/p.jpg" }),
+    );
+    const img = el.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe(`${base}/thumb.webp`);
+    expect(img.getAttribute("loading")).toBe("lazy");
+    expect(img.getAttribute("decoding")).toBe("async");
+    await act(async () => {
+      img.dispatchEvent(new Event("error"));
+    });
+    expect(img.getAttribute("src")).toBe(`${base}/cover.jpg`);
+    vi.unstubAllEnvs();
   });
 
   it("marks a done item with a check and its stars, and names the status", async () => {
@@ -158,6 +175,32 @@ describe("ItemCard", () => {
     expect(buttons[0].className).toContain("group-hover:opacity-100");
     expect(buttons[0].className).toContain("focus-visible:opacity-100");
     expect(el.textContent).not.toMatch(/Mark watched|Edit verdict/);
+  });
+
+  it("mounts the actions menu on first use and opens it from the stand-in trigger", async () => {
+    const el = await render(makeItem());
+    const standIn = el.querySelector("button")!;
+    expect(standIn.getAttribute("aria-haspopup")).toBe("menu");
+    expect(document.body.textContent).not.toContain("Delete item");
+
+    await act(async () => {
+      standIn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(document.body.textContent).toContain("Delete item");
+  });
+
+  it("gives focus from the stand-in trigger to the real one", async () => {
+    const el = await render(makeItem());
+    const standIn = el.querySelector("button")!;
+    await act(async () => {
+      standIn.focus();
+    });
+
+    const trigger = el.querySelector<HTMLButtonElement>('button[aria-label="Item actions"]')!;
+    expect(trigger).not.toBe(standIn);
+    expect(document.activeElement).toBe(trigger);
+    expect(document.body.textContent).not.toContain("Delete item");
   });
 
   it("renders no actions trigger when actions are off", async () => {
