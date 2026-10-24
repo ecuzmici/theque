@@ -1,5 +1,5 @@
 import { deleteAccount } from "@/lib/account/delete-account";
-import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { getVerifiedSessionUserOrNull } from "@/lib/auth/session-user";
 import { deleteDriveFile, isDriveConfigured } from "@/lib/drive/client";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +20,7 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
  * `userId`/`id` field in the body is intentionally never read.
  */
 export async function POST(req: Request) {
-  const user = await getSessionUserOrNull();
+  const user = await getVerifiedSessionUserOrNull();
   if (!user) {
     return jsonResponse({ code: "unauthorized" }, { status: 401 });
   }

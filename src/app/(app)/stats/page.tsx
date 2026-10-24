@@ -2,14 +2,12 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { LibraryStatsView } from "@/components/stats/LibraryStatsView";
+import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { fetchLibraryStats } from "@/lib/stats/library-stats";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function StatsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [supabase, user] = await Promise.all([createClient(), getSessionUserOrNull()]);
 
   if (!user) {
     redirect("/login");

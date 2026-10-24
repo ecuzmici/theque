@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getSessionUserOrNull: vi.fn(),
+  getVerifiedSessionUserOrNull: vi.fn(),
   deleteAccount: vi.fn(),
   signOut: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/session-user", () => ({
-  getSessionUserOrNull: mocks.getSessionUserOrNull,
+  getVerifiedSessionUserOrNull: mocks.getVerifiedSessionUserOrNull,
 }));
 
 vi.mock("@/lib/account/delete-account", () => ({
@@ -42,13 +42,13 @@ function req(body: unknown) {
 
 describe("POST /api/account/delete", () => {
   beforeEach(() => {
-    mocks.getSessionUserOrNull.mockReset();
+    mocks.getVerifiedSessionUserOrNull.mockReset();
     mocks.deleteAccount.mockReset();
     mocks.signOut.mockReset();
   });
 
   it("rejects without a valid session", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue(null);
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue(null);
 
     const { POST } = await import("./route");
     const res = await POST(req({ confirm: "delete" }));
@@ -58,7 +58,7 @@ describe("POST /api/account/delete", () => {
   });
 
   it("rejects when confirm is not exactly \"delete\"", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue({ id: "user-1" });
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue({ id: "user-1" });
 
     const { POST } = await import("./route");
 
@@ -70,7 +70,7 @@ describe("POST /api/account/delete", () => {
   });
 
   it("resolves identity from the session and never from the request body", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue({ id: "real-user-id" });
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue({ id: "real-user-id" });
     mocks.deleteAccount.mockResolvedValue({ ok: true, orphanedFileCount: 0 });
 
     const { POST } = await import("./route");
@@ -85,7 +85,7 @@ describe("POST /api/account/delete", () => {
   });
 
   it("signs the user out and reports the orphaned-file count on success", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue({ id: "user-1" });
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue({ id: "user-1" });
     mocks.deleteAccount.mockResolvedValue({ ok: true, orphanedFileCount: 2, orphanedDriveFileCount: 0 });
 
     const { POST } = await import("./route");
@@ -97,7 +97,7 @@ describe("POST /api/account/delete", () => {
   });
 
   it("returns 500 and does not sign out when the orchestration reports failure", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue({ id: "user-1" });
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue({ id: "user-1" });
     mocks.deleteAccount.mockResolvedValue({ ok: false, orphanedFileCount: 0 });
 
     const { POST } = await import("./route");
@@ -108,7 +108,7 @@ describe("POST /api/account/delete", () => {
   });
 
   it("rejects an unparseable body once a session exists", async () => {
-    mocks.getSessionUserOrNull.mockResolvedValue({ id: "user-1" });
+    mocks.getVerifiedSessionUserOrNull.mockResolvedValue({ id: "user-1" });
 
     const { POST } = await import("./route");
     const res = await POST(

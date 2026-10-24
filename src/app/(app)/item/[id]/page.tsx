@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { ItemDetail } from "@/components/items/ItemDetail";
 import { ItemDetailSkeleton } from "@/components/items/ItemDetailSkeleton";
+import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { canUseBookFile } from "@/lib/book-file-access";
 import { decryptItemFields } from "@/lib/crypto/field-crypto";
 import { LIBRARY_ITEM_COLUMNS } from "@/lib/library-items-for-shelf";
@@ -13,10 +14,8 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-// Suspense (not a route-level loading.tsx) so the fallback can carry the cover's
-// view-transition-name — the library cover morphs into the skeleton box and then
-// into the loaded hero, one continuous shared element (see next-view-transitions
-// wiring in RootLayout + ItemCard/ItemDetail).
+// loading.tsx covers the navigation. This Suspense keeps the same skeleton while
+// the item query streams in.
 export default async function ItemPage({ params }: PageProps) {
   const { id } = await params;
   return (
@@ -27,10 +26,7 @@ export default async function ItemPage({ params }: PageProps) {
 }
 
 async function ItemDetailContent({ id }: { id: string }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [supabase, user] = await Promise.all([createClient(), getSessionUserOrNull()]);
 
   if (!user) {
     redirect("/login");

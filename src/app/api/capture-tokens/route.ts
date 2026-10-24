@@ -1,4 +1,4 @@
-import { getSessionUserOrNull } from "@/lib/auth/session-user";
+import { getSessionUserOrNull, getVerifiedSessionUserOrNull } from "@/lib/auth/session-user";
 import type {
   CaptureTokenCreateResponseBody,
   CaptureTokensListResponseBody,
@@ -30,7 +30,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const user = await getSessionUserOrNull();
+  // A capture token outlives the session, so check the session with the Auth server.
+  const user = await getVerifiedSessionUserOrNull();
   if (!user) return Response.json({ code: "unauthorized" }, { status: 401 });
 
   const rl = await rateLimit(`capture-tokens:${user.id}`, 5, 60);

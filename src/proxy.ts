@@ -87,10 +87,11 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  // getClaims checks the JWT signature locally (cached JWKS), so the request
+  // does not wait for an Auth server round trip. It still refreshes an expired
+  // session and sets the new cookies.
+  const { data: claimsData, error: authError } = await supabase.auth.getClaims();
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null;
 
   if (authError) {
     expireSupabaseAuthCookies(response, url);

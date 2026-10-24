@@ -3,14 +3,11 @@ import { redirect } from "next/navigation";
 
 import { LibraryPageClient } from "@/components/library/LibraryPageClient";
 import { LibraryPageSkeleton } from "@/components/library/LibraryPageSkeleton";
+import { getSessionUserOrNull } from "@/lib/auth/session-user";
 import { isRecommendEnabled, isWatchRecommendEnabled } from "@/lib/recommend/recommend-config";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function LibraryPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSessionUserOrNull();
 
   if (!user) {
     redirect("/login");
