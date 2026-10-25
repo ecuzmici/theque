@@ -31,7 +31,7 @@ Keep it terse and factual. This is operational history, not prose. All times UTC
 
 **Runtime-log fetch** (verified 2026-07-08): the Vercel **MCP** `get_runtime_errors` needs an
 interactive OAuth flow (`mcp__plugin_vercel_vercel__authenticate`) that can't complete unattended.
-Fallback that works with `VERCEL_TOKEN`: `vercel logs <prod-deployment-hostname> --token=$VERCEL_TOKEN
+**Update 2026-10-08:** MCP `get_runtime_errors` (projectId + teamId) works unattended now. `VERCEL_TOKEN` is invalid (403), so the CLI fallback below fails until the token is rotated. Old fallback: `vercel logs <prod-deployment-hostname> --token=$VERCEL_TOKEN
 --scope=ecuzmicis-projects --json` (wrap in `timeout 30`; returns a small tail of recent function/
 edge-middleware invocations with `responseStatusCode`/`level` — scan for 5xx or error level). The REST
 `/v3/deployments/{id}/events` endpoint returns **build** logs only, not runtime. Current prod deployment:
@@ -45,10 +45,10 @@ recency-nudge findings", READY as of 2026-08-10). Prior: `dpl_DZqsStrruXt9i3hBRK
 
 | Metric | Value | As of |
 |--------|-------|-------|
-| Signups total | **13** | 2026-08-10 22:47 |
-| Items total | **229** | 2026-08-10 22:47 |
-| Items unfinished (pending/processing) | 0 | 2026-08-10 22:47 |
-| Items failed (lifetime) | 1 (~0.4%) | 2026-08-10 22:47 |
+| Signups total | **13** | 2026-10-08 22:46 |
+| Items total | **240** | 2026-10-08 22:46 |
+| Items unfinished (pending/processing) | 0 | 2026-10-08 22:46 |
+| Items failed (lifetime) | 1 (~0.4%) | 2026-10-08 22:46 |
 
 **Baseline for judging "organic" signups:** 11 pre-organic accounts = 10 pre-launch + 1 Emil
 test (`kuzmosmurf@gmail.com`). Discount Emil's own test accounts. First real organic signup was
@@ -77,6 +77,7 @@ and effectively **zero retained organic signups** to date.
 | 2026-07-15 | 4 | 4 | 0 | 0 | — | — | Quiet. |
 | 2026-07-16 → 2026-07-21 (gap, no pass) | — | — | 0 | 3 | — | — | No loop running; reconstructed 07-22. Only signal: items 193→196 (+3 captures, no new signups). Commit 7149683 (ADR 0015 richer recommend cards) shipped to prod 07-16 ~21:16 (dpl_4Qz6zMi3yJ453y4h3tvFKvyv6BCS). |
 | 2026-07-22 → 2026-08-10 (gap, no pass) | 43 | 119 | 0 | +33 | direct 43 · bing 1 | 0 | No loop running; reconstructed 08-10. Steady 1–7 visitors/day, near-all direct, zero new signups. Items 196→229 — existing-user/dogfood captures during ADR 0015/0016 work. Commits 8a33b43 + a57b499 (ADR 0016 recommendation fixes) shipped to prod; current deployment dpl_D6sRAPnvr9bNoXA91sSYw64FfuhT. |
+| 2026-08-11 → 2026-10-08 (gap, no pass) | n/a | n/a | 0 | +11 | n/a | 0 | No loop running. Traffic unavailable (token invalid, MCP Web Analytics 404). Items 229→240, 0 new signups (newest user still 2026-07-09). |
 
 ---
 
@@ -100,6 +101,7 @@ Format: `UTC time — verdict — visitors/pageviews, signups today, captures to
 - 2026-07-16 20:31 — 🟢 — 0/0 today, 0, 0, 0, none — ~8 days since prior pass (manual). Gap recap: +1 signup (mikepetrov 07-09, 5 captures — later confirmed a friend, not organic) + migotkaa returned 07-11 (+5); totals 12/181 → **13/193**. Enrichment clean (0 pending, same 1 lifetime failed). `vercel logs` tail empty (consistent with 0 visitors today); no retroactive runtime-error visibility over the gap, but all 12 captures succeeded and no issues were filed. 07-14 bump (13 direct visitors, 0 engagement) looks like a scanner sweep. sidotep never returned.
 - 2026-07-22 22:15 — 🟢 — 2/3-4 today (direct only), 0, 0, 0, none — ~6 days since prior pass (manual). Gap recap: 193→196 items (+3 captures), 0 new signups; commit 7149683 (ADR 0015 recommend cards) deployed to prod 07-16 ~21:16, now READY as current deployment. `vercel logs` tail (recent window) all 200/info, no 5xx. Enrichment clean (0 pending, same 1 lifetime failed, ~0.5%). No new GitHub issues since 07-16 (`gh issue list --search created:>=2026-07-16` empty). sidotep and mikepetrov still no return.
 - 2026-08-10 22:47 — 🟢 — 0/0 today (UTC day nearly closed), 0, 1 capture today, 0, none — ~19 days since prior pass (manual). Gap recap: 43 visitors / 119 pageviews over 19 days, all direct except 1 bing; **0 new signups**; items 196→229 (+33, existing users). Enrichment clean: 0 pending, 0 processing, same 1 lifetime failed (~0.4%). `vercel logs` tail (last ~30 min) 4 requests, all 200/info on theque.app `/`, no 5xx and no login/Turnstile errors. No new GitHub issues since 07-22 (search empty); open set unchanged (#69, #36). Neither error cluster recurred. Watch-list users still absent.
+- 2026-10-08 22:46 — 🟡 — traffic n/a, 0, 0, 0, none — ~59 days since prior pass (manual). **Traffic step skipped:** `VERCEL_TOKEN` in `.env.local` returns 403 invalidToken (also breaks `vercel logs`); Vercel MCP `aggregate_pageviews` returns 404 "Web Analytics not found" (Analytics may be disabled/paused or token-scoped). MCP `get_runtime_errors` works now: no errors. Supabase: users 13 (0 new, newest 07-09), items 229→240 (+11, 0 today), 0 pending, 1 lifetime failed. No new GitHub issues (open: #69, #36). Watch-list users absent.
 
 ---
 
@@ -130,8 +132,8 @@ Format: `UTC time — verdict — visitors/pageviews, signups today, captures to
 
 | User | Why | Baseline | Last seen | Status |
 |------|-----|----------|-----------|--------|
-| `sidotep834@doefy.com` | First organic signup (disposable email, manhwa/amazon.es captures) | 6 items, sign-in 2026-07-05 00:21:52 | 2026-07-05 00:21:52 | No return through 2026-08-10 22:47. Likely churned (disposable email). Flag if sign-in or capture count changes. |
-| `mikepetrov365@gmail.com` | Emil's friend (not organic); activated immediately (5 captures in first 5 min) | 5 items, sign-in 2026-07-09 00:47:39 | 2026-07-09 00:52:30 (capture) | No return through 2026-08-10 22:47. Interesting for retention, not acquisition. |
+| `sidotep834@doefy.com` | First organic signup (disposable email, manhwa/amazon.es captures) | 6 items, sign-in 2026-07-05 00:21:52 | 2026-07-05 00:21:52 | No return through 2026-10-08 22:46. Likely churned (disposable email). Flag if sign-in or capture count changes. |
+| `mikepetrov365@gmail.com` | Emil's friend (not organic); activated immediately (5 captures in first 5 min) | 5 items, sign-in 2026-07-09 00:47:39 | 2026-07-09 00:52:30 (capture) | No return through 2026-10-08 22:46. Interesting for retention, not acquisition. |
 
 ---
 
