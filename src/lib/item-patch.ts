@@ -27,6 +27,10 @@ export function applyItemPatch(
   patch: ItemPatch,
   opts?: ItemPatchOptions,
 ): () => void {
+  // The server clears the pin of a done or dismissed item. Do the same here.
+  if ((patch.status === "done" || patch.status === "dismissed") && !("pinned_at" in patch)) {
+    patch = { ...patch, pinned_at: null };
+  }
   let before: LibraryItemRow | undefined;
   let index = -1;
   setItems((prev) => {

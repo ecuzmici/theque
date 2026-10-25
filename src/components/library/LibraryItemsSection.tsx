@@ -17,6 +17,7 @@ import type { LibrarySort } from "@/lib/library-items-for-shelf";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import { doneVerb } from "@/lib/item-labels";
 import { applyItemPatch, type ItemPatchHandler } from "@/lib/item-patch";
+import { pinnedFirst } from "@/lib/items/pins";
 import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import { SHELF_EMPTY } from "@/lib/shelf-empty";
@@ -84,7 +85,7 @@ export function LibraryItemsSection({
 
   // "Hide done" is a display filter: consumed items stay in `items` (so toggling
   // it back reveals them without a refetch) but are dropped from what we render.
-  const displayItems = hideDone ? items.filter((i) => i.status !== "done") : items;
+  const displayItems = pinnedFirst(hideDone ? items.filter((i) => i.status !== "done") : items);
 
   useEffect(() => {
     onItemsChange?.(items);

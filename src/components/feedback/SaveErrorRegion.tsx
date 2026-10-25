@@ -9,10 +9,13 @@ const VISIBLE_MS = 4000;
 /** Live region for `reportSaveError()`. Mount it once, in the app shell. */
 export function SaveErrorRegion() {
   const [visible, setVisible] = useState(false);
+  const [message, setMessage] = useState(SAVE_ERROR_MESSAGE);
 
   useEffect(() => {
     let timer: number | undefined;
-    const onError = () => {
+    const onError = (event: Event) => {
+      const detail = (event as CustomEvent<unknown>).detail;
+      setMessage(typeof detail === "string" && detail ? detail : SAVE_ERROR_MESSAGE);
       setVisible(true);
       window.clearTimeout(timer);
       timer = window.setTimeout(() => setVisible(false), VISIBLE_MS);
@@ -32,7 +35,7 @@ export function SaveErrorRegion() {
     >
       {visible ? (
         <p className="rounded-lg border border-destructive/30 bg-card px-4 py-2 text-sm text-destructive shadow-md">
-          {SAVE_ERROR_MESSAGE}
+          {message}
         </p>
       ) : null}
     </div>

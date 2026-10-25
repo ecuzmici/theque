@@ -8,27 +8,34 @@ const mocks = vi.hoisted(() => {
   const getSessionUserOrNull = vi.fn();
   const from = vi.fn();
   const updateSpy = vi.fn();
+  const inSpy = vi.fn();
 
   function makeItemsTable(opts: {
     initialRow: Record<string, unknown> | null;
     updatedRow?: Record<string, unknown> | null;
+    pins?: { id: string }[];
   }) {
     return {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
+      neq: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      order: vi.fn().mockResolvedValue({ data: opts.pins ?? [], error: null }),
       maybeSingle: vi.fn().mockResolvedValue({ data: opts.initialRow, error: null }),
       single: vi
         .fn()
         .mockResolvedValue({ data: opts.updatedRow ?? opts.initialRow, error: null }),
       update: updateSpy.mockImplementation(() => ({
         eq: vi.fn().mockResolvedValue({ error: null }),
+        in: inSpy.mockResolvedValue({ error: null }),
       })),
     };
   }
 
   const deleteItemFiles = vi.fn(async () => ({ coverObjectsRemoved: 0, failures: 0 }));
 
-  return { getSessionUserOrNull, from, updateSpy, makeItemsTable, deleteItemFiles };
+  return { getSessionUserOrNull, from, updateSpy, inSpy, makeItemsTable, deleteItemFiles };
 });
 
 vi.mock("@/lib/items/delete-item-files", () => ({ deleteItemFiles: mocks.deleteItemFiles }));
@@ -215,9 +222,13 @@ describe("PATCH /api/items/[id] (ADR 0013 field encryption)", () => {
     expect(patchArg.verdict).toBe("");
   });
 
-  async function patch(initialRow: Record<string, unknown>, body: Record<string, unknown>) {
+  async function patch(
+    initialRow: Record<string, unknown>,
+    body: Record<string, unknown>,
+    opts: { pins?: { id: string }[] } = {},
+  ) {
     mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
-    const itemsTable = mocks.makeItemsTable({ initialRow });
+    const itemsTable = mocks.makeItemsTable({ initialRow, pins: opts.pins });
     mocks.from.mockImplementation(() => itemsTable);
     const { PATCH } = await import("./route");
     return PATCH(
@@ -274,6 +285,84 @@ describe("PATCH /api/items/[id] (ADR 0013 field encryption)", () => {
       category_source: "manual",
       category_confidence: 1,
     });
+  });
+});
+
+describe("PATCH /api/items/[id] pins", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    process.env.FIELD_ENCRYPTION_KEY = TEST_FIELD_ENCRYPTION_KEY;
+    mocks.getSessionUserOrNull.mockReset();
+    mocks.from.mockReset();
+    mocks.updateSpy.mockReset();
+    mocks.inSpy.mockReset();
+  });
+
+  const row = {
+    id: "item-1",
+    user_id: "user-1",
+    status: "want",
+    category: "books",
+    pinned_at: null,
+    display: null,
+  };
+  const pins = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `old-${i}` }));
+
+  async function patch(initialRow: Record<string, unknown>, body: Record<string, unknown>, otherPins = 0) {
+    mocks.getSessionUserOrNull.mockResolvedValue(SESSION_USER);
+    const itemsTable = mocks.makeItemsTable({ initialRow, pins: pins(otherPins) });
+    mocks.from.mockImplementation(() => itemsTable);
+    const { PATCH } = await import("./route");
+    const res = await PATCH(
+      new Request("https://theque.app/api/items/item-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ id: "item-1" }) },
+    );
+    return { res, itemsTable };
+  }
+
+  it("pins an item under the limit and unpins nothing", async () => {
+    const { res } = await patch(row, { pinned: true }, 3);
+    expect(res.status).toBe(200);
+    const patchArg = mocks.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(typeof patchArg.pinned_at).toBe("string");
+    expect(mocks.inSpy).not.toHaveBeenCalled();
+    expect(await res.json()).not.toHaveProperty("unpinned_item_ids");
+  });
+
+  it("replaces the oldest pin of the category at the limit", async () => {
+    const { res, itemsTable } = await patch(row, { pinned: true }, 4);
+    expect(res.status).toBe(200);
+    expect(itemsTable.eq).toHaveBeenCalledWith("category", "books");
+    expect(itemsTable.order).toHaveBeenCalledWith("pinned_at", { ascending: true });
+    expect(mocks.updateSpy).toHaveBeenLastCalledWith({ pinned_at: null });
+    expect(mocks.inSpy).toHaveBeenCalledWith("id", ["old-0"]);
+    expect((await res.json()).unpinned_item_ids).toEqual(["old-0"]);
+  });
+
+  it("keeps the pin time when the item is already pinned", async () => {
+    await patch({ ...row, pinned_at: "2026-10-01T00:00:00Z" }, { pinned: true }, 4);
+    expect(mocks.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("unpins an item", async () => {
+    await patch({ ...row, pinned_at: "2026-10-01T00:00:00Z" }, { pinned: false });
+    expect(mocks.updateSpy.mock.calls[0][0]).toEqual({ pinned_at: null });
+  });
+
+  it("rejects a pinned value that is not a boolean", async () => {
+    const { res } = await patch(row, { pinned: "yes" });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe("invalid_pinned");
+  });
+
+  it.each(["done", "dismissed"])("clears the pin when the status becomes %s", async (status) => {
+    await patch({ ...row, pinned_at: "2026-10-01T00:00:00Z" }, { status });
+    const patchArg = mocks.updateSpy.mock.calls[0][0] as Record<string, unknown>;
+    expect(patchArg.pinned_at).toBeNull();
   });
 });
 

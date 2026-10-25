@@ -31,6 +31,7 @@ function row(id: string, patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
     verdict: null,
     done_at: null,
     file_uploaded_at: null,
+    pinned_at: null,
     ...patch,
   };
 }

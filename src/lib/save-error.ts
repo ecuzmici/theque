@@ -7,9 +7,10 @@ export const SAVE_ERROR_EVENT = "theque:save-error";
 
 export const SAVE_ERROR_MESSAGE = "Could not save. Try again.";
 
-export function reportSaveError(): void {
+/** `message` replaces the default text, for an error the user can fix. */
+export function reportSaveError(message: string = SAVE_ERROR_MESSAGE): void {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event(SAVE_ERROR_EVENT));
+  window.dispatchEvent(new CustomEvent<string>(SAVE_ERROR_EVENT, { detail: message }));
 }
 
 /**

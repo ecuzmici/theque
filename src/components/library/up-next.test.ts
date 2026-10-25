@@ -17,6 +17,7 @@ const OLD = "2020-01-01T00:00:00.000Z";
 function item(id: string, patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
     file_uploaded_at: null,
+    pinned_at: null,
     id,
     title: id,
     subtitle: null,
@@ -63,6 +64,7 @@ describe("dailyIndex", () => {
 describe("selectUpNext", () => {
   it("returns empty slots for an empty library", () => {
     expect(selectUpNext({ books: [], watch: [], forgotten: [] }, { day: 0 })).toEqual({
+      pinned: [],
       tonight: null,
       forgotten: null,
       nextRead: null,
@@ -107,7 +109,7 @@ describe("selectUpNext", () => {
       },
       { day: 0 },
     );
-    expect(picks).toEqual({ tonight: null, forgotten: null, nextRead: null, nextWatch: null });
+    expect(picks).toEqual({ pinned: [], tonight: null, forgotten: null, nextRead: null, nextWatch: null });
   });
 
   it("shows no forgotten item when none is older than the cutoff", () => {
@@ -144,6 +146,49 @@ describe("selectUpNext", () => {
     expect(picks.tonight).toBe(shuffled);
     expect(picks.nextRead).toBeNull();
     expect(picks.nextWatch?.id).toBe("w1");
+  });
+});
+
+describe("selectUpNext with pins", () => {
+  const PIN_OLD = "2026-10-01T00:00:00Z";
+  const PIN_NEW = "2026-10-05T00:00:00Z";
+
+  it("puts pinned items first, newest pin first, and keeps them out of the other slots", () => {
+    const p1 = book("p1", { pinned_at: PIN_OLD });
+    const p2 = film("p2", { pinned_at: PIN_NEW });
+    const picks = selectUpNext(
+      { books: [p1, book("b1")], watch: [p2, film("w1")], forgotten: [], pinned: [p1, p2] },
+      { day: 7 },
+    );
+    expect(picks.pinned.map((i) => i.id)).toEqual(["p2", "p1"]);
+    const others = [picks.tonight, picks.forgotten, picks.nextRead, picks.nextWatch].map((i) => i?.id);
+    expect(others).not.toContain("p1");
+    expect(others).not.toContain("p2");
+  });
+
+  it("drops pinned items that are not wanted", () => {
+    const picks = selectUpNext(
+      { books: [], watch: [], forgotten: [], pinned: [book("d", { pinned_at: PIN_OLD, status: "done" })] },
+      { day: 7 },
+    );
+    expect(picks.pinned).toEqual([]);
+  });
+
+  it("shows at most 4 pins of one category", () => {
+    const pinnedBooks = Array.from({ length: 5 }, (_, i) => book(`p${i}`, { pinned_at: `2026-10-0${i + 1}T00:00:00Z` }));
+    const pinnedFilm = film("f", { pinned_at: PIN_OLD });
+    const picks = selectUpNext(
+      { books: [], watch: [], forgotten: [], pinned: [...pinnedBooks, pinnedFilm] },
+      { day: 7 },
+    );
+    expect(picks.pinned.map((i) => i.id)).toEqual(["p4", "p3", "p2", "p1", "f"]);
+  });
+
+  it("moves a shuffled pick out of the pinned tiles", () => {
+    const p1 = book("p1", { pinned_at: PIN_OLD });
+    const picks = selectUpNext({ books: [p1], watch: [], forgotten: [], pinned: [p1] }, { day: 7, tonight: p1 });
+    expect(picks.pinned).toEqual([]);
+    expect(picks.tonight?.id).toBe("p1");
   });
 });
 

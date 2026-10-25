@@ -5,7 +5,7 @@ import { SHELVES, olderThanCutoff, type ShelfDefinition, type ShelfId } from "@/
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 export const LIBRARY_ITEM_COLUMNS =
-  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue, rating_personal, verdict, done_at, file_uploaded_at";
+  "id, title, subtitle, image_url, image_storage_path, domain, category, status, processing_status, created_at, display, canonical_url, dominant_color, dominant_hue, rating_personal, verdict, done_at, file_uploaded_at, pinned_at";
 
 const PAGE_SIZE = 24;
 
@@ -72,7 +72,11 @@ export async function fetchLibraryItemsForShelf(
   const shelf = SHELVES.find((s) => s.id === shelfId);
   if (!shelf) return { items: [], hasMore: false };
 
-  let query = supabase.from("items").select(LIBRARY_ITEM_COLUMNS);
+  // Pinned items come first on every shelf, newest pin first.
+  let query = supabase
+    .from("items")
+    .select(LIBRARY_ITEM_COLUMNS)
+    .order("pinned_at", { ascending: false, nullsFirst: false });
 
   if (sort === "color") {
     // Hue walk around the wheel; items without an extracted color sink to the end.

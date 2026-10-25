@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
     file_uploaded_at: null,
+    pinned_at: null,
     id: "item-1",
     title: "Twin Peaks (TV Series 1990–1991) ⭐ 8.7 | Crime, Drama",
     subtitle: "David Lynch · 1990",

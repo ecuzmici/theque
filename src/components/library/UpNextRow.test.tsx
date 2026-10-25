@@ -10,13 +10,14 @@ import { UpNextRow } from "./UpNextRow";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const shelves = vi.hoisted(() => ({
+  all: [] as LibraryItemRow[],
   books: [] as LibraryItemRow[],
   watch: [] as LibraryItemRow[],
   forgotten: [] as LibraryItemRow[],
 }));
 
 vi.mock("@/lib/library-items-client", () => ({
-  fetchLibraryItemsPage: vi.fn(async (shelf: "books" | "watch" | "forgotten") => ({
+  fetchLibraryItemsPage: vi.fn(async (shelf: "all" | "books" | "watch" | "forgotten") => ({
     items: shelves[shelf],
     hasMore: false,
   })),
@@ -29,6 +30,7 @@ vi.mock("@/components/library/MadeForYouTile", () => ({
 function item(id: string, patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
     file_uploaded_at: null,
+    pinned_at: null,
     id,
     title: `Title ${id}`,
     subtitle: null,
@@ -59,6 +61,7 @@ describe("UpNextRow", () => {
     shelves.books = [item("b1")];
     shelves.watch = [item("w1", { category: "movies_and_tv" })];
     shelves.forgotten = [];
+    shelves.all = [];
   });
 
   afterEach(() => {

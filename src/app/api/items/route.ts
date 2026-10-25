@@ -85,6 +85,7 @@ function mapSummary(row: ItemRow): ItemSummaryPayload {
     verdict: row.verdict,
     done_at: row.done_at,
     file_uploaded_at: row.file_uploaded_at,
+    pinned_at: row.pinned_at,
   };
 }
 

@@ -8,6 +8,7 @@ import {
 } from "@/lib/input-limits";
 import { deleteDriveFile, isDriveConfigured } from "@/lib/drive/client";
 import { deleteItemFiles } from "@/lib/items/delete-item-files";
+import { PINS_PER_CATEGORY } from "@/lib/items/pins";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -170,6 +171,22 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
   }
 
+  if (body.pinned !== undefined) {
+    if (typeof body.pinned !== "boolean") {
+      return Response.json({ code: "invalid_pinned" }, { status: 400 });
+    }
+    if (!body.pinned) {
+      patch.pinned_at = null;
+    } else if (!row.pinned_at) {
+      patch.pinned_at = new Date().toISOString();
+    }
+  }
+
+  // A pin marks an item to do next, so a done or dismissed item loses it.
+  if (patch.status === "done" || patch.status === "dismissed") {
+    patch.pinned_at = null;
+  }
+
   if (body.display !== undefined) {
     patch.display = mergeJsonRecord(row.display, body.display);
   }
@@ -182,13 +199,42 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     }
   }
 
+  // A new pin replaces the oldest pins of its category past the limit.
+  let unpinnedIds: string[] = [];
+  if (patch.pinned_at) {
+    const category = patch.category !== undefined ? patch.category : row.category;
+    let pinsQuery = supabase
+      .from("items")
+      .select("id")
+      .eq("user_id", user.id)
+      .neq("id", id)
+      .not("pinned_at", "is", null);
+    pinsQuery = category ? pinsQuery.eq("category", category) : pinsQuery.is("category", null);
+    const { data: pins, error: pinsErr } = await pinsQuery.order("pinned_at", { ascending: true });
+    const excess = (pins?.length ?? 0) - (PINS_PER_CATEGORY - 1);
+    if (pinsErr) {
+      console.error("[api/items/:id] pin_list_failed:", pinsErr.message);
+    } else if (pins && excess > 0) {
+      unpinnedIds = pins.slice(0, excess).map((p) => p.id);
+      const { error: unpinErr } = await supabase
+        .from("items")
+        .update({ pinned_at: null })
+        .in("id", unpinnedIds);
+      if (unpinErr) {
+        console.error("[api/items/:id] unpin_failed:", unpinErr.message);
+        unpinnedIds = [];
+      }
+    }
+  }
+
   const { data: updated } = await supabase.from("items").select("*").eq("id", id).single();
 
   if (!updated) {
     return Response.json({ code: "not_found" }, { status: 404 });
   }
 
-  return Response.json(decryptItemFields(updated));
+  const item = decryptItemFields(updated);
+  return Response.json(unpinnedIds.length ? { ...item, unpinned_item_ids: unpinnedIds } : item);
 }
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

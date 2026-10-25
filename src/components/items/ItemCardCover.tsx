@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, RefreshCw, Star } from "lucide-react";
+import { Check, Pin, RefreshCw, Star } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import type { ItemCategory } from "@/lib/database.types";
@@ -142,15 +142,17 @@ function Stars({ value }: { value: number }) {
 
 /** Text a screen reader hears for the status drawn on the cover. */
 export function coverStatusLabel(
-  item: Pick<LibraryItemRow, "status" | "rating_personal"> & Partial<Pick<LibraryItemRow, "file_uploaded_at">>,
+  item: Pick<LibraryItemRow, "status" | "rating_personal"> &
+    Partial<Pick<LibraryItemRow, "file_uploaded_at" | "pinned_at">>,
 ): string | null {
-  let label: string | null = null;
-  if (item.status === "inbox") label = "In inbox";
+  let label: string | null = item.pinned_at ? "Pinned" : null;
+  const add = (part: string) => (label = label ? `${label}, ${part}` : part);
+  if (item.status === "inbox") add("In inbox");
   else if (item.status === "done") {
-    label = item.rating_personal != null ? `Done, ${item.rating_personal} of 5 stars` : "Done";
+    add(item.rating_personal != null ? `Done, ${item.rating_personal} of 5 stars` : "Done");
   }
-  if (!item.file_uploaded_at) return label;
-  return label ? `${label}, synced to your e-reader` : "Synced to your e-reader";
+  if (item.file_uploaded_at) add(label ? "synced to your e-reader" : "Synced to your e-reader");
+  return label;
 }
 
 /** The 2:3 cover with its image (or typographic cover) and the status marks. */
@@ -174,8 +176,16 @@ export function ItemCardCover({ item, selected }: { item: LibraryItemRow; select
       )}
       {processing ? <div className="pointer-events-none absolute inset-0 ks-shimmer bg-transparent" /> : null}
 
-      {item.file_uploaded_at || item.status === "inbox" ? (
+      {item.pinned_at || item.file_uploaded_at || item.status === "inbox" ? (
         <div className="absolute top-1.5 left-1.5 flex items-center gap-1.5" aria-hidden>
+          {item.pinned_at ? (
+            <span
+              data-testid="pinned-mark"
+              className="inline-flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+            >
+              <Pin className="size-3" strokeWidth={2.5} fill="currentColor" />
+            </span>
+          ) : null}
           {item.file_uploaded_at ? (
             <span
               data-testid="synced-mark"

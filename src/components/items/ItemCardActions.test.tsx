@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { PINS_CHANGED_EVENT } from "@/lib/items/pins";
 import { SAVE_ERROR_EVENT } from "@/lib/save-error";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
@@ -16,6 +17,7 @@ vi.mock("next/navigation", () => ({
 function makeItem(patch: Partial<LibraryItemRow> = {}): LibraryItemRow {
   return {
     file_uploaded_at: null,
+    pinned_at: null,
     id: "item-1",
     title: "Dune",
     subtitle: null,
@@ -104,6 +106,61 @@ describe("ItemCardActions", () => {
     expect(onSaveError).toHaveBeenCalledTimes(1);
     window.removeEventListener(SAVE_ERROR_EVENT, onSaveError);
     vi.unstubAllGlobals();
+  });
+
+  it("pins an item and unpins the items the server replaced", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: "item-1", unpinned_item_ids: ["old-1"] }) }),
+    );
+    const onItemPatch = vi.fn();
+    const onPinsChanged = vi.fn();
+    window.addEventListener(PINS_CHANGED_EVENT, onPinsChanged);
+
+    const items = await openMenu(<ItemCardActions item={makeItem()} shelfId="all" onItemPatch={onItemPatch} />);
+    const pin = items.find((el) => el.textContent === "Pin");
+    expect(pin).toBeDefined();
+    await act(async () => {
+      pin?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 6; i++) await Promise.resolve();
+    });
+
+    expect(onItemPatch).toHaveBeenCalledWith("item-1", { pinned_at: expect.any(String) });
+    expect(onItemPatch).toHaveBeenCalledWith("old-1", { pinned_at: null });
+    expect(onPinsChanged).toHaveBeenCalledTimes(1);
+    window.removeEventListener(PINS_CHANGED_EVENT, onPinsChanged);
+    vi.unstubAllGlobals();
+  });
+
+  it("undoes the pin and reports the error when the save fails", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    const undo = vi.fn();
+    const onSaveError = vi.fn();
+    window.addEventListener(SAVE_ERROR_EVENT, onSaveError);
+
+    const items = await openMenu(
+      <ItemCardActions item={makeItem()} shelfId="all" onItemPatch={vi.fn(() => undo)} />,
+    );
+    await act(async () => {
+      items.find((el) => el.textContent === "Pin")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      for (let i = 0; i < 6; i++) await Promise.resolve();
+    });
+
+    expect(undo).toHaveBeenCalledTimes(1);
+    expect(onSaveError).toHaveBeenCalledTimes(1);
+    window.removeEventListener(SAVE_ERROR_EVENT, onSaveError);
+    vi.unstubAllGlobals();
+  });
+
+  it("offers Unpin for a pinned item and no pin entry for an inbox item", async () => {
+    let items = await openMenu(
+      <ItemCardActions item={makeItem({ pinned_at: "2026-10-24T00:00:00Z" })} shelfId="all" />,
+    );
+    expect(items.some((el) => el.textContent === "Unpin")).toBe(true);
+    act(() => root?.unmount());
+    container?.remove();
+    items = await openMenu(<ItemCardActions item={makeItem({ status: "inbox" })} shelfId="all" />);
+    expect(items.some((el) => el.textContent === "Pin")).toBe(false);
   });
 
   async function openMenu(element: React.ReactElement) {

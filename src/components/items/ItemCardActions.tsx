@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, MoreHorizontal, Trash2 } from "lucide-react";
+import { CheckCircle2, ExternalLink, MoreHorizontal, Pin, PinOff, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
@@ -31,6 +31,7 @@ import { itemMatchesShelf } from "@/lib/shelf-filter";
 import type { ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import type { ItemPatch, ItemPatchHandler } from "@/lib/item-patch";
+import { isPinned, PINS_CHANGED_EVENT, setPinnedRequest } from "@/lib/items/pins";
 import { patchItemRequest, reportSaveError } from "@/lib/save-error";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +69,7 @@ function safeHttpUrl(url: string | null): string | null {
   }
 }
 
-/** Quick actions for one card: mark done, open original, status or inbox triage, delete. */
+/** Quick actions for one card: mark done, pin, open original, status or inbox triage, delete. */
 export function ItemCardActions({
   item,
   shelfId,
@@ -92,6 +93,9 @@ export function ItemCardActions({
   const originalUrl = useMemo(() => safeHttpUrl(item.canonical_url), [item.canonical_url]);
   const title = cardTitle(item);
   const inbox = item.status === "inbox";
+  const pinned = isPinned(item);
+  // Only an item still to do can have a pin. An old pinned row can always lose it.
+  const canPin = pinned || item.status === "want";
 
   const applyPatch = useCallback(
     async (patch: ItemPatch) => {
@@ -112,6 +116,25 @@ export function ItemCardActions({
     },
     [item, onItemPatch, shelfId],
   );
+
+  const togglePin = useCallback(async () => {
+    const next = !pinned;
+    const undo = onItemPatch?.(item.id, { pinned_at: next ? new Date().toISOString() : null });
+    setBusy(true);
+    try {
+      const result = await setPinnedRequest(item.id, next);
+      if (!result) {
+        undo?.();
+        reportSaveError();
+        return;
+      }
+      // The new pin replaced the oldest pin of its category.
+      for (const id of result.unpinnedIds) onItemPatch?.(id, { pinned_at: null });
+      window.dispatchEvent(new Event(PINS_CHANGED_EVENT));
+    } finally {
+      setBusy(false);
+    }
+  }, [item.id, onItemPatch, pinned]);
 
   const deleteItem = useCallback(async () => {
     setDeleteBusy(true);
@@ -186,6 +209,12 @@ export function ItemCardActions({
               <DropdownMenuItem onClick={() => onOpenMarkDone(item)}>
                 <CheckCircle2 className="size-4" />
                 {item.status === "done" ? "Edit verdict" : `Mark ${doneVerb(item.category)}`}
+              </DropdownMenuItem>
+            ) : null}
+            {canPin ? (
+              <DropdownMenuItem disabled={busy} onClick={() => void togglePin()}>
+                {pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
+                {pinned ? "Unpin" : "Pin"}
               </DropdownMenuItem>
             ) : null}
             {originalUrl ? (

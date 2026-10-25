@@ -88,6 +88,7 @@ Central entity. One row per saved URL per user (deduped by fingerprint).
 | `rating_personal` | `smallint` | 1 to 5 (check constraint) |
 | `verdict` | `text` | The user's verdict. Encrypted at rest |
 | `done_at` | `timestamptz` | Set when the item is marked done |
+| `pinned_at` | `timestamptz` | Set when the item is pinned. Null when not pinned. Maximum 4 pins in each category for each user (app code) |
 | `search_vector` | `tsvector` | Generated. `simple` config over title (A), subtitle (B), description (C), domain (D). Never the note |
 | `file_drive_id` | `text` | Google Drive id of the book file |
 | `file_name` | `text` | |

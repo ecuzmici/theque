@@ -1,5 +1,6 @@
 import { RECOMMEND_MIN_ITEMS } from "@/lib/recommend/recommend-config";
 import type { RecommendShelfId } from "@/lib/recommend/recommend-types";
+import { isPinned, PINS_PER_CATEGORY, pinnedFirst } from "@/lib/items/pins";
 import { itemMatchesShelf } from "@/lib/shelf-filter";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
@@ -12,9 +13,13 @@ export type UpNextSource = {
   watch: LibraryItemRow[];
   /** First page of the Forgotten shelf. */
   forgotten: LibraryItemRow[];
+  /** Items to search for pins, for example the first page of the All shelf. */
+  pinned?: LibraryItemRow[];
 };
 
 export type UpNextPicks = {
+  /** Pinned items, newest pin first. They come before the other slots. */
+  pinned: LibraryItemRow[];
   tonight: LibraryItemRow | null;
   forgotten: LibraryItemRow | null;
   nextRead: LibraryItemRow | null;
@@ -47,7 +52,8 @@ function dedupe(items: LibraryItemRow[]): LibraryItemRow[] {
 
 /**
  * Selects the items for the Up next row. Each slot takes a different item.
- * The order of the slots sets the priority: Tonight, Forgotten, Next read, Next watch.
+ * Pinned items come first and no other slot takes them. The order of the
+ * other slots sets the priority: Tonight, Forgotten, Next read, Next watch.
  * The forgotten slot uses the Forgotten shelf rule (`want`, older than
  * `FORGOTTEN_AFTER_DAYS`), so it is empty when no item is forgotten.
  * `tonight` replaces the daily Tonight pick (for example after a shuffle). The
@@ -62,8 +68,17 @@ export function selectUpNext(
   const watch = source.watch.filter((i) => isWanted(i) && itemMatchesShelf(i, "watch"));
   const forgotten = source.forgotten.filter((i) => itemMatchesShelf(i, "forgotten"));
   const wanted = dedupe([...books, ...watch, ...forgotten]);
+  const perCategory = new Map<string | null, number>();
+  const pinned = pinnedFirst(dedupe(source.pinned ?? []).filter((i) => isWanted(i) && isPinned(i))).filter(
+    (i) => {
+      const n = perCategory.get(i.category) ?? 0;
+      perCategory.set(i.category, n + 1);
+      return n < PINS_PER_CATEGORY;
+    },
+  );
+  const pinnedIds = pinned.map((i) => i.id);
 
-  const used = new Set<string>();
+  const used = new Set<string>(pinnedIds);
   const take = (pool: LibraryItemRow[], salt: number): LibraryItemRow | null => {
     const free = pool.filter((i) => !used.has(i.id));
     const item = free[dailyIndex(free.length, options.day, salt)] ?? null;
@@ -72,6 +87,7 @@ export function selectUpNext(
   };
 
   const daily: UpNextPicks = {
+    pinned,
     tonight: take(wanted, 0),
     forgotten: take(forgotten, 1),
     nextRead: take(books, 2),
@@ -84,6 +100,7 @@ export function selectUpNext(
   // Keep every daily slot that does not hold the override. Fill the other
   // slots from the items that are still free.
   used.clear();
+  for (const id of pinnedIds) used.add(id);
   used.add(override.id);
   const keep = (item: LibraryItemRow | null) =>
     item && item.id !== override.id ? item : null;
@@ -95,6 +112,7 @@ export function selectUpNext(
   for (const item of Object.values(kept)) if (item) used.add(item.id);
 
   return {
+    pinned: pinned.filter((i) => i.id !== override.id),
     tonight: override,
     forgotten: kept.forgotten ?? take(forgotten, 1),
     nextRead: kept.nextRead ?? take(books, 2),

@@ -82,4 +82,12 @@ describe("coverStatusLabel", () => {
       "Done, 4 of 5 stars, synced to your e-reader",
     );
   });
+
+  it("starts with the pinned state when the item is pinned", () => {
+    const pinned_at = "2026-10-24T00:00:00Z";
+    expect(coverStatusLabel({ status: "want", rating_personal: null, pinned_at })).toBe("Pinned");
+    expect(
+      coverStatusLabel({ status: "want", rating_personal: null, pinned_at, file_uploaded_at: pinned_at }),
+    ).toBe("Pinned, synced to your e-reader");
+  });
 });

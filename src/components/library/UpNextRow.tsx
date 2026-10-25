@@ -10,6 +10,7 @@ import { MadeForYouTile } from "@/components/library/MadeForYouTile";
 import { Button } from "@/components/ui/button";
 import { cleanDisplayTitle } from "@/lib/display-title";
 import { getCoverImageUrls } from "@/lib/item-display";
+import { isPinned, PINS_CHANGED_EVENT } from "@/lib/items/pins";
 import { fetchLibraryItemsPage } from "@/lib/library-items-client";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ import { dayNumber, monthsWaiting, selectUpNext, type UpNextSource } from "./up-
 
 const TILE_WIDTH = "w-24 shrink-0 snap-start lg:w-32";
 
-async function loadShelf(shelf: "books" | "watch" | "forgotten"): Promise<LibraryItemRow[]> {
+async function loadShelf(shelf: "all" | "books" | "watch" | "forgotten"): Promise<LibraryItemRow[]> {
   try {
     return (await fetchLibraryItemsPage(shelf)).items;
   } catch {
@@ -50,8 +51,8 @@ function UpNextCover({ item, highlight }: { item: LibraryItemRow; highlight?: bo
 type Tile = { key: string; item: LibraryItemRow; eyebrow: string; highlight?: boolean };
 
 /**
- * The Up next row at the top of /library: Tonight's pick, one forgotten item,
- * Next read, Next watch, and a "Made for you" tile. Shuffle draws a new
+ * The Up next row at the top of /library: the pinned items, Tonight's pick,
+ * one forgotten item, Next read, Next watch, and a "Made for you" tile. Shuffle draws a new
  * Tonight's pick from GET /api/items/random. See ADR 0019, decision 1.
  */
 export function UpNextRow({
@@ -72,18 +73,25 @@ export function UpNextRow({
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const [books, watch, forgotten] = await Promise.all([
+    const load = async () => {
+      // Pinned items sort first on every shelf, so the first page of All holds them.
+      const [all, books, watch, forgotten] = await Promise.all([
+        loadShelf("all"),
         loadShelf("books"),
         loadShelf("watch"),
         loadShelf("forgotten"),
       ]);
       if (cancelled) return;
-      setSource({ books, watch, forgotten });
-      storeUpNext(userId, { books, watch, forgotten });
-    })();
+      const next = { books, watch, forgotten, pinned: all.filter(isPinned) };
+      setSource(next);
+      storeUpNext(userId, next);
+    };
+    void load();
+    const onPinsChanged = () => void load();
+    window.addEventListener(PINS_CHANGED_EVENT, onPinsChanged);
     return () => {
       cancelled = true;
+      window.removeEventListener(PINS_CHANGED_EVENT, onPinsChanged);
     };
   }, [userId]);
 
@@ -93,6 +101,9 @@ export function UpNextRow({
   );
 
   const tiles: Tile[] = [];
+  for (const item of picks?.pinned ?? []) {
+    tiles.push({ key: `pinned-${item.id}`, item, eyebrow: "Pinned" });
+  }
   if (picks?.tonight) {
     tiles.push({ key: "tonight", item: picks.tonight, eyebrow: "Tonight", highlight: true });
   }

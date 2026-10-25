@@ -194,9 +194,12 @@ Full item object including `structured`, `raw_metadata`, `display`, `note`.
   "category": "books",
   "note": "updated",
   "title": "override",
-  "display": { "card_aspect": "2/3" }
+  "display": { "card_aspect": "2/3" },
+  "pinned": true
 }
 ```
+
+`pinned: true` sets `pinned_at` to the current time. `pinned: false` sets it to `null`. A user can pin 4 items in each category. A fifth pin in a category unpins the oldest pin of that category. The response then has `unpinned_item_ids` with the ids of the unpinned items. A `status` of `done` or `dismissed` also clears `pinned_at`.
 
 Setting `category` sets `category_source` to `manual` and `category_confidence` to `1`; setting `category` to `null` clears category fields. `note` is max 2000 chars and `title` is max 300 chars. `display` is merged into existing JSON after filtering prototype-pollution keys.
 

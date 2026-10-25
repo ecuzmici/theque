@@ -22,6 +22,7 @@ export type LibraryItemRow = Pick<
   | "verdict"
   | "done_at"
   | "file_uploaded_at"
+  | "pinned_at"
 >;
 
 export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItemRow {
@@ -44,6 +45,7 @@ export function libraryItemFromSummary(summary: ItemSummaryPayload): LibraryItem
     verdict: summary.verdict ?? null,
     done_at: summary.done_at ?? null,
     file_uploaded_at: summary.file_uploaded_at ?? null,
+    pinned_at: summary.pinned_at ?? null,
   };
 }
 
@@ -76,5 +78,6 @@ export function libraryItemFromRow(
     verdict: row.verdict,
     done_at: row.done_at,
     file_uploaded_at: row.file_uploaded_at,
+    pinned_at: row.pinned_at,
   };
 }
