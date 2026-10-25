@@ -5,8 +5,8 @@ import { Plus } from "lucide-react";
 
 import { CaptureProvider, useCapture } from "@/components/capture/CaptureProvider";
 import { SaveErrorRegion } from "@/components/feedback/SaveErrorRegion";
-import { NotchHeader } from "@/components/layout/NotchHeader";
 import { ShellSheet } from "@/components/layout/ShellSheet";
+import { SpineHeader } from "@/components/layout/SpineHeader";
 import { YouPanel } from "@/components/layout/YouPanel";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ function CaptureButton() {
 }
 
 /**
- * App chrome (ADR 0019, decision 4): a notch header with the wordmark and a "You"
+ * App chrome (ADR 0019, decision 4): a header with the wordmark and a "You"
  * avatar, and a floating + that opens the capture sheet. No sidebar, no bottom bar.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -65,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <CaptureProvider>
       <div className="flex min-h-full flex-col">
-        <NotchHeader
+        <SpineHeader
           trailing={
             <button
               type="button"
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               aria-haspopup="dialog"
               onClick={() => setYouOpen(true)}
               className={cn(
-                "ks-pointer-coarse-min-hit -mr-1 flex size-11 items-center justify-center rounded-full",
+                "-mr-1 flex size-11 items-center justify-center rounded-full",
                 "focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring",
               )}
             >
@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
 
         {/* Bottom padding keeps the last row of content clear of the floating +. */}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-10 lg:pb-32">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-7 lg:pb-32">
           {children}
         </main>
 

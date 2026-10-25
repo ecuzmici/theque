@@ -247,18 +247,17 @@
   animation: ks-fade var(--ks-shelf-duration) ease backwards;
 }
 
-/* The notch header draws its spines in once on load (NotchHeader). The mask
-   path carries its own length in --ks-spine-length. */
-.ks-spine-draw-in {
-  stroke-dashoffset: 0;
-  animation: ks-spine-draw-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+/* The header spine edge sweeps in from the left one time, when the colors
+   load (SpineHeader). */
+.ks-spine-sweep-in {
+  animation: ks-spine-sweep-in 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-@keyframes ks-spine-draw-in {
+@keyframes ks-spine-sweep-in {
   from {
-    stroke-dashoffset: var(--ks-spine-length);
+    clip-path: inset(0 100% 0 0);
   }
   to {
-    stroke-dashoffset: 0;
+    clip-path: inset(0 0 0 0);
   }
 }
 
@@ -274,7 +273,7 @@
     animation-delay: 0s !important;
   }
   .ks-shelf-enter,
-  .ks-spine-draw-in {
+  .ks-spine-sweep-in {
     animation: none;
   }
 }

@@ -45,9 +45,7 @@ export function LibrarySearchRow({
   const placeholder = shelfLabel ? `Search ${shelfLabel}` : "Search your library";
 
   return (
-    // The header notch hangs 12px into this row when it sticks. pt-6 keeps the
-    // search field 12px clear of the notch.
-    <div className="sticky top-14 z-10 -mx-4 mb-4 border-b border-border bg-background/92 px-4 pb-3.5 pt-6 backdrop-blur-md">
+    <div className="sticky top-14 z-10 -mx-4 mb-4 border-b border-border bg-background/92 px-4 pb-3.5 pt-3 backdrop-blur-md">
       <div role="search" className="relative">
         <label htmlFor={LIBRARY_SEARCH_INPUT_ID} className="sr-only">
           Search your library

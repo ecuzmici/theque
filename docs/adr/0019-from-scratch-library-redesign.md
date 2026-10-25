@@ -64,19 +64,20 @@ Emil picked one variant per question.
 - The page shows each fact one time. It removes the duplicated year line.
 - The page uses the same display-title cleaner as the cover wall.
 
-### 6. The header is a notch outlined by the library's spines (prototype `spine`, variant `notch`)
+### 6. The header has an edge of the library's spines
 
-- The wordmark sits in a centered tab. The tab hangs 8px below the header bar and has rounded bottom corners.
-- The library's `dominant_color` values outline the left side, the bottom and the right side of the tab. The outline never runs along the top.
-- Each spine is one dash of the outline path, so the colors follow the corners.
-- A keyline under the spines keeps dark spines visible in dark mode.
-- The spines draw in one time on load. Reduced motion turns the animation off.
-- The "You" avatar stays at the top right, outside the tab.
+- The wordmark sits in the center of the header bar, with no frame.
+- The library's `dominant_color` values make a 5px edge along the full width of the bar's bottom. Each spine is about 4px wide.
+- Nothing hangs below the bar.
+- A keyline shows before the colors load. The keyline stays when the library has fewer than 8 colors.
+- The spines sweep in from the left one time, when the colors load. Reduced motion turns the animation off.
+- The wordmark and the "You" avatar center in the space above the spine edge.
+- Update 2026-10-25: this edge replaces the first pick, a notch tab outlined by the spines (prototype `spine`, variant `notch`). The tab hung below the bar.
 - The full Spine Band with its counts stays in the "You" sheet.
 
 ## Rules for the combined page
 
-- The `/library` order on all viewports is: notch header, Up next row, sticky search row, shelf chips, grid.
+- The `/library` order on all viewports is: header, Up next row, sticky search row, shelf chips, grid.
 - The amber accent marks one primary action per screen. Active chips use the foreground color.
 - The prototype code is throwaway. We write each winner again as production code with tests.
 - We delete each prototype folder in `src/components/prototype/` when its winner ships.
