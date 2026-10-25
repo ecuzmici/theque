@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
 
         {/* Bottom padding keeps the last row of content clear of the floating +. */}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-6 lg:pb-32">
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-[calc(6.5rem+env(safe-area-inset-bottom))] pt-10 lg:pb-32">
           {children}
         </main>
 
