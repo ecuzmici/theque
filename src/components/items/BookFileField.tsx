@@ -63,6 +63,28 @@ function rejectionReason(file: File): string | null {
   return null;
 }
 
+/**
+ * Send the file to the signed staging URL. XMLHttpRequest reports upload
+ * progress, and fetch does not. The promise resolves with the HTTP status.
+ */
+function putWithProgress(url: string, file: File, onProgress: (fraction: number) => void): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url);
+    xhr.setRequestHeader("content-type", "application/epub+zip");
+    xhr.setRequestHeader("x-upsert", "false");
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (anonKey) xhr.setRequestHeader("apikey", anonKey);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total);
+    };
+    xhr.onload = () => resolve(xhr.status);
+    xhr.onerror = () => reject(new Error("network error"));
+    xhr.onabort = () => reject(new Error("aborted"));
+    xhr.send(file);
+  });
+}
+
 async function messageForResponse(res: Response): Promise<string> {
   let code: string | null = null;
   try {
@@ -92,6 +114,8 @@ export function BookFileField({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<BookFile | null>(initialFile);
   const [busy, setBusy] = useState<"upload" | "remove" | null>(null);
+  // Share of the bytes that reached storage, from 0 to 1. Null when no upload runs.
+  const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removeOpen, setRemoveOpen] = useState(false);
   // The dialog covers the card, so a failed removal reports inside the dialog.
@@ -120,10 +144,33 @@ export function BookFileField({
     }
     setError(null);
     setBusy("upload");
+    setProgress(0);
     try {
-      const body = new FormData();
-      body.append("file", picked);
-      const res = await fetch(`/api/items/${itemId}/file`, { method: "POST", body });
+      // A Vercel Function refuses a body above 4.5 MB. The file therefore goes
+      // to a staging bucket first, and the route reads it from there.
+      const signRes = await fetch(`/api/items/${itemId}/file/upload-url`, { method: "POST" });
+      if (!signRes.ok) {
+        setError(await messageForResponse(signRes));
+        return;
+      }
+      const { path, signedUrl } = (await signRes.json()) as { path: string; signedUrl: string };
+
+      const putStatus = await putWithProgress(signedUrl, picked, setProgress);
+      if (putStatus === 413) {
+        setError(ERROR_MESSAGES.file_too_large);
+        return;
+      }
+      if (putStatus < 200 || putStatus >= 300) {
+        setError(ERROR_MESSAGES.upload_failed);
+        return;
+      }
+      setProgress(1);
+
+      const res = await fetch(`/api/items/${itemId}/file`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path }),
+      });
       if (!res.ok) {
         setError(await messageForResponse(res));
         return;
@@ -135,6 +182,7 @@ export function BookFileField({
       setError(FALLBACK_MESSAGE);
     } finally {
       setBusy(null);
+      setProgress(null);
     }
   }
 
@@ -158,8 +206,16 @@ export function BookFileField({
     }
   }
 
+  // The bar fills while the bytes travel. At 100 percent the server converts
+  // the file and sends it to Drive, which takes a few seconds more.
+  const percent = progress === null ? null : Math.round(progress * 100);
+  const progressLabel = percent === null ? null : percent < 100 ? `Uploading… ${percent}%` : "Preparing for your Kobo…";
+
+  // The live region does not read each percent. The progress bar holds the number.
   const status = busy === "upload"
-    ? "Sending the file to your Kobo folder…"
+    ? percent !== null && percent >= 100
+      ? "Preparing the file for your Kobo…"
+      : "Sending the file to your Kobo folder…"
     : busy === "remove"
       ? "Removing the file…"
       : file
@@ -253,6 +309,25 @@ export function BookFileField({
             </Button>
           )}
         </div>
+
+        {busy === "upload" && percent !== null ? (
+          <div className="mt-3">
+            <div
+              role="progressbar"
+              aria-label="Upload progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percent}
+              className="h-1.5 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className={`h-full rounded-full bg-primary transition-[width] duration-200 ${percent >= 100 ? "animate-pulse" : ""}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-muted-foreground tabular-nums">{progressLabel}</p>
+          </div>
+        ) : null}
 
         {error ? (
           <p id={errorId} className="mt-3 text-sm text-destructive">

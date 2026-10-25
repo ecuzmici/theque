@@ -34,6 +34,45 @@ function errorResponse(status: number, code: string) {
   return { ok: false, status, json: async () => ({ error: code }) };
 }
 
+const SIGNED = { path: "user-1/item-1/upload.epub", signedUrl: "https://storage.test/upload/sign/book-uploads/x?token=t" };
+
+/**
+ * Stand-in for XMLHttpRequest. The component sends the file to storage with it.
+ * Each test sets `status`. `hold` keeps the request open until the test calls `finish`.
+ */
+class FakeXhr {
+  static status = 200;
+  static hold = false;
+  static last: FakeXhr | null = null;
+  url = "";
+  method = "";
+  body: unknown = null;
+  status = 0;
+  upload: { onprogress: ((event: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = {
+    onprogress: null,
+  };
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  onabort: (() => void) | null = null;
+  open(method: string, url: string) {
+    this.method = method;
+    this.url = url;
+  }
+  setRequestHeader() {}
+  send(body: unknown) {
+    this.body = body;
+    FakeXhr.last = this;
+    if (!FakeXhr.hold) queueMicrotask(() => this.finish(FakeXhr.status));
+  }
+  progress(loaded: number, total: number) {
+    this.upload.onprogress?.({ lengthComputable: true, loaded, total });
+  }
+  finish(status: number) {
+    this.status = status;
+    this.onload?.();
+  }
+}
+
 function fileInput(): HTMLInputElement {
   const input = document.querySelector<HTMLInputElement>('input[type="file"]');
   if (!input) throw new Error("file input not found");
@@ -84,6 +123,10 @@ describe("BookFileField", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
+    FakeXhr.status = 200;
+    FakeXhr.hold = false;
+    FakeXhr.last = null;
+    vi.stubGlobal("XMLHttpRequest", FakeXhr);
   });
 
   afterEach(() => {
@@ -140,23 +183,69 @@ describe("BookFileField", () => {
   });
 
   it("uploads the chosen file and shows it", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      okResponse({ file: { name: "dune.epub", bytes: 2_097_152, uploaded_at: "2026-06-12T10:00:00.000Z" } }),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(SIGNED))
+      .mockResolvedValueOnce(
+        okResponse({ file: { name: "dune.epub", bytes: 2_097_152, uploaded_at: "2026-06-12T10:00:00.000Z" } }),
+      );
     vi.stubGlobal("fetch", fetchMock);
     await render();
 
-    await choose(makeFile("dune.epub", 2_097_152));
+    const picked = makeFile("dune.epub", 2_097_152);
+    await choose(picked);
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/items/item-1/file/upload-url");
+    // The file goes straight to storage, around the 4.5 MB function body cap.
+    expect(FakeXhr.last?.method).toBe("PUT");
+    expect(FakeXhr.last?.url).toBe(SIGNED.signedUrl);
+    expect(FakeXhr.last?.body).toBe(picked);
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe("/api/items/item-1/file");
     expect(init.method).toBe("POST");
-    const body = init.body as FormData;
-    expect((body.get("file") as File).name).toBe("dune.epub");
+    expect(JSON.parse(init.body as string)).toEqual({ path: SIGNED.path });
     expect(container?.textContent).toContain("dune.epub");
     expect(container?.textContent).toContain("2 MB");
     expect(refresh).toHaveBeenCalled();
+  });
+
+  it("shows the upload progress, then the conversion step", async () => {
+    let release: ((value: unknown) => void) | undefined;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(okResponse(SIGNED))
+      .mockImplementationOnce(() => new Promise((resolve) => (release = resolve)));
+    vi.stubGlobal("fetch", fetchMock);
+    FakeXhr.hold = true;
+    await render();
+
+    await choose(makeFile("dune.epub", 1000));
+    await act(async () => FakeXhr.last?.progress(400, 1000));
+
+    const bar = document.querySelector('[role="progressbar"]');
+    expect(bar?.getAttribute("aria-valuenow")).toBe("40");
+    expect(container?.textContent).toContain("Uploading… 40%");
+
+    await act(async () => FakeXhr.last?.finish(200));
+    expect(container?.textContent).toContain("Preparing for your Kobo…");
+
+    await act(async () => {
+      release?.(okResponse({ file: { name: "dune.epub", bytes: 1000, uploaded_at: ATTACHED.uploaded_at } }));
+    });
+    expect(document.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  it("explains a storage refusal without a call to the file route", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(SIGNED));
+    vi.stubGlobal("fetch", fetchMock);
+    FakeXhr.status = 400;
+    await render();
+
+    await choose(makeFile("dune.epub", 1024));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(container?.textContent).toContain("did not reach Google Drive");
   });
 
   it("refuses a file over the size cap without calling the API", async () => {
@@ -233,8 +322,13 @@ describe("BookFileField", () => {
     await choose(makeFile("third.epub", 1024));
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
+    // The first call asks for the signed URL. The second call runs after the
+    // storage upload and returns the attached file.
+    fetchMock.mockResolvedValueOnce(
+      okResponse({ file: { name: "other.epub", bytes: 1024, uploaded_at: ATTACHED.uploaded_at } }) as never,
+    );
     await act(async () => {
-      release?.(okResponse({ file: { name: "other.epub", bytes: 1024, uploaded_at: ATTACHED.uploaded_at } }));
+      release?.(okResponse(SIGNED));
     });
 
     expect(buttonWithText("Replace file").disabled).toBe(false);

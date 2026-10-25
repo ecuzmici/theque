@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
-import { bookFileTarget, canUseBookFile } from "@/lib/book-file-access";
-import type { Json } from "@/lib/database.types";
+import { type BookFileTarget, bookFileTarget, canUseBookFile } from "@/lib/book-file-access";
+import { BOOK_UPLOAD_BUCKET, isOwnBookUploadPath } from "@/lib/book-upload-staging";
+import type { Database, Json } from "@/lib/database.types";
 import { deleteDriveFile, DriveError, isDriveConfigured, uploadEpub } from "@/lib/drive/client";
 import { buildKoboFilename, EPUB_EXTENSION, KEPUB_EXTENSION } from "@/lib/epub/filename";
 import { epubPatchFromItem } from "@/lib/epub/from-item";
@@ -10,6 +11,7 @@ import { convertEpubToKepub, KepubConversionError } from "@/lib/epub/kepub";
 import { EpubFormatError, readEpubMetadata, writeEpubMetadata } from "@/lib/epub/metadata";
 import { MAX_BOOK_FILE_BYTES } from "@/lib/input-limits";
 import { rateLimit } from "@/lib/rate-limit";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 /** Every zip file starts with these four bytes. An EPUB is a zip file. */
@@ -89,6 +91,32 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   // 403 tells the caller that the item exists.
   if (loadErr || !row || row.user_id !== user.id) return fail("not_found", 404);
 
+  // A JSON body names a file in the staging bucket. The browser sends files that
+  // way, because a Vercel Function refuses a body above 4.5 MB. A multipart body
+  // carries the file itself.
+  if (req.headers.get("content-type")?.startsWith("application/json")) {
+    let stagedPath: unknown;
+    try {
+      stagedPath = ((await req.json()) as { path?: unknown })?.path;
+    } catch {
+      return fail("missing_file", 400);
+    }
+    if (!isOwnBookUploadPath(stagedPath, user.id, id)) return fail("missing_file", 400);
+
+    const staging = createAdminClient().storage.from(BOOK_UPLOAD_BUCKET);
+    try {
+      const { data: blob, error: downloadErr } = await staging.download(stagedPath);
+      if (downloadErr || !blob) return fail("missing_file", 400);
+      if (blob.size > MAX_BOOK_FILE_BYTES) return fail("file_too_large", 413);
+      return await attachFile({ source: new Uint8Array(await blob.arrayBuffer()), row, userId: user.id, target, supabase });
+    } finally {
+      // The staged copy has no use after this request. A leftover copy costs
+      // storage only, so a failed delete does not fail the request.
+      const { error: removeErr } = await staging.remove([stagedPath]);
+      if (removeErr) console.error("[api/items/:id/file] staged_delete_failed:", removeErr.message);
+    }
+  }
+
   let form: FormData;
   try {
     form = await req.formData();
@@ -100,7 +128,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   if (!(file instanceof Blob)) return fail("missing_file", 400);
   if (file.size > MAX_BOOK_FILE_BYTES) return fail("file_too_large", 413);
 
-  const source = new Uint8Array(await file.arrayBuffer());
+  return attachFile({ source: new Uint8Array(await file.arrayBuffer()), row, userId: user.id, target, supabase });
+}
+
+/** Write the item metadata into the EPUB, send it to Drive and record it on the row. */
+async function attachFile({
+  source,
+  row,
+  userId,
+  target,
+  supabase,
+}: {
+  source: Uint8Array;
+  row: Database["public"]["Tables"]["items"]["Row"];
+  userId: string;
+  target: BookFileTarget;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+}): Promise<Response> {
+  const id = row.id;
   if (source.byteLength > MAX_BOOK_FILE_BYTES) return fail("file_too_large", 413);
   // A file name proves nothing. Test the bytes.
   if (!hasZipMagic(source)) return fail("invalid_epub", 422);
@@ -197,7 +242,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       file_uploaded_at: uploadedAt,
     })
     .eq("id", id)
-    .eq("user_id", user.id);
+    .eq("user_id", userId);
 
   if (upErr) {
     console.error("[api/items/:id/file] row_update_failed:", upErr.message);

@@ -30,8 +30,16 @@ const mocks = vi.hoisted(() => {
     isDriveConfigured: vi.fn(),
     uploadEpub: vi.fn(),
     deleteDriveFile: vi.fn(),
+    stagedDownload: vi.fn(),
+    stagedRemove: vi.fn(),
   };
 });
+
+vi.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    storage: { from: () => ({ download: mocks.stagedDownload, remove: mocks.stagedRemove }) },
+  }),
+}));
 
 vi.mock("@/lib/auth/session-user", () => ({
   getSessionUserOrNull: mocks.getSessionUserOrNull,
@@ -168,6 +176,9 @@ beforeEach(() => {
   mocks.isDriveConfigured.mockReset();
   mocks.uploadEpub.mockReset();
   mocks.deleteDriveFile.mockReset();
+  mocks.stagedDownload.mockReset();
+  mocks.stagedRemove.mockReset();
+  mocks.stagedRemove.mockResolvedValue({ error: null });
 
   vi.unstubAllEnvs();
   vi.stubEnv("BOOK_FILE_USER_IDS", SESSION_USER.id);
@@ -458,6 +469,61 @@ describe("POST /api/items/[id]/file", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "upload_failed" });
     expect(mocks.deleteDriveFile).toHaveBeenCalledWith("drive-new");
+  });
+});
+
+const STAGED_PATH = "user-1/item-1/0b6f7a52-3c1d-4e8f-9a2b-5c6d7e8f9a0b.epub";
+
+function stagedRequest(path: unknown): Request {
+  return uploadRequest(JSON.stringify({ path }), { "content-type": "application/json" });
+}
+
+describe("POST /api/items/[id]/file with a staged upload", () => {
+  it("reads the staged file, uploads it to Drive and deletes the staged copy", async () => {
+    useRow({ row: { ...ROW } });
+    mocks.stagedDownload.mockResolvedValue({ data: new Blob([(await buildEpub()) as unknown as BlobPart]), error: null });
+    const { POST } = await loadRoute();
+
+    const res = await POST(stagedRequest(STAGED_PATH), params);
+
+    expect(res.status).toBe(200);
+    expect(mocks.stagedDownload).toHaveBeenCalledWith(STAGED_PATH);
+    expect(mocks.uploadEpub).toHaveBeenCalledTimes(1);
+    expect(mocks.stagedRemove).toHaveBeenCalledWith([STAGED_PATH]);
+  });
+
+  it("refuses a path of another user without a read", async () => {
+    useRow({ row: { ...ROW } });
+    const { POST } = await loadRoute();
+
+    const res = await POST(stagedRequest("user-2/item-1/0b6f7a52-3c1d-4e8f-9a2b-5c6d7e8f9a0b.epub"), params);
+
+    expect(res.status).toBe(400);
+    expect(mocks.stagedDownload).not.toHaveBeenCalled();
+    expect(mocks.stagedRemove).not.toHaveBeenCalled();
+  });
+
+  it("deletes the staged copy when the file is not an EPUB", async () => {
+    useRow({ row: { ...ROW } });
+    mocks.stagedDownload.mockResolvedValue({ data: new Blob([(await buildPlainZip()) as unknown as BlobPart]), error: null });
+    const { POST } = await loadRoute();
+
+    const res = await POST(stagedRequest(STAGED_PATH), params);
+
+    expect(res.status).toBe(422);
+    expect(mocks.uploadEpub).not.toHaveBeenCalled();
+    expect(mocks.stagedRemove).toHaveBeenCalledWith([STAGED_PATH]);
+  });
+
+  it("answers missing_file when the staged copy does not exist", async () => {
+    useRow({ row: { ...ROW } });
+    mocks.stagedDownload.mockResolvedValue({ data: null, error: { message: "Object not found" } });
+    const { POST } = await loadRoute();
+
+    const res = await POST(stagedRequest(STAGED_PATH), params);
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "missing_file" });
   });
 });
 
