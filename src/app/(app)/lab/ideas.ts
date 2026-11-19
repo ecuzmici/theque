@@ -106,22 +106,21 @@ export const LAB_IDEAS: LabIdea[] = [
     effort: "S",
     cost: "Free",
   },
+  {
+    slug: "reader",
+    title: "E-reader sync, the other way",
+    pitch: "Drop KoboReader.sqlite or Kindle’s My Clippings.txt. See which books the e-reader says you finished, how long they took, and every highlight.",
+    why: "112 of your items carry a Kobo file. The Kobo already knows when you finished them; thèque does not.",
+    effort: "M",
+    cost: "Free",
+  },
 ];
 
 /** Ideas that are not prototyped yet, ranked. */
 export const MORE_IDEAS: Array<{ title: string; pitch: string }> = [
   {
-    title: "Kobo sync, the other way",
-    pitch:
-      "Upload KoboReader.sqlite once in a while. thèque marks books read with the real finish date, and keeps your highlights.",
-  },
-  {
     title: "Previously on…",
     pitch: "Before you open book 4 of a series, a spoiler-safe recap of books 1-3. About $0.01 per recap.",
-  },
-  {
-    title: "Kindle clippings",
-    pitch: "Drop My Clippings.txt. Highlights attach to their books and show as quote cards.",
   },
   {
     title: "Ask your library",

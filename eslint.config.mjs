@@ -17,6 +17,8 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     // Agent worktrees and session files (gigabytes of copies of the repo).
     ".claude/**",
+    // Vendored sql.js for the idea lab (minified third-party code).
+    "public/lab/**",
     // Extension build output (`npm run build:extension` compiles the .ts sources).
     "extension/popup.js",
     "extension/background.js",
