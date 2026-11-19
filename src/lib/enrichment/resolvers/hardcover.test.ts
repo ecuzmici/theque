@@ -176,6 +176,39 @@ describe("resolveHardcover", () => {
     expect(body.variables.q).toBe("Piranesi Susanna Clarke");
   });
 
+  it("skips a hit by another author when the item has authors", async () => {
+    fetchMock.mockResolvedValue(
+      searchResponse([
+        { title: "Kurt Vonnegut's Cat's Cradle", author_names: ["Harold Bloom"], series_names: ["Bloom's Modern Critical Interpretations"], users_count: 40 },
+      ]),
+    );
+
+    const patch = await resolveHardcover({
+      canonicalUrl: "https://x",
+      title: "Cat's Cradle",
+      structured: { authors: ["Kurt Vonnegut", "Martí Sales Sariola"] },
+    });
+
+    expect(patch).toBeNull();
+  });
+
+  it("keeps a hit whose authors overlap the item authors", async () => {
+    fetchMock.mockResolvedValue(
+      searchResponse([
+        { title: "Cat's Cradle", author_names: ["Kurt Vonnegut"], users_count: 5000 },
+        { title: "Kurt Vonnegut's Cat's Cradle", author_names: ["Harold Bloom"], users_count: 40 },
+      ]),
+    );
+
+    const patch = await resolveHardcover({
+      canonicalUrl: "https://x",
+      title: "Cat's Cradle",
+      structured: { authors: ["Kurt Vonnegut"] },
+    });
+
+    expect(patch?.structured?.authors).toEqual(["Kurt Vonnegut"]);
+  });
+
   it("returns null when every hit is an unrelated title", async () => {
     fetchMock.mockResolvedValue(searchResponse([{ title: "A Wholly Different Book", users_count: 900 }]));
 

@@ -3,7 +3,7 @@ import "server-only";
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
 import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers/types";
 import { extractHardcoverSlug } from "@/lib/enrichment/url-hints";
-import { titleScore } from "@/lib/enrichment/resolvers/title-match";
+import { authorsOverlap, titleScore } from "@/lib/enrichment/resolvers/title-match";
 import { firstValidIsbn, isEnglishGroupIsbn, normalizeIsbn } from "@/lib/isbn";
 
 const ENDPOINT = "https://api.hardcover.app/v1/graphql";
@@ -73,8 +73,12 @@ function readToken(): string | null {
   return raw.toLowerCase().startsWith("bearer ") ? raw : `Bearer ${raw}`;
 }
 
-/** Pick the best hit for `wanted`, or null when nothing plausibly matches. */
-function pickBest(hits: unknown, wanted: string): SearchDocument | null {
+/**
+ * Pick the best hit for `wanted`, or null when nothing plausibly matches.
+ * When the item has authors, a hit must share one: a title search for
+ * "Cat's Cradle" also returns a study guide by Harold Bloom.
+ */
+function pickBest(hits: unknown, wanted: string, authors: string[] = []): SearchDocument | null {
   if (!Array.isArray(hits)) return null;
   let best: SearchDocument | null = null;
   let bestScore = 0;
@@ -85,6 +89,10 @@ function pickBest(hits: unknown, wanted: string): SearchDocument | null {
     if (!doc || typeof doc.title !== "string") continue;
     const score = titleScore(doc.title, wanted);
     if (score === 0) continue;
+    if (authors.length > 0) {
+      const hitAuthors = stringArray(doc.author_names, 10) ?? [];
+      if (!authorsOverlap(authors, hitAuthors) && !authorsOverlap(hitAuthors, authors)) continue;
+    }
     const users = count(doc.users_count);
     if (score > bestScore || (score === bestScore && users > bestCount)) {
       best = doc;
@@ -186,7 +194,7 @@ export const resolveHardcover: CategoryResolver = async (input) => {
       data?: { search?: { results?: { hits?: unknown } } };
     };
     if (Array.isArray(body.errors) && body.errors.length > 0) return null;
-    doc = pickBest(body.data?.search?.results?.hits, title);
+    doc = pickBest(body.data?.search?.results?.hits, title, stringArray(input.structured.authors, 10) ?? []);
   } catch {
     return null;
   }
