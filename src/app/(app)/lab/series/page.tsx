@@ -2,7 +2,7 @@ import { authorsOverlap, titleScore } from "@/lib/enrichment/resolvers/title-mat
 
 import { LabHeader } from "../LabHeader";
 import { loadLabItems, type LabItem } from "../lab-data";
-import { seriesByName } from "../lab-hardcover";
+import { seriesByName, seriesForTitles } from "../lab-hardcover";
 import { SeriesTracker, type SeriesView, type SlotView } from "./SeriesTracker";
 
 function author(items: LabItem[]): string {
@@ -12,7 +12,20 @@ function author(items: LabItem[]): string {
 export default async function SeriesPage() {
   const items = await loadLabItems();
   const allBooks = items.filter((item) => item.category === "books");
-  const books = allBooks.filter((item) => item.series);
+
+  // 107 of 149 books have no series stored. Ask Hardcover for the rest, by
+  // title, and keep a match only when the authors overlap.
+  const stored = new Set(allBooks.filter((b) => b.series).map((b) => b.series!.toLowerCase()));
+  const missing = allBooks.filter((b) => !b.series);
+  const found = await seriesForTitles(missing.map((b) => ({ key: b.id, title: b.title.split(/\s*[:([]/)[0]!.trim() })));
+  const books: LabItem[] = allBooks.flatMap((book) => {
+    if (book.series) return [book];
+    const options = (found.get(book.id) ?? []).filter((o) => authorsOverlap(book.authors, o.authors));
+    // Prefer a series name the library already uses, so "Red Rising" joins "Red Rising Saga" books.
+    const pick = options.find((o) => stored.has(o.name.toLowerCase())) ?? options[0];
+    return pick ? [{ ...book, series: pick.name, seriesIndex: pick.position }] : [];
+  });
+  const inferred = books.filter((b) => !allBooks.find((a) => a.id === b.id)?.series).length;
 
   const groups = new Map<string, LabItem[]>();
   for (const book of books) {
@@ -87,6 +100,9 @@ export default async function SeriesPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <LabHeader slug="series" />
+      <p className="-mt-4 mb-6 text-xs text-muted-foreground">
+        {inferred} books had no series stored; Hardcover filled it for this page only.
+      </p>
       <SeriesTracker series={views} />
     </div>
   );

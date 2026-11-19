@@ -14,7 +14,7 @@ export const LAB_IDEAS: LabIdea[] = [
     slug: "series",
     title: "Series tracker",
     pitch: "Every series you are in, how far you got, and the next book to read.",
-    why: "42 of your 149 books belong to 27 series (Scalzi, Corey, Wells, Reynolds). Today the next book is a search away.",
+    why: "Hardcover places 80 of your 149 books in 56 series; thèque stores the series for only 42. Today the next book is a search away.",
     effort: "M",
     cost: "Free: Hardcover API",
   },

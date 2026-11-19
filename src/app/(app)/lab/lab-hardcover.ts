@@ -135,3 +135,52 @@ export async function recentBooksByAuthors(names: string[], since: string): Prom
     return true;
   });
 }
+
+const SERIES_FOR_TITLES = `query LabSeriesForTitles($where: [books_bool_exp!]!) {
+  books(where: {_or: $where, users_count: {_gt: 0}}, order_by: {users_count: desc}, limit: 500) {
+    title
+    cached_contributors
+    book_series(where: {featured: {_eq: true}}) { position series { name } }
+  }
+}`;
+
+type TitleRow = {
+  title: string;
+  cached_contributors: Array<{ author?: { name?: string }; contribution?: string | null }> | null;
+  book_series: Array<{ position: number | null; series: { name: string } | null }>;
+};
+
+export type FoundSeries = { name: string; position: number | null };
+
+/**
+ * Featured series for each entry, found by exact title in batches of 40.
+ * The caller checks the authors. Rows come most-read first, so the first
+ * match with series data wins.
+ */
+export async function seriesForTitles(
+  entries: Array<{ key: string; title: string }>,
+): Promise<Map<string, Array<FoundSeries & { authors: string[] }>>> {
+  const out = new Map<string, Array<FoundSeries & { authors: string[] }>>();
+  const norm = (t: string) => t.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+  for (let i = 0; i < entries.length; i += 40) {
+    const batch = entries.slice(i, i + 40);
+    const where = batch.map((e) => ({ title: { _ilike: e.title.replace(/[\\%_]/g, (c) => `\\${c}`) } }));
+    const data = await hardcover<{ books: TitleRow[] }>(SERIES_FOR_TITLES, { where });
+    for (const entry of batch) {
+      if (out.has(entry.key)) continue;
+      const row = data?.books.find((b) => norm(b.title) === norm(entry.title) && b.book_series.length > 0);
+      if (!row) continue;
+      const authors = (row.cached_contributors ?? [])
+        .filter((c) => !c.contribution || c.contribution === "Author")
+        .map((c) => c.author?.name ?? "")
+        .filter(Boolean);
+      out.set(
+        entry.key,
+        row.book_series
+          .filter((s) => s.series?.name)
+          .map((s) => ({ name: s.series!.name, position: s.position, authors })),
+      );
+    }
+  }
+  return out;
+}
