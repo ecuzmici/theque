@@ -135,6 +135,10 @@ export function buildRecommendPrompt(
 /**
  * The JSON schema for structured output on every recommendation model.
  * Candidates have NO url field — grounding is deterministic.
+ *
+ * Every property is in `required` because OpenAI strict structured output
+ * (gpt-6.x-sol) rejects a schema with an optional property. `year` is
+ * nullable so that a model can still send "unknown".
  */
 export const RECOMMEND_RESPONSE_SCHEMA = {
   type: "object",
@@ -146,11 +150,11 @@ export const RECOMMEND_RESPONSE_SCHEMA = {
         properties: {
           title: { type: "string" },
           creator: { type: "string" },
-          year: { type: "integer" },
+          year: { type: ["integer", "null"] },
           description: { type: "string" },
           reason: { type: "string" },
         },
-        required: ["title", "creator", "description", "reason"],
+        required: ["title", "creator", "year", "description", "reason"],
         additionalProperties: false,
       },
       minItems: 1,

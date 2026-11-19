@@ -202,6 +202,14 @@ describe("buildRecommendPrompt", () => {
       expect(itemRequired).toContain("description");
       expect(itemRequired).toContain("reason");
     });
+
+    it("lists every property in required, for OpenAI strict mode", () => {
+      const items = RECOMMEND_RESPONSE_SCHEMA.properties.candidates.items as {
+        properties: Record<string, unknown>;
+        required: readonly string[];
+      };
+      expect([...items.required].sort()).toEqual(Object.keys(items.properties).sort());
+    });
   });
 });
 

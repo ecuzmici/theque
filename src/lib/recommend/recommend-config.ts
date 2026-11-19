@@ -99,38 +99,48 @@ export function pickWatchRegion(headerCountry: string | null | undefined): strin
 /**
  * Ordered AI Gateway model fallback for recommendations.
  *
- * Chosen from the yield eval (scripts/eval-recommend.ts, ADR 0016) re-run on
- * 2026-10-09 against the owner's real library at over_request=24 (ADR 0018).
- * The recommend path has no search grounding, so the model's training cutoff
- * is a hard ceiling on how fresh a suggestion can be. Every model gets the
- * RECOMMEND_RESPONSE_SCHEMA structured output.
+ * Chosen on 2026-11-19 from the yield eval (scripts/eval-recommend.ts,
+ * ADR 0016) and a timed probe on the owner's real books prompt (about 2.4k
+ * input tokens, 24 candidates out). The recommend path has no search
+ * grounding, so the model's training cutoff is a hard ceiling on how fresh a
+ * suggestion can be. Every model gets the RECOMMEND_RESPONSE_SCHEMA
+ * structured output.
  *
- * gemini-3.6-flash: primary. It kept the books shelf full in 3 of 3 runs
- * (6/6, 6/6, 8/8 full rounds) because its picks stay diverse round over
- * round. gpt-6-luna: fallback. Newest knowledge (2026-05) and the best
- * resolve rate, but it repeats earlier picks, so the books shelf ran dry in
- * 3 of 3 runs (5/6, 5/6, 5/8). gemini-3.5-flash-lite: cheap backstop.
+ * gpt-6.2-sol: primary. 24/24 candidates resolved in each eval round (no
+ * invented titles), and most picks are 2024-2025 releases that fit the
+ * library. With reasoningEffort "low" and the priority tier it takes 21-23s
+ * and about $0.05-0.06 per run. reasoningEffort "none" and "minimal" do not
+ * stop its reasoning (1.3k reasoning tokens, 77-95s). Without the priority
+ * tier, "low" takes 52-57s for about $0.03.
+ * gemini-3.6-flash: fallback on a second provider. 3/3 full rounds, 14s,
+ * about $0.01 per run. gemini-3.5-flash-lite: cheap backstop.
  *
- * Rejected: claude-haiku-5.5 (invented titles, starved the books shelf by
- * round 6), gemini-3.1-flash-lite (intermittent JSON truncation at 24),
- * openai/gpt-5-nano (too slow, aborts), zai/glm-4.7-flash (JSON truncation),
- * openai/gpt-4.1-mini (reliable but oldest cutoff, ~mid-2024).
+ * Rejected: claude-sonnet-5.5 (22s and $0.034 per run, but mostly canon picks
+ * such as Dune and Ender's Game, and one round returned 2 candidates),
+ * gpt-6-luna (repeats earlier picks, ADR 0016), gemini-3.1-flash-lite
+ * (intermittent JSON truncation at 24), zai/glm-4.7-flash (JSON truncation).
  */
 export const RECOMMEND_MODELS = parseModelList(process.env.RECOMMEND_MODELS, [
+  "openai/gpt-6.2-sol",
   "google/gemini-3.6-flash",
-  "openai/gpt-6-luna",
   "google/gemini-3.5-flash-lite",
 ]);
 
 /**
  * Provider-specific options forwarded to every recommendation model attempt.
- * Each key turns off the reasoning pass for one provider (latency gate) and
- * applies only to models of that provider. gemini-3.5-flash-lite rejects
- * thinkingBudget: 0, so the google key uses thinkingLevel instead.
+ * Each key applies only to models of that provider.
+ *
+ * openai: gpt-6.2-sol ignores reasoningEffort "none", so "low" is the setting
+ * that turns its reasoning off. serviceTier "priority" doubles the token price
+ * and halves the latency (52s to 22s).
+ * google: gemini-3.5-flash-lite rejects thinkingBudget: 0, so the google key
+ * uses thinkingLevel instead.
+ * anthropic: turns off extended thinking if an override adds a Claude model.
  */
 export const RECOMMEND_PROVIDER_OPTIONS = {
-  openai: { reasoningEffort: "none" },
+  openai: { reasoningEffort: "low", serviceTier: "priority" },
   google: { thinkingConfig: { thinkingLevel: "minimal" } },
+  anthropic: { thinking: { type: "disabled" }, effort: "low" },
 };
 
 /** Temperature for recommendations (some variety, but steadier than before). */
@@ -138,9 +148,13 @@ export const RECOMMEND_TEMPERATURE = Number.parseFloat(
   process.env.RECOMMEND_TEMPERATURE ?? "0.5",
 );
 
-/** Timeout for a single recommendation model attempt, in milliseconds. */
+/**
+ * Timeout for a single recommendation model attempt, in milliseconds. The
+ * primary model takes 21-23s, so 45s leaves room for a slow call before the
+ * fallback starts.
+ */
 export const RECOMMEND_TIMEOUT_MS = Number.parseInt(
-  process.env.RECOMMEND_TIMEOUT_MS ?? "20000",
+  process.env.RECOMMEND_TIMEOUT_MS ?? "45000",
   10,
 );
 
