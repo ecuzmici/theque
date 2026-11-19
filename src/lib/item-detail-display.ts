@@ -42,15 +42,17 @@ interface CategoryConfig {
 
 const CATEGORY_CONFIG: Partial<Record<ItemCategory, CategoryConfig>> = {
   books: {
-    detailOrder: ["authors", "publisher", "isbn"],
+    detailOrder: ["authors", "series", "publisher", "isbn"],
     promoted: [
       "published_year",
       "page_count",
       "average_rating",
       "ratings_count",
       "rating",
+      // The "series" row shows the number, for example "Revelation Space #3".
+      "series_index",
     ],
-    labels: { authors: "Authors", publisher: "Publisher", isbn: "ISBN" },
+    labels: { authors: "Authors", series: "Series", publisher: "Publisher", isbn: "ISBN" },
   },
   movies_and_tv: {
     detailOrder: ["directors"],
@@ -128,6 +130,13 @@ function formatGenericValue(key: string, value: unknown): string {
   } catch {
     return String(value);
   }
+}
+
+/** "Revelation Space" + 3 → "Revelation Space #3". Ignores a missing or non-positive number. */
+function formatSeries(name: unknown, index: unknown): string {
+  const label = formatGenericValue("series", name);
+  const number = typeof index === "string" ? Number.parseFloat(index) : index;
+  return isNumber(number) && number > 0 ? `${label} #${number}` : label;
 }
 
 /** Value formatting for a Details row: category-aware helpers, then generic. */
@@ -216,11 +225,11 @@ export function getDetailFields(
 
   for (const key of curatedOrder) {
     if (!(key in obj) || !isVisible(key)) continue;
-    rows.push({
-      key,
-      label: config?.labels[key] ?? humanize(key),
-      value: formatDetailValue(key, obj[key]),
-    });
+    const value =
+      category === "books" && key === "series"
+        ? formatSeries(obj.series, obj.series_index)
+        : formatDetailValue(key, obj[key]);
+    rows.push({ key, label: config?.labels[key] ?? humanize(key), value });
     used.add(key);
   }
 

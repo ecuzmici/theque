@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getBylineDetailKeys,
+  splitBylineByCreators,
   getDetailByline,
   mentions,
   prefersLightText,
@@ -75,5 +76,50 @@ describe("prefersLightText", () => {
 
   it("falls back to light text for a color it cannot parse", () => {
     expect(prefersLightText("rgb(0 0 0)")).toBe(true);
+  });
+});
+
+describe("splitBylineByCreators", () => {
+  it("marks each author the byline names, so the header can link it", () => {
+    expect(
+      splitBylineByCreators("books", "Alastair Reynolds · 374 pages", {
+        authors: ["Alastair Reynolds"],
+      }),
+    ).toEqual([
+      { text: "Alastair Reynolds", creator: "Alastair Reynolds" },
+      { text: " · 374 pages" },
+    ]);
+  });
+
+  it("marks two directors and keeps the text between them", () => {
+    expect(
+      splitBylineByCreators("movies_and_tv", "Joel Coen, Ethan Coen · 1996", {
+        directors: ["Joel Coen", "Ethan Coen"],
+      }),
+    ).toEqual([
+      { text: "Joel Coen", creator: "Joel Coen" },
+      { text: ", " },
+      { text: "Ethan Coen", creator: "Ethan Coen" },
+      { text: " · 1996" },
+    ]);
+  });
+
+  it("matches a name without regard to case and keeps the byline spelling", () => {
+    expect(
+      splitBylineByCreators("books", "by URSULA K. LE GUIN", { authors: ["Ursula K. Le Guin"] }),
+    ).toEqual([{ text: "by " }, { text: "URSULA K. LE GUIN", creator: "Ursula K. Le Guin" }]);
+  });
+
+  it("does not mark a name inside a longer word", () => {
+    expect(splitBylineByCreators("books", "Annabel · 2020", { authors: ["Anna"] })).toEqual([
+      { text: "Annabel · 2020" },
+    ]);
+  });
+
+  it("returns the byline as one plain segment for other categories or no creators", () => {
+    expect(splitBylineByCreators("articles", "Jane Doe", { authors: ["Jane Doe"] })).toEqual([
+      { text: "Jane Doe" },
+    ]);
+    expect(splitBylineByCreators("books", "Jane Doe", null)).toEqual([{ text: "Jane Doe" }]);
   });
 });

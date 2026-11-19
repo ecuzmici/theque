@@ -15,6 +15,7 @@ import {
   getBylineDetailKeys,
   getDetailByline,
   prefersLightText,
+  splitBylineByCreators,
 } from "@/components/items/item-detail-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ import { cleanDisplayTitle } from "@/lib/display-title";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { goodreadsUrlForItem } from "@/lib/goodreads-link";
 import { getDisplayImageUrl } from "@/lib/item-display";
+import { libraryHref } from "@/lib/library-search";
 import { doneVerb, formatCategory, formatEnrichmentError } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 import { cn } from "@/lib/utils";
@@ -344,7 +346,24 @@ export function ItemDetail({
             <h1 className="mt-2 font-serif text-3xl leading-tight tracking-tight text-balance break-words text-foreground lg:text-4xl">
               {title}
             </h1>
-            {byline ? <p className="mt-2 text-sm text-foreground/70">{byline}</p> : null}
+            {byline ? (
+              <p className="mt-2 text-sm text-foreground/70">
+                {splitBylineByCreators(item.category, byline, item.structured).map((segment, index) =>
+                  segment.creator ? (
+                    <Link
+                      key={index}
+                      href={libraryHref(item.category === "books" ? "books" : "watch", segment.creator)}
+                      aria-label={`Search your library for ${segment.creator}`}
+                      className="relative underline decoration-foreground/30 underline-offset-4 after:absolute after:inset-x-0 after:-inset-y-3 hover:text-foreground hover:decoration-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    >
+                      {segment.text}
+                    </Link>
+                  ) : (
+                    <span key={index}>{segment.text}</span>
+                  ),
+                )}
+              </p>
+            ) : null}
           </header>
 
           <ItemRatingCard

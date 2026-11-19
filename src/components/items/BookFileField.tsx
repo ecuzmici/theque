@@ -222,35 +222,85 @@ export function BookFileField({
         ? `${file.name} is ready for your Kobo. ${formatFileSize(file.bytes)}.`
         : "No file yet.";
 
+  const headingId = `${inputId}-heading`;
+  const compact = !file && !pending && !error;
+  const hint = compact ? (
+    <p id={hintId} className="mt-0.5 text-xs text-muted-foreground">
+      Your Kobo gets it on the next WiFi sync. Up to {MAX_MEGABYTES} MB.
+    </p>
+  ) : (
+    <p id={hintId} className="mt-1 text-sm text-muted-foreground">
+      Attach an EPUB and your Kobo picks it up on the next WiFi sync. Up to {MAX_MEGABYTES} MB.
+    </p>
+  );
+
+  // The input stays out of sight. The buttons open the picker.
+  const fileInput = (
+    <input
+      ref={inputRef}
+      id={inputId}
+      type="file"
+      accept=".epub,application/epub+zip"
+      className="sr-only"
+      disabled={pending}
+      aria-describedby={error ? `${hintId} ${errorId}` : hintId}
+      onChange={(event) => {
+        const picked = event.target.files?.[0];
+        // Clear the value so the same file can be chosen two times.
+        event.target.value = "";
+        if (picked) void upload(picked);
+      }}
+    />
+  );
+
+  const statusLine = (
+    <p role="status" aria-live="polite" className="sr-only">
+      {status}
+    </p>
+  );
+
+  // Most books have no file. Without a file, an upload, or an error, the
+  // field is one row so that it does not push the page down.
+  if (compact) {
+    return (
+      <section className="mt-8" aria-labelledby={headingId}>
+        <div className="flex items-center gap-3 rounded-xl border border-dashed border-border px-4 py-3">
+          <div className="min-w-0 flex-1">
+            <h2 id={headingId} className="text-sm font-medium text-foreground">
+              Kobo file
+            </h2>
+            <Label htmlFor={inputId} className="sr-only">
+              EPUB file
+            </Label>
+            {hint}
+          </div>
+          {fileInput}
+          {statusLine}
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11 shrink-0 gap-1.5 lg-fine:min-h-8"
+            onClick={openPicker}
+          >
+            <Upload className="size-4" />
+            Choose EPUB
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <section className="mt-8" aria-labelledby={`${inputId}-heading`}>
-      <h2 id={`${inputId}-heading`} className="font-heading text-lg text-foreground">
+    <section className="mt-8" aria-labelledby={headingId}>
+      <h2 id={headingId} className="font-heading text-lg text-foreground">
         Kobo file
       </h2>
       <div className="mt-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
         <Label htmlFor={inputId} className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           EPUB file
         </Label>
-        <p id={hintId} className="mt-1 text-sm text-muted-foreground">
-          Attach an EPUB and your Kobo picks it up on the next WiFi sync. Up to {MAX_MEGABYTES} MB.
-        </p>
-
-        {/* The input stays out of sight. The buttons below open the picker. */}
-        <input
-          ref={inputRef}
-          id={inputId}
-          type="file"
-          accept=".epub,application/epub+zip"
-          className="sr-only"
-          disabled={pending}
-          aria-describedby={error ? `${hintId} ${errorId}` : hintId}
-          onChange={(event) => {
-            const picked = event.target.files?.[0];
-            // Clear the value so the same file can be chosen two times.
-            event.target.value = "";
-            if (picked) void upload(picked);
-          }}
-        />
+        {hint}
+        {fileInput}
 
         {file ? (
           <div className="mt-3 flex items-start gap-2">
@@ -265,9 +315,7 @@ export function BookFileField({
           </div>
         ) : null}
 
-        <p role="status" aria-live="polite" className="sr-only">
-          {status}
-        </p>
+        {statusLine}
 
         <div className="mt-3 flex flex-wrap gap-2">
           {file ? (

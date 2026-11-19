@@ -59,6 +59,63 @@ export function getBylineDetailKeys(
     .map((field) => field.key);
 }
 
+/** Structured keys that hold the people a byline can link to, per category. */
+const LINKED_CREATOR_KEYS: Partial<Record<ItemCategory, string>> = {
+  books: "authors",
+  movies_and_tv: "directors",
+};
+
+export type BylineSegment = { text: string; creator?: string };
+
+/** Start index of `name` as a whole word or phrase in `text`, ignoring case. -1 if absent. */
+function wholeWordIndex(text: string, name: string): number {
+  const hay = text.toLowerCase();
+  const needle = name.toLowerCase();
+  let at = hay.indexOf(needle);
+  while (at !== -1) {
+    if (!isWordChar(hay[at - 1]) && !isWordChar(hay[at + needle.length])) return at;
+    at = hay.indexOf(needle, at + 1);
+  }
+  return -1;
+}
+
+/**
+ * Splits the byline so the header can link each author (books) or director
+ * (movies and TV) to a library search. A segment with `creator` holds a name
+ * from the structured data. Other text stays in plain segments.
+ */
+export function splitBylineByCreators(
+  category: ItemCategory | null,
+  byline: string,
+  structured: Json | null,
+): BylineSegment[] {
+  const key = category ? LINKED_CREATOR_KEYS[category] : undefined;
+  const obj =
+    structured && typeof structured === "object" && !Array.isArray(structured)
+      ? (structured as Record<string, unknown>)
+      : null;
+  const raw = key && obj ? obj[key] : null;
+  const names = (Array.isArray(raw) ? raw : [])
+    .filter((name): name is string => typeof name === "string" && name.trim() !== "")
+    .map((name) => name.trim());
+
+  const matches = names
+    .map((name) => ({ name, at: wholeWordIndex(byline, name) }))
+    .filter((match) => match.at !== -1)
+    .sort((a, b) => a.at - b.at);
+
+  const segments: BylineSegment[] = [];
+  let cursor = 0;
+  for (const { name, at } of matches) {
+    if (at < cursor) continue; // Overlaps an earlier name.
+    if (at > cursor) segments.push({ text: byline.slice(cursor, at) });
+    segments.push({ text: byline.slice(at, at + name.length), creator: name });
+    cursor = at + name.length;
+  }
+  if (cursor < byline.length) segments.push({ text: byline.slice(cursor) });
+  return segments;
+}
+
 /** True when white text reads better than near-black text on this hex color. */
 export function prefersLightText(color: string): boolean {
   const match = color

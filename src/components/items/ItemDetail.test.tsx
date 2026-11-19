@@ -116,6 +116,16 @@ describe("ItemDetail", () => {
     expect(link?.getAttribute("target")).toBe("_blank");
   });
 
+  it("links the director in the byline to a search of the Watch shelf", async () => {
+    await render(makeItem());
+
+    const link = document.querySelector<HTMLAnchorElement>(
+      'a[aria-label="Search your library for Christopher Nolan"]',
+    );
+    expect(link?.textContent).toBe("Christopher Nolan");
+    expect(link?.getAttribute("href")).toBe("/library?shelf=watch&q=Christopher+Nolan");
+  });
+
   it("does not show the Goodreads link for a movie", async () => {
     await render(makeItem());
 

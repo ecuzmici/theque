@@ -160,6 +160,31 @@ describe("getDetailFields — ordering and labels", () => {
     ]);
   });
 
+  it("shows a book's series and its number in one row after the authors", () => {
+    const rows = getDetailFields("books", {
+      ...BOOK_SAMPLE,
+      series_index: 3,
+      series: "Revelation Space",
+    });
+    expect(rows).toEqual([
+      { key: "authors", label: "Authors", value: "Justina Ireland" },
+      { key: "series", label: "Series", value: "Revelation Space #3" },
+      { key: "isbn", label: "ISBN", value: "9780062570604" },
+    ]);
+  });
+
+  it("shows the series name alone when the number is missing or not usable", () => {
+    for (const series_index of [undefined, null, 0, "", "abc"]) {
+      const rows = getDetailFields("books", { series: "Discworld", series_index });
+      expect(rows).toEqual([{ key: "series", label: "Series", value: "Discworld" }]);
+    }
+  });
+
+  it("keeps a fractional series number", () => {
+    const rows = getDetailFields("books", { series: "Discworld", series_index: "4.5" });
+    expect(rows).toEqual([{ key: "series", label: "Series", value: "Discworld #4.5" }]);
+  });
+
   it("formats recipe-ish article times and yield in curated order", () => {
     const rows = getDetailFields("articles", {
       author: "Chef",
