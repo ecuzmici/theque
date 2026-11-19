@@ -316,6 +316,53 @@ describe("enrichItem resolvers and byline", () => {
     expect(finalUpdate(updates)?.image_url).toBe("https://assets.hardcover.app/edition/1/cover.jpg");
   });
 
+  it("replaces an ISBN with a bad check digit with the resolver ISBN", async () => {
+    const url = "https://www.goodreads.com/book/show/25499718-children-of-time";
+    mocks.fetchPage.mockResolvedValue({
+      html: `<html><head><script type="application/ld+json">${JSON.stringify({
+        "@type": "Book",
+        name: "Children of Time",
+        isbn: "0062383077",
+        author: [{ "@type": "Person", name: "Adrian Tchaikovsky" }],
+      })}</script></head><body></body></html>`,
+      finalUrl: url,
+      statusCode: 200,
+    });
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "hardcover",
+      structured: { isbn: "9780316452502" },
+    });
+    const updates = stubAdmin(makeRow({ canonical_url: url }));
+
+    await enrichItem("item-1");
+
+    expect(mocks.resolveCategoryEvidence).toHaveBeenCalled();
+    expect((finalUpdate(updates)?.structured as Record<string, unknown>).isbn).toBe("9780316452502");
+  });
+
+  it("keeps a valid page ISBN without hyphens", async () => {
+    const url = "https://www.goodreads.com/book/show/1-dune";
+    mocks.fetchPage.mockResolvedValue({
+      html: `<html><head><script type="application/ld+json">${JSON.stringify({
+        "@type": "Book",
+        name: "Dune",
+        isbn: "978-0-316-46284-6",
+        author: [{ "@type": "Person", name: "Frank Herbert" }],
+      })}</script></head><body></body></html>`,
+      finalUrl: url,
+      statusCode: 200,
+    });
+    mocks.resolveCategoryEvidence.mockResolvedValue({
+      source: "hardcover",
+      structured: { isbn: "9781447273301" },
+    });
+    const updates = stubAdmin(makeRow({ canonical_url: url }));
+
+    await enrichItem("item-1");
+
+    expect((finalUpdate(updates)?.structured as Record<string, unknown>).isbn).toBe("9780316462846");
+  });
+
   it("runs the resolvers when the fields are full but the cover is missing", async () => {
     const url = "https://www.imdb.com/title/tt0111161/";
     mocks.fetchPage.mockResolvedValue({

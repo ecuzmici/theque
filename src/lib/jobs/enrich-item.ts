@@ -17,6 +17,7 @@ import { readCaptureSnapshot, snapshotToFetchResult } from "@/lib/enrichment/sna
 import { mergeLlmEnrichment } from "@/lib/enrichment/llm/merge-llm-enrichment";
 import { isBotBlockPage, isGeneratedShareCard, isWeakTitle } from "@/lib/enrichment/meta-utils";
 import { resolveCategoryEvidence } from "@/lib/enrichment/resolvers/index";
+import { normalizeIsbn } from "@/lib/isbn";
 import { chooseSubtitle } from "@/lib/enrichment/subtitle";
 import { aiDailyLimitForUser } from "@/lib/ai/limits";
 import { rateLimit } from "@/lib/rate-limit";
@@ -49,10 +50,11 @@ function hasUsefulValue(value: unknown): boolean {
 
 // `series` counts as important for books. The Kobo displays a series name, and
 // the EPUB upload path writes it into the file. Only Hardcover supplies it, so
-// a book without it must still reach the resolvers.
+// a book without it must still reach the resolvers. `isbn` counts too: the
+// Goodreads link on the detail page opens the book page directly with it.
 const RESOLVER_IMPORTANT_FIELDS: Partial<Record<ItemCategory, string[]>> = {
   movies_and_tv: ["year", "directors"],
-  books: ["authors", "published_year", "series"],
+  books: ["authors", "published_year", "series", "isbn"],
 };
 
 function resolverFieldsSparse(
@@ -261,6 +263,14 @@ export async function enrichItem(itemId: string): Promise<EnrichOutcome> {
     let mergedCategory = classification.category;
     let mergedCategoryConfidence = classification.category_confidence;
     let mergedCategorySource = classification.category_source;
+
+    // A page ISBN with a bad check digit is noise. Remove it so that a
+    // resolver can supply a real one, and store a valid one without hyphens.
+    if (mergedCategory === "books" && "isbn" in mergedStructured) {
+      const isbn = normalizeIsbn(mergedStructured.isbn);
+      if (isbn) mergedStructured.isbn = isbn;
+      else delete mergedStructured.isbn;
+    }
 
     // Phase 3: free deterministic API resolvers. Only when important fields are
     // still sparse or the cover is missing; fills missing fields and ranks above

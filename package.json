@@ -16,6 +16,7 @@
     "backfill:thumbs": "tsx --conditions=react-server scripts/backfill-cover-thumbs.ts",
     "backfill:crew": "tsx --conditions=react-server scripts/backfill-tmdb-crew.ts",
     "backfill:book-genres": "tsx --conditions=react-server scripts/backfill-book-genres.ts",
+    "backfill:isbn": "tsx --conditions=react-server scripts/backfill-book-isbn.ts",
     "backfill:taste-tags": "tsx --conditions=react-server scripts/backfill-taste-tags.ts",
     "backfill:item-text": "tsx --conditions=react-server scripts/backfill-item-text.ts",
     "eval:recommend": "tsx --conditions=react-server --env-file=.env.local scripts/eval-recommend.ts",

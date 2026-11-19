@@ -1,13 +1,7 @@
 import type { ItemCategory, Json } from "@/lib/database.types";
+import { normalizeIsbn } from "@/lib/isbn";
 
 const GOODREADS_HOST = /(^|\.)goodreads\.com$/i;
-
-/** Returns the ISBN with hyphens and spaces removed, or null if it is not a valid ISBN-10 or ISBN-13. */
-function normalizeIsbn(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const isbn = value.replace(/[\s-]/g, "").toUpperCase();
-  return /^(\d{9}[\dX]|\d{13})$/.test(isbn) ? isbn : null;
-}
 
 function firstAuthor(structured: Record<string, unknown>): string | null {
   const authors = structured.authors;

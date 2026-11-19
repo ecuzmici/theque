@@ -58,6 +58,50 @@ describe("resolveBooks", () => {
     expect(patch?.structured).toEqual({ authors: ["Andy Weir"], published_year: 2011 });
   });
 
+  it("takes the ISBN-13 of the first English volume with a matching title", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        items: [
+          { volumeInfo: { title: "Piranesi by Susanna Clarke: A Study Guide", language: "en",
+            industryIdentifiers: [{ type: "ISBN_13", identifier: "9781635575637" }] } },
+          { volumeInfo: { title: "Piranesi", language: "de", authors: ["Susanna Clarke"],
+            industryIdentifiers: [{ type: "ISBN_13", identifier: "9783641264864" }] } },
+          { volumeInfo: { title: "Piranesi", language: "en", authors: ["Susanna Clarke"], publishedDate: "2020",
+            industryIdentifiers: [
+              { type: "ISBN_10", identifier: "1526622440" },
+              { type: "ISBN_13", identifier: "9781526622440" },
+            ] } },
+        ],
+      }),
+    });
+
+    const patch = await resolveBooks({
+      canonicalUrl: "https://x",
+      title: "Piranesi",
+      structured: { authors: ["Susanna Clarke"] },
+    });
+
+    const calledUrl = new URL(fetchMock.mock.calls[0][0].toString());
+    expect(calledUrl.searchParams.get("q")).toBe('Piranesi inauthor:"Susanna Clarke"');
+    expect(patch?.structured).toEqual({ authors: ["Susanna Clarke"], published_year: 2020, isbn: "9781526622440" });
+  });
+
+  it("does not take an ISBN from a volume whose title does not match", async () => {
+    fetchMock.mockResolvedValue(
+      volumeResponse({
+        title: "A Different Book",
+        language: "en",
+        authors: ["Someone"],
+        industryIdentifiers: [{ type: "ISBN_13", identifier: "9781526622440" }],
+      }),
+    );
+
+    const patch = await resolveBooks({ canonicalUrl: "https://x", title: "Piranesi", structured: {} });
+
+    expect(patch?.structured).not.toHaveProperty("isbn");
+  });
+
   it("returns null on non-200 or empty results", async () => {
     fetchMock.mockResolvedValue({ ok: false, json: async () => ({}) });
     expect(await resolveBooks({ canonicalUrl: "https://x", title: "Dune", structured: {} })).toBeNull();

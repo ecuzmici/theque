@@ -24,6 +24,10 @@ function searchResponse(documents: Array<Record<string, unknown>>) {
   };
 }
 
+function editionResponse(book: Record<string, unknown> | null) {
+  return { ok: true, json: async () => ({ data: { books_by_pk: book } }) };
+}
+
 const piranesi = {
   title: "Piranesi",
   description: "A man lives in a house of endless halls.",
@@ -176,6 +180,99 @@ describe("resolveHardcover", () => {
     fetchMock.mockResolvedValue(searchResponse([{ title: "A Wholly Different Book", users_count: 900 }]));
 
     expect(await resolveHardcover({ canonicalUrl: "https://x", title: "Piranesi", structured: {} })).toBeNull();
+  });
+
+  it("takes the ISBN from the default physical edition, not from the search isbns", async () => {
+    fetchMock
+      .mockResolvedValueOnce(searchResponse([{ ...piranesi, id: "175280" }]))
+      .mockResolvedValueOnce(
+        editionResponse({
+          default_physical_edition: { isbn_13: "9781635575637", isbn_10: "163557563X" },
+          default_ebook_edition: { isbn_13: "9781635575644", isbn_10: null },
+        }),
+      );
+
+    const patch = await resolveHardcover({ canonicalUrl: "https://x", title: "Piranesi", structured: {} });
+
+    expect(patch?.structured?.isbn).toBe("9781635575637");
+    const body = JSON.parse((fetchMock.mock.calls[1][1] as { body: string }).body) as {
+      variables: { id: number };
+    };
+    expect(body.variables.id).toBe(175280);
+  });
+
+  it("falls back to the ebook edition ISBN and then to an ISBN-10", async () => {
+    fetchMock
+      .mockResolvedValueOnce(searchResponse([{ ...piranesi, id: "175280" }]))
+      .mockResolvedValueOnce(
+        editionResponse({
+          default_physical_edition: null,
+          default_ebook_edition: { isbn_13: null, isbn_10: "1635575648" },
+        }),
+      );
+
+    const patch = await resolveHardcover({ canonicalUrl: "https://x", title: "Piranesi", structured: {} });
+
+    expect(patch?.structured?.isbn).toBe("1635575648");
+  });
+
+  it("prefers the most-read English-group edition over a default edition from another group", async () => {
+    fetchMock
+      .mockResolvedValueOnce(searchResponse([{ ...piranesi, title: "Scythe", id: "308655" }]))
+      .mockResolvedValueOnce(
+        editionResponse({
+          default_physical_edition: { isbn_13: "9786069674482", isbn_10: null },
+          default_ebook_edition: null,
+          editions: [
+            { isbn_13: "9786069674482", isbn_10: null },
+            { isbn_13: "9781406379242", isbn_10: "1406379247" },
+          ],
+        }),
+      );
+
+    const patch = await resolveHardcover({ canonicalUrl: "https://x", title: "Scythe", structured: {} });
+
+    expect(patch?.structured?.isbn).toBe("9781406379242");
+  });
+
+  it("keeps a non-English default edition when no English-group ISBN exists", async () => {
+    fetchMock
+      .mockResolvedValueOnce(searchResponse([{ ...piranesi, id: "175280" }]))
+      .mockResolvedValueOnce(
+        editionResponse({
+          default_physical_edition: { isbn_13: "9783453269118", isbn_10: null },
+          default_ebook_edition: null,
+          editions: [],
+        }),
+      );
+
+    const patch = await resolveHardcover({ canonicalUrl: "https://x", title: "Piranesi", structured: {} });
+
+    expect(patch?.structured?.isbn).toBe("9783453269118");
+  });
+
+  it("does not ask for the default edition when the item already has an ISBN", async () => {
+    fetchMock.mockResolvedValueOnce(searchResponse([{ ...piranesi, id: "175280" }]));
+
+    const patch = await resolveHardcover({
+      canonicalUrl: "https://x",
+      title: "Piranesi",
+      structured: { isbn: "9781526622440" },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(patch?.structured).not.toHaveProperty("isbn");
+  });
+
+  it("keeps the rest of the patch when the edition lookup fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(searchResponse([{ ...piranesi, id: "175280" }]))
+      .mockRejectedValueOnce(new Error("network"));
+
+    const patch = await resolveHardcover({ canonicalUrl: "https://x", title: "Piranesi", structured: {} });
+
+    expect(patch?.structured?.authors).toEqual(["Susanna Clarke"]);
+    expect(patch?.structured).not.toHaveProperty("isbn");
   });
 
   it("ignores edition-specific isbn and release_year", async () => {

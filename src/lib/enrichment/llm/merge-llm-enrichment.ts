@@ -8,7 +8,10 @@ import type { CategorySource, ItemCategory } from "@/lib/database.types";
  * Facts that must never be persisted from model_knowledge alone — either
  * volatile (price/rating/address change over time) or, for `directors`,
  * systematically wrong from memory (the model returns a cast member, not the
- * director — see ADR 0011, the Crew rule). Page-sourced values still pass.
+ * director — see ADR 0011, the Crew rule). `isbn` is in the set too: in the
+ * library on 2026-11-20, 3 of the 4 ISBNs from memory had a bad check digit.
+ * The Hardcover and Google Books resolvers supply a real one. Page-sourced
+ * values still pass.
  */
 const VOLATILE_STRUCTURED_FIELDS = new Set([
   "price",
@@ -20,6 +23,7 @@ const VOLATILE_STRUCTURED_FIELDS = new Set([
   "rating",
   "rating_scale",
   "directors",
+  "isbn",
 ]);
 
 export type MergeLlmInput = {

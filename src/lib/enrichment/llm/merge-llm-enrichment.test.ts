@@ -404,6 +404,35 @@ describe("mergeLlmEnrichment junk-aware + uncategorized", () => {
     expect(merged.structured).not.toHaveProperty("directors");
   });
 
+  it("rejects an ISBN sourced from model_knowledge", () => {
+    const merged = mergeLlmEnrichment({
+      current: {
+        title: "Iron Gold",
+        subtitle: null,
+        description: null,
+        image_url: null,
+        category: "books",
+        category_confidence: 0.9,
+        category_source: "domain",
+        structured: {},
+        rawMetadata: {},
+      },
+      llmResult: {
+        status: "enhanced",
+        enhancement: {
+          confidence: 0.7,
+          sources: ["model_knowledge"],
+          structured: { isbn: "9780451469997", authors: ["Pierce Brown"] },
+          field_sources: { isbn: "model_knowledge", authors: "model_knowledge" },
+        },
+        providerMetadata: { provider: "ai_gateway" },
+      },
+      now: "2026-11-20T00:00:00.000Z",
+    });
+    expect(merged.structured).not.toHaveProperty("isbn");
+    expect(merged.structured.authors).toEqual(["Pierce Brown"]);
+  });
+
   it("keeps directors sourced from page evidence (crew rule)", () => {
     const merged = mergeLlmEnrichment({
       current: {

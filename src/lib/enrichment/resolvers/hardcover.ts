@@ -3,6 +3,8 @@ import "server-only";
 import { assertSafeFetchUrl } from "@/lib/enrichment/fetch";
 import type { CategoryResolver, ResolverPatch } from "@/lib/enrichment/resolvers/types";
 import { extractHardcoverSlug } from "@/lib/enrichment/url-hints";
+import { titleScore } from "@/lib/enrichment/resolvers/title-match";
+import { firstValidIsbn, isEnglishGroupIsbn, normalizeIsbn } from "@/lib/isbn";
 
 const ENDPOINT = "https://api.hardcover.app/v1/graphql";
 const TIMEOUT_MS = 8000;
@@ -19,7 +21,24 @@ const SEARCH_QUERY = `query ThequeBookSearch($q: String!, $perPage: Int!) {
   }
 }`;
 
+/**
+ * Hardcover picks one default edition per book, usually the first English
+ * hardcover. Its ISBN is stable, unlike the search document `isbns`, which
+ * lists every edition in no fixed order. The 10 most-read editions with an
+ * ISBN are the fallback when the default edition is not English.
+ */
+const EDITION_QUERY = `query ThequeDefaultEdition($id: Int!) {
+  books_by_pk(id: $id) {
+    default_physical_edition { isbn_13 isbn_10 }
+    default_ebook_edition { isbn_13 isbn_10 }
+    editions(where: {isbn_13: {_is_null: false}}, order_by: {users_count: desc}, limit: 10) { isbn_13 isbn_10 }
+  }
+}`;
+
+type EditionIsbns = { isbn_13?: unknown; isbn_10?: unknown } | null | undefined;
+
 type SearchDocument = {
+  id?: unknown;
   title?: unknown;
   description?: unknown;
   author_names?: unknown;
@@ -31,23 +50,6 @@ type SearchDocument = {
   users_count?: unknown;
   image?: { url?: unknown } | null;
 };
-
-function normalize(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-/** 2 = exact title, 1 = one title contains the other, 0 = unrelated. */
-function titleScore(candidate: string, wanted: string): number {
-  const a = normalize(candidate);
-  const b = normalize(wanted);
-  if (!a || !b) return 0;
-  if (a === b) return 2;
-  return a.includes(b) || b.includes(a) ? 1 : 0;
-}
 
 function count(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
@@ -91,6 +93,51 @@ function pickBest(hits: unknown, wanted: string): SearchDocument | null {
     }
   }
   return best;
+}
+
+/**
+ * ISBN for Hardcover book `id`. The order is:
+ * 1. the default physical edition, then the default ebook edition, when the
+ *    ISBN is from an English-language group;
+ * 2. the most-read edition with an English-language ISBN;
+ * 3. the default physical edition, the default ebook edition, then the
+ *    most-read edition, in any language.
+ * ISBN-13 comes before ISBN-10. Null on any miss or error.
+ */
+export async function fetchDefaultEditionIsbn(id: number, token: string): Promise<string | null> {
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      headers: { "content-type": "application/json", accept: "application/json", authorization: token },
+      body: JSON.stringify({ query: EDITION_QUERY, variables: { id } }),
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      data?: {
+        books_by_pk?: {
+          default_physical_edition?: EditionIsbns;
+          default_ebook_edition?: EditionIsbns;
+          editions?: EditionIsbns[];
+        } | null;
+      };
+    };
+    const book = body.data?.books_by_pk;
+    if (!book) return null;
+    const isbnsOf = (edition: EditionIsbns) => [edition?.isbn_13, edition?.isbn_10];
+    const defaults = [...isbnsOf(book.default_physical_edition), ...isbnsOf(book.default_ebook_edition)];
+    const popular = (Array.isArray(book.editions) ? book.editions : []).flatMap(isbnsOf);
+    const all = [...defaults, ...popular];
+    return firstValidIsbn(all.filter(isEnglishGroupIsbn)) ?? firstValidIsbn(all);
+  } catch {
+    return null;
+  }
+}
+
+/** Hardcover book id from a search document, or null. The search returns it as a string. */
+function documentId(doc: SearchDocument): number | null {
+  const id = typeof doc.id === "string" ? Number.parseInt(doc.id, 10) : doc.id;
+  return typeof id === "number" && Number.isInteger(id) && id > 0 ? id : null;
 }
 
 /**
@@ -163,8 +210,15 @@ export const resolveHardcover: CategoryResolver = async (input) => {
   }
 
   // isbns[] and release_year describe an arbitrary edition, not the work. Live
-  // checks returned a German ISBN for Piranesi and 2019 for a 2020 title, so
-  // both stay with Google Books, which the merged books path still runs.
+  // checks returned a German ISBN for Piranesi and 2019 for a 2020 title. The
+  // ISBN comes from the default edition instead, and only when the item has
+  // no valid ISBN yet. The year stays with Google Books.
+  const id = documentId(doc);
+  if (id !== null && !normalizeIsbn(input.structured.isbn)) {
+    const isbn = await fetchDefaultEditionIsbn(id, token);
+    if (isbn) structured.isbn = isbn;
+  }
+
   if (typeof doc.pages === "number" && Number.isInteger(doc.pages) && doc.pages > 0) {
     structured.page_count = doc.pages;
   }
