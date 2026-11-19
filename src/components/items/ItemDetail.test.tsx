@@ -95,6 +95,34 @@ describe("ItemDetail", () => {
     expect(text).not.toContain("Directors");
   });
 
+  it("links a book saved from Open Library to a Goodreads search", async () => {
+    await render(
+      makeItem({
+        url: "https://openlibrary.org/works/OL17823492W",
+        domain: "openlibrary.org",
+        title: "Children of Time",
+        subtitle: null,
+        category: "books",
+        structured: { authors: ["Adrian Tchaikovsky"] },
+      }),
+    );
+
+    const link = Array.from(document.querySelectorAll("a")).find(
+      (a) => a.textContent === "Goodreads",
+    );
+    expect(link?.getAttribute("href")).toBe(
+      "https://www.goodreads.com/search?q=Children%20of%20Time%20Adrian%20Tchaikovsky",
+    );
+    expect(link?.getAttribute("target")).toBe("_blank");
+  });
+
+  it("does not show the Goodreads link for a movie", async () => {
+    await render(makeItem());
+
+    const texts = Array.from(document.querySelectorAll("a")).map((a) => a.textContent);
+    expect(texts).not.toContain("Goodreads");
+  });
+
   it("draws a typographic cover tinted with the dominant color when there is no image", async () => {
     await render(makeItem());
 

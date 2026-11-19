@@ -2,7 +2,7 @@
 
 import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
-import { ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, ExternalLink, MoreHorizontal, Pencil, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BookFileField } from "@/components/items/BookFileField";
@@ -35,6 +35,7 @@ import {
 import { useItemStatusRealtime } from "@/hooks/useItemStatusRealtime";
 import { cleanDisplayTitle } from "@/lib/display-title";
 import { formatDateMedium } from "@/lib/format-timestamp";
+import { goodreadsUrlForItem } from "@/lib/goodreads-link";
 import { getDisplayImageUrl } from "@/lib/item-display";
 import { doneVerb, formatCategory, formatEnrichmentError } from "@/lib/item-labels";
 import type { LibraryItemRow } from "@/lib/types/library-item";
@@ -257,6 +258,12 @@ export function ItemDetail({
     item.processing_status === "failed" ? "Retry enrichment" : "Refresh metadata";
 
   const title = cleanDisplayTitle(item.title ?? item.domain);
+  const goodreadsUrl = goodreadsUrlForItem({
+    category: item.category,
+    domain: item.domain,
+    title: item.title ? title : null,
+    structured: item.structured,
+  });
   const byline = getDetailByline(item.category, item.subtitle, item.structured);
   const omitDetailKeys = [
     ...(item.description ? ["description"] : []),
@@ -360,6 +367,17 @@ export function ItemDetail({
               <ExternalLink className="size-4" />
               {item.domain.replace(/^www\./, "")}
             </Button>
+            {goodreadsUrl ? (
+              <Button
+                nativeButton={false}
+                variant="outline"
+                render={<a href={goodreadsUrl} target="_blank" rel="noopener noreferrer" />}
+                className="min-h-11 gap-1.5 rounded-full bg-card/80 px-4 backdrop-blur lg-fine:min-h-8"
+              >
+                <BookOpen className="size-4" />
+                Goodreads
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
