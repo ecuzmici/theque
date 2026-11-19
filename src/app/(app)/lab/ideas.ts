@@ -90,6 +90,22 @@ export const LAB_IDEAS: LabIdea[] = [
     effort: "M",
     cost: "Free",
   },
+  {
+    slug: "cleanup",
+    title: "Spring cleaning",
+    pitch: "Swipe through the oldest Want items: keep, or let go. The Inbox swipe, for the backlog.",
+    why: "148 books and films wait on Want, against 73 finished. A short pass keeps Up next and the recommender honest.",
+    effort: "S",
+    cost: "Free",
+  },
+  {
+    slug: "ambient",
+    title: "Ambient mode",
+    pitch: "A slow, full-screen drift of your covers, with a favourite and your verdict now and then.",
+    why: "An old tablet on the shelf, or the TV while friends are over. Your taste as a quiet screensaver.",
+    effort: "S",
+    cost: "Free",
+  },
 ];
 
 /** Ideas that are not prototyped yet, ranked. */
@@ -112,16 +128,8 @@ export const MORE_IDEAS: Array<{ title: string; pitch: string }> = [
     pitch: "“That space book with the spiders.” Search by memory, not by title. Embeddings cost a fraction of a cent.",
   },
   {
-    title: "Spring cleaning",
-    pitch: "Swipe through Want items older than six months: keep, or let go. The Inbox swipe, for the backlog.",
-  },
-  {
     title: "Revisit",
     pitch: "Once a month, one 5-star book or film from at least two years ago, as a nudge to reread or rewatch.",
-  },
-  {
-    title: "Ambient mode",
-    pitch: "A full-screen, slow drift of your covers for the TV or an old tablet on the shelf.",
   },
   {
     title: "Radar in the digest",

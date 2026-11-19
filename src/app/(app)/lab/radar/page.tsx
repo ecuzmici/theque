@@ -2,7 +2,7 @@ import { titleScore } from "@/lib/enrichment/resolvers/title-match";
 
 import { LabHeader } from "../LabHeader";
 import { labNow, loadLabItems, type LabItem } from "../lab-data";
-import { recentBooksByAuthors } from "../lab-hardcover";
+import { isEnglishOrUnknown, recentBooksByAuthors } from "../lab-hardcover";
 import { directorCredits } from "../lab-tmdb";
 import { Radar, type RadarEntry } from "./Radar";
 
@@ -21,9 +21,27 @@ function lovedCreators(items: LabItem[], pick: (i: LabItem) => string | undefine
   return [...best.entries()].sort((a, b) => (b[1].rating ?? 0) - (a[1].rating ?? 0));
 }
 
-function inLibrary(items: LabItem[], title: string): boolean {
-  return items.some((item) => titleScore(item.title, title) === 2);
+/** Teasers, placeholders, and audio dramas that are not a new book or film. */
+const NOT_A_RELEASE = /^(untitled|sneak peek|excerpt|sampler|preview)\b|dramatized|dramatised|\baudio drama\b/i;
+
+/** "Station Eleven: a post-apocalyptic tale…" → "Station Eleven". */
+function baseTitle(title: string): string {
+  return title.split(/\s*[:([]/)[0]!.trim();
 }
+
+/**
+ * True when the library already holds the title. A book also matches on its
+ * base title, so a re-edition with a long subtitle drops out. A film matches
+ * on the full title, so "Dune: Part Three" stays next to "Dune: Part Two".
+ */
+function inLibrary(items: LabItem[], title: string, kind: "book" | "film"): boolean {
+  if (kind === "film") return items.some((item) => titleScore(item.title, title) === 2);
+  return items.some((item) => titleScore(baseTitle(item.title), baseTitle(title)) === 2);
+}
+
+/** Hardcover lists translations as their own books. Few readers log them, and some use another script. */
+const NON_LATIN = /[^\p{Script=Latin}\p{N}\p{P}\p{Zs}\p{S}]/u;
+const MIN_READERS_RELEASED = 5;
 
 export default async function RadarPage() {
   const items = await loadLabItems();
@@ -42,9 +60,21 @@ export default async function RadarPage() {
   for (const author of authorBooks) {
     const because = authors.find(([name]) => name.toLowerCase() === author.name.toLowerCase())?.[1];
     const seen = new Set<string>();
-    for (const { book } of author.contributions) {
-      const key = book.title.toLowerCase();
-      if (seen.has(key) || inLibrary(items, book.title)) continue;
+    // Most-read first, so a duplicate record of the same book loses to the main one.
+    const books = [...author.contributions].map((c) => c.book).sort((a, b) => (b.users_count ?? 0) - (a.users_count ?? 0));
+    for (const book of books) {
+      const key = baseTitle(book.title).toLowerCase();
+      const released = !!book.release_date && Date.parse(book.release_date) <= now;
+      if (
+        seen.has(key) ||
+        NOT_A_RELEASE.test(book.title) ||
+        NON_LATIN.test(book.title) ||
+        !isEnglishOrUnknown(book) ||
+        (released && (book.users_count ?? 0) < MIN_READERS_RELEASED) ||
+        inLibrary(items, book.title, "book")
+      ) {
+        continue;
+      }
       seen.add(key);
       entries.push({
         kind: "book",
@@ -62,7 +92,7 @@ export default async function RadarPage() {
   for (const { because, data } of directorFilms) {
     if (!data) continue;
     for (const credit of data.credits) {
-      if ((credit.date && credit.date < since) || inLibrary(items, credit.title)) continue;
+      if ((credit.date && credit.date < since) || NOT_A_RELEASE.test(credit.title) || inLibrary(items, credit.title, "film")) continue;
       entries.push({
         kind: "film",
         title: credit.title,

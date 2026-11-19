@@ -83,22 +83,42 @@ export async function seriesByName(names: string[]): Promise<Map<string, HcSerie
   return out;
 }
 
+type EditionLanguage = { language: { code2: string | null } | null } | null;
+
+export type HcAuthorBook = HcBook & {
+  default_physical_edition: EditionLanguage;
+  default_ebook_edition: EditionLanguage;
+};
+
 export type HcAuthor = {
   id: number;
   name: string;
-  contributions: Array<{ book: HcBook }>;
+  contributions: Array<{ book: HcAuthorBook }>;
 };
+
+/** False when the default editions say the book is in a language other than English. */
+export function isEnglishOrUnknown(book: HcAuthorBook): boolean {
+  const codes = [book.default_physical_edition?.language?.code2, book.default_ebook_edition?.language?.code2].filter(Boolean);
+  return codes.length === 0 || codes.includes("en");
+}
 
 const AUTHORS_QUERY = `query LabAuthors($names: [String!]!, $since: date!) {
   authors(where: {name: {_in: $names}}, order_by: {books_count: desc}) {
     id
     name
     contributions(
-      where: {contribution: {_is_null: true}, book: {release_date: {_gte: $since}, compilation: {_eq: false}}}
+      where: {
+        _or: [{contribution: {_is_null: true}}, {contribution: {_eq: "Author"}}]
+        book: {release_date: {_gte: $since}, compilation: {_eq: false}}
+      }
       order_by: {book: {release_date: desc}}
-      limit: 8
+      limit: 20
     ) {
-      book { id title slug release_date users_count image { url } }
+      book {
+        id title slug release_date users_count image { url }
+        default_physical_edition { language { code2 } }
+        default_ebook_edition { language { code2 } }
+      }
     }
   }
 }`;

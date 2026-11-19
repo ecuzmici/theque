@@ -13,8 +13,8 @@ export default function LabIndexPage() {
         </p>
         <h1 className="mt-2 font-heading text-4xl tracking-tight text-foreground">Idea lab</h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-foreground/80">
-          Ten things thèque could do next, built as working prototypes on your real library. Nothing
-          here writes to your data. Open one, play with it, and keep the ones you would use.
+          {LAB_IDEAS.length} things thèque could do next, built as working prototypes on your real library.
+          Nothing here writes to your data. Open one, play with it, and keep the ones you would use.
         </p>
       </header>
 

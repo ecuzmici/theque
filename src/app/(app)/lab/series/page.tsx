@@ -1,4 +1,4 @@
-import { titleScore } from "@/lib/enrichment/resolvers/title-match";
+import { authorsOverlap, titleScore } from "@/lib/enrichment/resolvers/title-match";
 
 import { LabHeader } from "../LabHeader";
 import { loadLabItems, type LabItem } from "../lab-data";
@@ -11,7 +11,8 @@ function author(items: LabItem[]): string {
 
 export default async function SeriesPage() {
   const items = await loadLabItems();
-  const books = items.filter((item) => item.category === "books" && item.series);
+  const allBooks = items.filter((item) => item.category === "books");
+  const books = allBooks.filter((item) => item.series);
 
   const groups = new Map<string, LabItem[]>();
   for (const book of books) {
@@ -29,6 +30,8 @@ export default async function SeriesPage() {
     for (const entry of remote?.book_series ?? []) {
       const p = entry.position;
       if (p === null || !Number.isInteger(p) || p < 1) continue;
+      // Hardcover lists announced books as "Untitled …" placeholders years ahead.
+      if (/^untitled\b/i.test(entry.book.title)) continue;
       const current = byPosition.get(p);
       if (!current || (entry.book.users_count ?? 0) > (current.book.users_count ?? 0)) byPosition.set(p, entry);
     }
@@ -38,9 +41,17 @@ export default async function SeriesPage() {
       .sort((a, b) => a - b)
       .map((position) => {
         const remoteBook = byPosition.get(position)?.book;
+        // Many books have no series stored, so match on title and author across the whole library.
+        const seriesAuthor = author(owned);
         const mine =
           owned.find((o) => o.seriesIndex === position) ??
-          (remoteBook ? owned.find((o) => titleScore(o.title, remoteBook.title) === 2) : undefined);
+          (remoteBook
+            ? allBooks.find(
+                (b) =>
+                  titleScore(b.title, remoteBook.title) === 2 &&
+                  (!seriesAuthor || authorsOverlap(b.authors, [seriesAuthor])),
+              )
+            : undefined);
         return {
           position,
           title: mine?.title ?? remoteBook?.title ?? `Book ${position}`,
@@ -56,7 +67,13 @@ export default async function SeriesPage() {
         } satisfies SlotView;
       });
 
-    const lastDone = owned.filter((o) => o.doneAt).map((o) => o.doneAt!).sort().pop() ?? null;
+    const matchedIds = new Set(slots.map((slot) => slot.itemId).filter(Boolean));
+    const lastDone =
+      allBooks
+        .filter((b) => matchedIds.has(b.id) && b.doneAt)
+        .map((b) => b.doneAt!)
+        .sort()
+        .pop() ?? null;
     return {
       name: owned[0]!.series!,
       author: author(owned),

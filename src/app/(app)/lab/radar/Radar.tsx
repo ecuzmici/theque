@@ -45,7 +45,14 @@ export function Radar({
       entries
         .filter((e) => kind === "all" || e.kind === kind)
         .filter((e) => !onlyUpcoming || when(e.date, now).upcoming)
-        .sort((a, b) => (b.date ?? "9999").localeCompare(a.date ?? "9999")),
+        // Soonest upcoming first, then the newest releases, then undated announcements.
+        .sort((a, b) => {
+          const rank = (e: RadarEntry) => (!e.date ? 2 : Date.parse(e.date) > now ? 0 : 1);
+          const byRank = rank(a) - rank(b);
+          if (byRank) return byRank;
+          if (rank(a) === 0) return a.date!.localeCompare(b.date!);
+          return (b.date ?? "").localeCompare(a.date ?? "");
+        }),
     [entries, kind, now, onlyUpcoming],
   );
 
