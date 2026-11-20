@@ -35,7 +35,7 @@ export default async function HeadToHeadPage() {
     }));
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl pb-24">
       <PageHeader title="Head to head" description="Pick the better of two. Your top 10 in each category follows." />
       <HeadToHead items={items} saveAction={saveRankOrders} />
     </div>

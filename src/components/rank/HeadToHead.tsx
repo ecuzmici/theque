@@ -43,6 +43,8 @@ const WORDS: Record<RankCategory, { chip: string; one: string; many: string; she
   movies_and_tv: { chip: "Watch", one: "title", many: "films and shows", shelf: "watch" },
 };
 
+const KBD = "mx-0.5 inline-flex min-w-6 items-center justify-center rounded border border-border bg-muted px-1 py-0.5 font-sans text-sm leading-none text-foreground";
+
 function chipClass(selected: boolean) {
   return cn(
     "inline-flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-sm font-medium transition pointer-coarse:min-h-[var(--tap-target-min)]",
@@ -250,7 +252,7 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
               Too close to call
             </Button>
             <p className="hidden text-xs text-muted-foreground lg-fine:block">
-              Press <kbd className="font-mono">←</kbd> or <kbd className="font-mono">→</kbd> to pick a side.
+              Press <kbd className={KBD}>←</kbd> or <kbd className={KBD}>→</kbd> to pick a side.
             </p>
           </div>
         </section>
