@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -46,6 +46,7 @@ function slideBackground(colors: string[], index: number, count: number): string
 export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedStoryProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLElement>(null);
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const swiped = useRef(false);
@@ -57,14 +58,41 @@ export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedSto
     frameRef.current?.focus({ preventScroll: true });
   }, []);
 
+  // The story is modal: the app shell behind it is inert and the page does not scroll.
+  useEffect(() => {
+    const overlay = overlayRef.current;
+    if (!overlay) return;
+    const madeInert: HTMLElement[] = [];
+    for (let node: HTMLElement | null = overlay; node && node !== document.body; node = node.parentElement) {
+      for (const sibling of Array.from(node.parentElement?.children ?? [])) {
+        if (sibling !== node && sibling instanceof HTMLElement && !sibling.inert) {
+          sibling.inert = true;
+          madeInert.push(sibling);
+        }
+      }
+    }
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      for (const el of madeInert) el.inert = false;
+      document.body.style.overflow = overflow;
+    };
+  }, []);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "Escape") {
+        router.push(CLOSE_HREF);
+        return;
+      }
+      // Keys in the year switch or in a form field keep their own meaning.
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest("nav, a, input, textarea, select, [contenteditable]")) return;
       if (e.key === "ArrowRight") go(1);
       else if (e.key === "ArrowLeft") go(-1);
       else if (e.key === "Home") setIndex(0);
       else if (e.key === "End") setIndex(last);
-      else if (e.key === "Escape") router.push(CLOSE_HREF);
       else return;
       e.preventDefault();
     }
@@ -98,7 +126,12 @@ export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedSto
   const label = wrapped.partial ? `Your ${wrapped.year} so far` : `Your ${wrapped.year}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center gap-6 bg-[#0c0a09] text-white lg:p-6">
+    <div
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={label}
+      className="fixed inset-0 z-50 flex items-center justify-center gap-6 bg-[#0c0a09] text-white lg:p-6">
       <Button
         variant="ghost"
         size="icon-lg"
@@ -114,7 +147,7 @@ export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedSto
         ref={frameRef}
         tabIndex={-1}
         aria-roledescription="carousel"
-        aria-label={label}
+        aria-label="Slides"
         className="relative flex h-full w-full flex-col overflow-hidden outline-none lg:aspect-[9/16] lg:h-[min(100%,52rem)] lg:w-auto lg:rounded-3xl lg:shadow-2xl lg:ring-1 lg:ring-white/10"
         style={{ background: slideBackground(wrapped.palette.colors, index, slides.length) }}
       >
@@ -129,20 +162,21 @@ export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedSto
               {years.map((year) => {
                 const active = year === wrapped.year;
                 return (
-                  <Link
+                  <Button
                     key={year}
-                    href={yearHref(year, currentYear)}
+                    variant="ghost"
+                    nativeButton={false}
+                    render={<Link href={yearHref(year, currentYear)} />}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 text-sm font-medium tabular-nums transition pointer-coarse:min-h-[var(--tap-target-min)]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+                      "rounded-full border px-3 tabular-nums focus-visible:ring-white/60",
                       active
-                        ? "border-white bg-white text-[#0c0a09]"
-                        : "border-white/25 text-white/75 hover:border-white/50 hover:text-white",
+                        ? "border-white bg-white text-[#0c0a09] hover:bg-white hover:text-[#0c0a09] dark:hover:bg-white"
+                        : "border-white/25 text-white/75 hover:border-white/50 hover:bg-transparent hover:text-white dark:hover:bg-transparent",
                     )}
                   >
                     {year}
-                  </Link>
+                  </Button>
                 );
               })}
             </nav>
@@ -179,15 +213,17 @@ export function WrappedStory({ wrapped, slides, years, currentYear }: WrappedSto
             className="absolute inset-y-0 right-0 z-10 w-2/3 cursor-e-resize outline-none"
             onClick={() => tap(1)}
           />
-          <div
-            key={index}
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${index + 1} of ${slides.length}`}
-            aria-live="polite"
-            className="wrapped-rise pointer-events-none relative z-20 mx-auto flex h-full w-full max-w-md flex-col justify-center gap-4 overflow-hidden px-6 pb-[max(2rem,env(safe-area-inset-bottom))] [&_a]:pointer-events-auto [&_button]:pointer-events-auto"
-          >
-            <SlideBody kind={kind} wrapped={wrapped} actions={{ onRestart: () => setIndex(0), closeHref: CLOSE_HREF }} />
+          {/* The live region stays mounted, so a screen reader reads each new slide. */}
+          <div aria-live="polite" className="pointer-events-none absolute inset-0 z-20">
+            <div
+              key={index}
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`${index + 1} of ${slides.length}`}
+              className="wrapped-rise mx-auto flex h-full w-full max-w-md flex-col justify-center gap-4 overflow-hidden px-6 pb-[max(2rem,env(safe-area-inset-bottom))] [container-type:size] [&_a]:pointer-events-auto [&_button]:pointer-events-auto"
+            >
+              <SlideBody kind={kind} wrapped={wrapped} actions={{ onRestart: () => setIndex(0), closeHref: CLOSE_HREF }} />
+            </div>
           </div>
         </div>
       </section>

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 import { CoverImg } from "@/components/items/CoverImg";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,10 @@ const NOUNS: Record<ItemCategory, [string, string]> = {
   recipes: ["recipe", "recipes"],
 };
 
-function noun(category: ItemCategory, count: number): string {
-  return NOUNS[category][count === 1 ? 0 : 1];
+/** A plain noun for a category. A finish without a category is an "other item". */
+function noun(category: ItemCategory | null, count: number): string {
+  const [one, many] = category ? NOUNS[category] : ["other item", "other items"];
+  return count === 1 ? one : many;
 }
 
 function plural(count: number, one: string, many: string): string {
@@ -57,13 +59,25 @@ function Note({ children }: { children: React.ReactNode }) {
   return <p className="text-sm leading-relaxed text-white/70">{children}</p>;
 }
 
-function CoverGrid({ items, label }: { items: WrappedCover[]; label: string }) {
+/**
+ * Three columns of covers that fill the slide width. The rows shrink to fit
+ * the slide height (container units of the slide body), so a short phone
+ * shows every cover. A cover crops to 5:6 at most.
+ */
+function CoverGrid({ items, label, reserve }: { items: WrappedCover[]; label: string; reserve: string }) {
+  const rows = Math.max(1, Math.ceil(items.length / 3));
+  const style = {
+    "--col": "calc((100cqw - 1rem) / 3)",
+    "--row": `min(calc(var(--col) * 1.5), calc((100cqh - ${reserve} - ${rows - 1} * 0.5rem) / ${rows}))`,
+    gridTemplateColumns: "repeat(3, min(var(--col), calc(var(--row) / 1.2)))",
+    gridAutoRows: "var(--row)",
+  } as React.CSSProperties;
   return (
-    <ul aria-label={label} className="grid w-full max-w-[min(100%,20rem)] grid-cols-3 gap-2">
+    <ul aria-label={label} className="grid w-full gap-2" style={style}>
       {items.map((item) => (
         <li
           key={item.id}
-          className="aspect-[2/3] overflow-hidden rounded-md shadow-lg ring-1 ring-white/10"
+          className="overflow-hidden rounded-md shadow-lg ring-1 ring-white/10"
           style={{ background: item.color ?? "#292524" }}
         >
           {item.cover ? (
@@ -85,7 +99,7 @@ function CategoryBars({ wrapped }: { wrapped: Wrapped }) {
   return (
     <ul className="flex w-full flex-col gap-3">
       {wrapped.categories.map((c) => (
-        <li key={c.category} className="flex flex-col gap-1">
+        <li key={c.label} className="flex flex-col gap-1">
           <span className="text-sm text-white/80">{c.label}</span>
           <span className="flex items-center gap-2">
             <span
@@ -192,7 +206,7 @@ export function SlideBody({ kind, wrapped, actions }: { kind: SlideKind; wrapped
       return (
         <>
           <Kicker>What you finished</Kicker>
-          <Headline>Mostly {wrapped.categories[0]!.label.toLowerCase()}</Headline>
+          <Headline>{wrapped.categories[0]!.category ? `Mostly ${noun(wrapped.categories[0]!.category, 2)}` : "A mix"}</Headline>
           <CategoryBars wrapped={wrapped} />
         </>
       );
@@ -237,7 +251,7 @@ export function SlideBody({ kind, wrapped, actions }: { kind: SlideKind; wrapped
           <Headline>
             {fav.count === 1 ? `One ${starWord} finish` : `${fav.count.toLocaleString("en-US")} ${starWord} finishes`}
           </Headline>
-          <CoverGrid items={fav.items} label={`${starWord} finishes`} />
+          <CoverGrid items={fav.items} label={`${starWord} finishes`} reserve="9.5rem" />
           {fav.count > fav.items.length ? <Note>The newest {fav.items.length} of them.</Note> : null}
         </>
       );
@@ -247,9 +261,9 @@ export function SlideBody({ kind, wrapped, actions }: { kind: SlideKind; wrapped
       return (
         <>
           <Kicker>Your author of the year</Kicker>
-          <Headline className="text-5xl">{author.name}</Headline>
+          <Headline className="text-4xl">{author.name}</Headline>
           <Note>{plural(author.count, "book", "books")} finished.</Note>
-          <CoverGrid items={author.items} label={`Books by ${author.name}`} />
+          <CoverGrid items={author.items} label={`Books by ${author.name}`} reserve="10rem" />
         </>
       );
     }
@@ -284,7 +298,7 @@ export function SlideBody({ kind, wrapped, actions }: { kind: SlideKind; wrapped
       ].filter(Boolean);
       return (
         <>
-          <Kicker>Your year in two words</Kicker>
+          <Kicker>{genre && mood ? "Your top mood and genre" : genre ? "Your top genre" : "Your top mood"}</Kicker>
           <Headline className="text-5xl">{line}</Headline>
           <Note>{notes.join(" ")}</Note>
         </>
@@ -299,7 +313,7 @@ export function SlideBody({ kind, wrapped, actions }: { kind: SlideKind; wrapped
             “{verdict.text}”
           </blockquote>
           <Note>
-            On {verdict.title}, <span aria-label={`${verdict.rating} stars`}>{stars(verdict.rating)}</span>
+            On {verdict.title}, <span role="img" aria-label={`${verdict.rating} stars`}>{stars(verdict.rating)}</span>
           </Note>
         </>
       );
