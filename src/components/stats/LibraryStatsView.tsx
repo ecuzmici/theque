@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Sparkles, Star } from "lucide-react";
 
+import { TopTenList } from "@/components/rank/TopTenList";
 import { formatCategory } from "@/lib/item-labels";
+import type { TopTens } from "@/lib/rank/load-top-ten";
 import type { LibraryStats } from "@/lib/stats/library-stats";
 import { cn } from "@/lib/utils";
 
@@ -96,7 +98,39 @@ function EmptyState() {
   );
 }
 
-export function LibraryStatsView({ stats }: { stats: LibraryStats }) {
+function TopTenBlock({ topTens }: { topTens: TopTens }) {
+  const lists = [
+    { title: "Books", entries: topTens.books.slice(0, 5) },
+    { title: "Watch", entries: topTens.movies_and_tv.slice(0, 5) },
+  ].filter((list) => list.entries.length > 0);
+
+  return (
+    <SectionCard title="Your top 5">
+      {lists.length > 0 ? (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {lists.map((list) => (
+            <div key={list.title} className="min-w-0">
+              <h3 className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {list.title}
+              </h3>
+              <TopTenList entries={list.entries} dense />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">Rate the books and films you finish, and your best ones show here.</p>
+      )}
+      <Link
+        href="/rank"
+        className="mt-4 inline-flex min-h-10 items-center text-sm font-medium text-foreground underline-offset-4 hover:underline pointer-coarse:min-h-[var(--tap-target-min)]"
+      >
+        {lists.length > 0 ? "See your top 10" : "Rank head to head"} →
+      </Link>
+    </SectionCard>
+  );
+}
+
+export function LibraryStatsView({ stats, topTens }: { stats: LibraryStats; topTens?: TopTens }) {
   if (stats.totalSaved === 0) {
     return <EmptyState />;
   }
@@ -216,6 +250,8 @@ export function LibraryStatsView({ stats }: { stats: LibraryStats }) {
           )}
         </SectionCard>
       </div>
+
+      {topTens ? <TopTenBlock topTens={topTens} /> : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <SectionCard title="Top sources">
