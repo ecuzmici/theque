@@ -1,11 +1,7 @@
-import type { ItemCategory } from "@/lib/database.types";
-
-import { isValidKey } from "./rank-key";
 import type { RankWrite } from "./session";
-import { RANK_CATEGORIES } from "./top-ten";
 
-/** A respace writes one key per item in a rating block. */
-export const MAX_WRITES = 500;
+/** A respace writes one key per item in a rating block. The body is JSON, so a long list is fine. */
+export const MAX_WRITES = 2000;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,31 +19,4 @@ export function parseRankWrites(input: unknown): RankWrite[] | null {
     writes.push({ id, rankOrder });
   }
   return writes;
-}
-
-export type RankTargetRow = {
-  id: string;
-  status: string;
-  category: ItemCategory | null;
-  rating_personal: number | null;
-};
-
-/**
- * Checks the writes against the user's rows (read through RLS). Each id must
- * be a visible row. A key must be a finished book or film, and the key must
- * be in the band of the current rating. A null key is always allowed.
- */
-export function checkAgainstItems(writes: RankWrite[], rows: RankTargetRow[]): boolean {
-  const byId = new Map(rows.map((row) => [row.id, row]));
-  return writes.every(({ id, rankOrder }) => {
-    const row = byId.get(id);
-    if (!row) return false;
-    if (rankOrder === null) return true;
-    return (
-      row.status === "done" &&
-      (RANK_CATEGORIES as readonly string[]).includes(row.category ?? "") &&
-      row.rating_personal !== null &&
-      isValidKey(row.rating_personal, rankOrder)
-    );
-  });
 }

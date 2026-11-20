@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isPlaced, isValidKey, keyBetween, MIN_GAP, spreadKeys } from "./rank-key";
+import { isPlaced, keyBetween, MIN_GAP, spreadKeys } from "./rank-key";
 
 describe("rank key", () => {
   it("gives the midpoint of the rating band to the first item in a rating", () => {
@@ -29,12 +29,5 @@ describe("rank key", () => {
     expect(isPlaced(4, 5.5)).toBe(false);
     expect(isPlaced(5, 5)).toBe(false);
     expect(isPlaced(5, 6)).toBe(false);
-  });
-
-  it("validates input from a client", () => {
-    expect(isValidKey(4, 4.2)).toBe(true);
-    expect(isValidKey(4, Number.NaN)).toBe(false);
-    expect(isValidKey(4, 3.9)).toBe(false);
-    expect(isValidKey(2.5, 2.7)).toBe(false);
   });
 });

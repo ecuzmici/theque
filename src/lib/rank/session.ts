@@ -6,8 +6,10 @@
  * so the matches only split ties that stars cannot.
  *
  * The session is immutable. Each step returns the next session and the
- * `rank_order` writes that make the database agree with it. The caller sends
- * the writes and keeps the next session. See `rank-key.ts` for the key rule.
+ * `rank_order` writes that the database still needs. The caller sends the
+ * writes and calls `confirmSaved` when the save succeeds. Until then the
+ * writes stay pending, so a failed save can be sent again. See `rank-key.ts`
+ * for the key rule.
  */
 import { isPlaced, keyBetween, spreadKeys } from "./rank-key";
 
@@ -24,7 +26,7 @@ export type RankSession = Readonly<
   Board & {
     /** The contenders as given, so a restart can start from them. */
     contenders: Contender[];
-    /** The `rank_order` that the database holds for each id, as far as the session knows. */
+    /** The `rank_order` that the database holds for each id: the last confirmed save. */
     saved: Record<string, number | null>;
     history: Board[];
   }
@@ -82,17 +84,38 @@ function boardOf(session: RankSession): Board {
   return { ranked: session.ranked, queue: session.queue, lo: session.lo, hi: session.hi };
 }
 
-/** Builds the writes from `saved` to `board`, and the session after they apply. */
-function commit(session: RankSession, board: Board, history: Board[]): Step {
-  const target: Record<string, number | null> = {};
-  for (const c of session.contenders) target[c.id] = null;
-  for (const p of board.ranked) target[p.id] = p.rankOrder;
+function keysOf(session: Pick<RankSession, "contenders" | "ranked">): Record<string, number | null> {
+  const keys: Record<string, number | null> = {};
+  for (const c of session.contenders) keys[c.id] = null;
+  for (const p of session.ranked) keys[p.id] = p.rankOrder;
+  return keys;
+}
 
+/** Moves to `board`. `saved` does not change until the caller confirms a save. */
+function commit(session: RankSession, board: Board, history: Board[]): Step {
+  const next: RankSession = { ...session, ...board, history };
+  return { session: next, writes: pendingWrites(next) };
+}
+
+/** The writes that make the database agree with the session: all keys not yet confirmed. */
+export function pendingWrites(session: RankSession): RankWrite[] {
   const writes: RankWrite[] = [];
-  for (const [id, rankOrder] of Object.entries(target)) {
+  for (const [id, rankOrder] of Object.entries(keysOf(session))) {
     if ((session.saved[id] ?? null) !== rankOrder) writes.push({ id, rankOrder });
   }
-  return { session: { ...session, ...board, saved: target, history }, writes };
+  return writes;
+}
+
+/** Records that the database now holds these keys. Call it only after the save succeeds. */
+export function confirmSaved(session: RankSession, writes: RankWrite[]): RankSession {
+  const saved = { ...session.saved };
+  for (const w of writes) saved[w.id] = w.rankOrder;
+  return { ...session, saved };
+}
+
+/** The key of each contender in the session's order, saved or not. Null means not placed. */
+export function placements(session: RankSession): Record<string, number | null> {
+  return keysOf(session);
 }
 
 /**

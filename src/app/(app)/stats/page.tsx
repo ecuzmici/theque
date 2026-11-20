@@ -14,7 +14,11 @@ export default async function StatsPage() {
     redirect("/login");
   }
 
-  const [stats, topTens] = await Promise.all([fetchLibraryStats(supabase), loadTopTens(supabase)]);
+  // The top 10 block is extra: when it fails to load, the rest of the page still shows.
+  const [stats, topTens] = await Promise.all([
+    fetchLibraryStats(supabase),
+    loadTopTens(supabase).catch(() => undefined),
+  ]);
 
   return (
     <div>

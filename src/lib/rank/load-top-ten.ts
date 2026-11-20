@@ -20,6 +20,8 @@ export async function loadTopTens(supabase: Awaited<ReturnType<typeof createClie
     .eq("status", "done")
     .in("category", [...RANK_CATEGORIES])
     .not("rating_personal", "is", null)
+    .order("rating_personal", { ascending: false })
+    .order("rank_order", { ascending: true, nullsFirst: false })
     .limit(2000);
   if (error) throw new Error(error.message);
 

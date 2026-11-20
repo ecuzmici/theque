@@ -5,10 +5,12 @@
  *   a better place. The key only splits items with the same rating.
  * - The key of an item with rating R is in the open band (R, R + 1). So
  *   `Math.floor(rank_order)` is the rating at the time of the match.
- * - When the user changes the rating later, the key is outside the band of
- *   the new rating. The item then counts as not placed: Head to head puts it
- *   back in the queue, and the top 10 sorts it after the placed items with
- *   its new rating. We do not change `src/lib/item-patch.ts` for this.
+ * - When the user changes the rating later, the trigger
+ *   `items_clear_rank_order_on_rating` sets the key to null. The item then
+ *   counts as not placed: Head to head puts it back in the queue, and the top
+ *   10 sorts it after the placed items with its new rating. A key outside its
+ *   band (from before the trigger) also counts as not placed.
+ * - The RPC `set_item_rank_orders` writes a batch and checks each band.
  * - A new item gets the midpoint between its two neighbours (or a band
  *   edge). When the gap is smaller than MIN_GAP, the caller gives the whole
  *   rating block new, even keys (`spreadKeys`).
@@ -19,11 +21,6 @@ export const MIN_GAP = 1e-9;
 
 export function isPlaced(rating: number, key: number): boolean {
   return key > rating && key < rating + 1;
-}
-
-/** Checks a key that comes from a client, for an item with this rating. */
-export function isValidKey(rating: number, key: number): boolean {
-  return Number.isInteger(rating) && Number.isFinite(key) && isPlaced(rating, key);
 }
 
 /**

@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import { MIN_GAP } from "./rank-key";
 import {
   canUndo,
+  confirmSaved,
   type Contender,
   currentMatch,
   openSession,
   pick,
   progress,
+  pendingWrites,
+  placements,
   type RankSession,
   restart,
   standings,
@@ -27,7 +30,7 @@ function playOut(session: RankSession, truth: string[]) {
     matches += 1;
     const step = pick(s, truth.indexOf(match.challenger) < truth.indexOf(match.opponent) ? "challenger" : "opponent");
     writes.push(...step.writes);
-    s = step.session;
+    s = confirmSaved(step.session, step.writes);
   }
   return { session: s, matches, writes };
 }
@@ -147,7 +150,8 @@ describe("head-to-head session", () => {
       { id: "a", rating: 5, rankOrder: 5.5 },
       { id: "b", rating: 5, rankOrder: null },
     ]);
-    const after = pick(opened, "challenger").session;
+    const picked = pick(opened, "challenger");
+    const after = confirmSaved(picked.session, picked.writes);
 
     expect(canUndo(after)).toBe(true);
     const back = undo(after);
@@ -167,5 +171,39 @@ describe("head-to-head session", () => {
 
     expect(keysOf(step.writes)).toEqual({ a: 5.5, b: null });
     expect(currentMatch(step.session)).toEqual({ challenger: "b", opponent: "a" });
+  });
+
+  it("keeps writes pending until the save is confirmed", () => {
+    const opened = openSession([
+      { id: "a", rating: 5, rankOrder: 5.5 },
+      { id: "b", rating: 5, rankOrder: null },
+    ]);
+    const step = pick(opened, "challenger");
+
+    expect(pendingWrites(step.session)).toEqual(step.writes);
+    expect(pendingWrites(confirmSaved(step.session, step.writes))).toEqual([]);
+  });
+
+  it("after a failed save, the next step sends the failed writes again", () => {
+    const opened = openSession([
+      { id: "a", rating: 5, rankOrder: 5.5 },
+      { id: "b", rating: 5, rankOrder: null },
+      { id: "c", rating: 4, rankOrder: null },
+    ]);
+    // The save of this step fails: the caller does not confirm it.
+    const failed = pick(opened, "challenger");
+    const retry = pendingWrites(failed.session);
+
+    expect(keysOf(retry)).toEqual({ b: 5.25, c: 4.5 });
+  });
+
+  it("shows the unsaved order while a save is pending", () => {
+    const opened = openSession([
+      { id: "a", rating: 5, rankOrder: 5.5 },
+      { id: "b", rating: 5, rankOrder: null },
+    ]);
+    const step = pick(opened, "challenger");
+
+    expect(placements(step.session)).toEqual({ a: 5.5, b: 5.25 });
   });
 });

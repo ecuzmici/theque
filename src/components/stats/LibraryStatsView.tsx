@@ -100,12 +100,12 @@ function EmptyState() {
 
 function TopTenBlock({ topTens }: { topTens: TopTens }) {
   const lists = [
-    { title: "Books", entries: topTens.books },
-    { title: "Watch", entries: topTens.movies_and_tv },
+    { title: "Books", entries: topTens.books.slice(0, 5) },
+    { title: "Watch", entries: topTens.movies_and_tv.slice(0, 5) },
   ].filter((list) => list.entries.length > 0);
 
   return (
-    <SectionCard title="Your top 10">
+    <SectionCard title="Your top 5">
       {lists.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2">
           {lists.map((list) => (
@@ -124,7 +124,7 @@ function TopTenBlock({ topTens }: { topTens: TopTens }) {
         href="/rank"
         className="mt-4 inline-flex min-h-10 items-center text-sm font-medium text-foreground underline-offset-4 hover:underline pointer-coarse:min-h-[var(--tap-target-min)]"
       >
-        Settle ties head to head →
+        {lists.length > 0 ? "See your top 10" : "Rank head to head"} →
       </Link>
     </SectionCard>
   );

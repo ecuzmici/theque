@@ -1,15 +1,16 @@
 "use server";
 
 import { getSessionUserOrNull } from "@/lib/auth/session-user";
-import { checkAgainstItems, parseRankWrites } from "@/lib/rank/writes";
+import { parseRankWrites } from "@/lib/rank/writes";
 import { createClient } from "@/lib/supabase/server";
 
 export type SaveRankResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Saves head-to-head keys to `items.rank_order`. It uses the session client,
- * so RLS limits every read and write to the signed-in user's rows. It checks
- * each key against the current rating of its item (see src/lib/rank/rank-key.ts).
+ * Saves head-to-head keys to `items.rank_order` in one batch. The RPC
+ * `set_item_rank_orders` is security invoker, so RLS applies. It checks each
+ * key against the current rating of a done item, and it rolls back the whole
+ * batch when one row does not match (see src/lib/rank/rank-key.ts).
  */
 export async function saveRankOrders(input: unknown): Promise<SaveRankResult> {
   const user = await getSessionUserOrNull();
@@ -19,23 +20,13 @@ export async function saveRankOrders(input: unknown): Promise<SaveRankResult> {
   if (!writes) return { ok: false, error: "That ranking did not save." };
 
   const supabase = await createClient();
-  const { data: rows, error: readError } = await supabase
-    .from("items")
-    .select("id, status, category, rating_personal")
-    .in(
-      "id",
-      writes.map((w) => w.id),
-    );
-  if (readError) return { ok: false, error: "That ranking did not save." };
-  if (!checkAgainstItems(writes, rows ?? [])) {
-    return { ok: false, error: "A rating changed. Reload the page to rank again." };
+  const { error } = await supabase.rpc("set_item_rank_orders", {
+    writes: writes.map(({ id, rankOrder }) => ({ id, rank_order: rankOrder })),
+  });
+  if (error) {
+    return error.code === "22023"
+      ? { ok: false, error: "A rating changed. Reload the page to rank again." }
+      : { ok: false, error: "That ranking did not save." };
   }
-
-  const results = await Promise.all(
-    writes.map(({ id, rankOrder }) =>
-      supabase.from("items").update({ rank_order: rankOrder }).eq("id", id).eq("user_id", user.id),
-    ),
-  );
-  if (results.some((r) => r.error)) return { ok: false, error: "That ranking did not save." };
   return { ok: true };
 }

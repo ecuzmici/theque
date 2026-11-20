@@ -8,9 +8,12 @@ import { TopTenList } from "@/components/rank/TopTenList";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   canUndo,
+  confirmSaved,
   currentMatch,
   openSession,
+  pendingWrites,
   pick,
+  placements,
   progress,
   type RankSession,
   type RankWrite,
@@ -47,19 +50,39 @@ const KBD = "mx-0.5 inline-flex min-w-6 items-center justify-center rounded bord
 
 function chipClass(selected: boolean) {
   return cn(
-    "inline-flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-sm font-medium transition pointer-coarse:min-h-[var(--tap-target-min)]",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+    "h-10 rounded-full border px-3.5 text-sm font-medium",
     selected
-      ? "border-foreground bg-foreground text-background"
+      ? "border-foreground bg-foreground text-background hover:bg-foreground hover:text-background dark:hover:bg-foreground"
       : "border-border bg-card text-muted-foreground hover:text-foreground",
   );
 }
 
-function MatchCard({ item, side, onPick }: { item: RankItem; side: "left" | "right"; onPick: () => void }) {
+/** Arrow keys pick a side, except when focus is on another control. */
+function arrowsBelongToMatch(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return true;
+  if (target.closest("[data-match-card]")) return true;
+  return !target.closest(
+    "[role='radiogroup'], button, a, input, textarea, select, [contenteditable='true'], [tabindex]:not([tabindex='-1'])",
+  );
+}
+
+function MatchCard({
+  item,
+  side,
+  onPick,
+  disabled,
+}: {
+  item: RankItem;
+  side: "left" | "right";
+  onPick: () => void;
+  disabled: boolean;
+}) {
   return (
     <Button
       variant="outline"
+      data-match-card
       onClick={onPick}
+      disabled={disabled}
       aria-label={`${item.title} was better`}
       aria-keyshortcuts={side === "left" ? "ArrowLeft" : "ArrowRight"}
       className="group/card h-auto w-full min-w-0 flex-col justify-start gap-0 rounded-[var(--ks-radius-card)] bg-card p-3 text-center whitespace-normal hover:-translate-y-0.5 hover:border-foreground/40 sm:p-4 dark:bg-card"
@@ -108,7 +131,12 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
     movies_and_tv: openSession(contendersFor(items, "movies_and_tv")),
   }));
   const [confirmingRestart, setConfirmingRestart] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A save in flight or a failed save blocks new picks, so page and database cannot drift apart.
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<{ kind: RankCategory; message: string } | null>(null);
+  const busy = saving || error !== null;
+  // Controls look disabled only after a failure. During a short save, `apply` drops the pick.
+  const blocked = error !== null;
 
   const session = sessions[kind];
   const words = WORDS[kind];
@@ -118,31 +146,50 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
   const { placed, total } = progress(session);
   const ratedCount = useMemo(() => items.filter((i) => i.category === kind).length, [items, kind]);
 
-  const save = useCallback((writes: RankWrite[]) => {
-    if (writes.length === 0) return;
-    saveAction(writes)
-      .then((result) => {
-        if (!result.ok) setError(result.error);
-      })
-      .catch(() => setError("That ranking did not save. Check your connection and reload."));
-  }, [saveAction]);
+  /** Sends the pending writes of one category. `saved` moves only when the save succeeds. */
+  const flush = useCallback(
+    async (k: RankCategory, next: RankSession) => {
+      const writes = pendingWrites(next);
+      if (writes.length === 0) return;
+      setSaving(true);
+      let result: Awaited<ReturnType<SaveRankAction>>;
+      try {
+        result = await saveAction(writes);
+      } catch {
+        result = { ok: false, error: "That ranking did not save. Check your connection." };
+      }
+      setSaving(false);
+      if (result.ok) {
+        setSessions((all) => ({ ...all, [k]: confirmSaved(all[k], writes) }));
+        setError(null);
+      } else {
+        setError({ kind: k, message: result.error });
+      }
+    },
+    [saveAction],
+  );
 
   const apply = useCallback(
     (step: Step) => {
+      if (busy) return;
       setSessions((all) => ({ ...all, [kind]: step.session }));
-      save(step.writes);
+      void flush(kind, step.session);
     },
-    [kind, save],
+    [busy, flush, kind],
   );
+
+  const retry = () => {
+    if (!error || saving) return;
+    void flush(error.kind, sessions[error.kind]);
+  };
 
   const choose = useCallback((winner: Winner) => apply(pick(session, winner)), [apply, session]);
 
   useEffect(() => {
-    if (!match || confirmingRestart) return;
+    if (!match || confirmingRestart || busy) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (!arrowsBelongToMatch(event.target)) return;
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         choose("challenger");
@@ -153,13 +200,12 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [choose, confirmingRestart, match]);
+  }, [busy, choose, confirmingRestart, match]);
 
   // The top 10 uses the keys of this session, so it moves with each pick.
   const top = useMemo(() => {
-    const live = items.map((i) =>
-      i.id in sessions[i.category].saved ? { ...i, rankOrder: sessions[i.category].saved[i.id] ?? null } : i,
-    );
+    const keys = placements(sessions[kind]);
+    const live = items.map((i) => (i.id in keys ? { ...i, rankOrder: keys[i.id] ?? null } : i));
     return topTen(live, kind);
   }, [items, kind, sessions]);
 
@@ -168,9 +214,9 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="radiogroup" aria-label="What to rank" className="flex gap-2">
           {RANK_CATEGORIES.map((k) => (
-            <button
+            <Button
               key={k}
-              type="button"
+              variant="ghost"
               role="radio"
               aria-checked={kind === k}
               onClick={() => {
@@ -180,7 +226,7 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
               className={chipClass(kind === k)}
             >
               {WORDS[k].chip}
-            </button>
+            </Button>
           ))}
         </div>
         {total > 1 ? (
@@ -190,6 +236,7 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
                 <span className="mr-1 text-sm text-muted-foreground">Clear all places?</span>
                 <Button
                   variant="destructive"
+                  disabled={blocked}
                   onClick={() => {
                     apply(restart(session));
                     setConfirmingRestart(false);
@@ -203,10 +250,10 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
               </>
             ) : (
               <>
-                <Button variant="outline" onClick={() => apply(undo(session))} disabled={!canUndo(session)}>
+                <Button variant="outline" onClick={() => apply(undo(session))} disabled={blocked || !canUndo(session)}>
                   Undo
                 </Button>
-                <Button variant="ghost" onClick={() => setConfirmingRestart(true)} disabled={placed === 0}>
+                <Button variant="ghost" onClick={() => setConfirmingRestart(true)} disabled={blocked || placed === 0}>
                   Start over
                 </Button>
               </>
@@ -216,9 +263,17 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
       </div>
 
       {error ? (
-        <p role="alert" className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
+        <div
+          role="alert"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm text-destructive"
+        >
+          <span className="min-w-0">
+            {error.message} {error.kind !== kind ? `(${WORDS[error.kind].chip})` : null}
+          </span>
+          <Button variant="outline" onClick={retry} disabled={saving}>
+            {saving ? "Saving" : "Retry"}
+          </Button>
+        </div>
       ) : null}
 
       {total > 0 ? (
@@ -244,11 +299,16 @@ export function HeadToHead({ items, saveAction }: { items: RankItem[]; saveActio
             Which was better?
           </h2>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:gap-6">
-            <MatchCard item={challenger} side="left" onPick={() => choose("challenger")} />
-            <MatchCard item={opponent} side="right" onPick={() => choose("opponent")} />
+            <MatchCard item={challenger} side="left" disabled={blocked} onPick={() => choose("challenger")} />
+            <MatchCard item={opponent} side="right" disabled={blocked} onPick={() => choose("opponent")} />
           </div>
           <div className="mt-3 flex flex-col items-center gap-1">
-            <Button variant="ghost" onClick={() => choose("opponent")} className="text-muted-foreground">
+            <Button
+              variant="ghost"
+              disabled={blocked}
+              onClick={() => choose("opponent")}
+              className="text-muted-foreground"
+            >
               Too close to call
             </Button>
             <p className="hidden text-xs text-muted-foreground lg-fine:block">
