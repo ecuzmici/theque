@@ -183,6 +183,11 @@ async function tmdb<T>(
   }
 }
 
+function sameName(a: string, b: string): boolean {
+  const norm = (v: string) => v.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+  return norm(a) === norm(b);
+}
+
 export type DirectorCredit = {
   id: number;
   media: "movie" | "tv";
@@ -192,8 +197,8 @@ export type DirectorCredit = {
 };
 
 /**
- * The films and shows that a person directed, newest first. The search
- * prefers a person known for directing over a namesake.
+ * The films and shows that a person directed, newest first. The person must
+ * have the same name. A person known for directing wins over a namesake.
  */
 export async function directorCredits(
   fetchFn: Fetch,
@@ -202,7 +207,8 @@ export async function directorCredits(
 ): Promise<SourceResult<{ person: string; credits: DirectorCredit[] } | null>> {
   const search = await tmdb<TmdbPersonSearch>(fetchFn, key, "/search/person", { query: name });
   if (search.state !== "ok") return search;
-  const results = search.data.results ?? [];
+  // TMDB search is fuzzy: "Jon Park" also finds "Jon Parkin". Keep the people with the same name.
+  const results = (search.data.results ?? []).filter((p) => sameName(p.name, name));
   const person = results.find((p) => p.known_for_department === "Directing") ?? results[0];
   if (!person) return { state: "ok", data: null };
 

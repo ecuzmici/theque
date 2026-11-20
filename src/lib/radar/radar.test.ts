@@ -181,6 +181,21 @@ describe("loadRadar", () => {
     expect(films).toContain("Scapegoat");
   });
 
+  it("skips a director when TMDB finds only a person with another name", async () => {
+    const library = [
+      item({ title: "Midsommar", category: "movies_and_tv", status: "done", rating: 5, directors: ["Ari Ast"] }),
+    ];
+    const { fetchFn, calls } = recordedFetch();
+    const searchAsAster = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname === "/3/search/person") url.searchParams.set("query", "Ari Aster");
+      return fetchFn(url, init);
+    }) as unknown as typeof fetch;
+    const radar = await loadRadar(library, { now: NOW, fetch: searchAsAster, keys: KEYS });
+    expect(radar.entries).toEqual([]);
+    expect(calls.some((c) => c.url.includes("combined_credits"))).toBe(false);
+  });
+
   it("names the rated item that put each release on the radar", async () => {
     const { radar } = await radarWith();
     const dune = radar.entries.find((e) => e.title === "Dune: Part Three");
