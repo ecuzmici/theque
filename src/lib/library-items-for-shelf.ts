@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
-import { SHELVES, olderThanCutoff, type ShelfDefinition, type ShelfId } from "@/lib/shelves";
+import { SHELVES, applyOlderThan, type ShelfDefinition, type ShelfId } from "@/lib/shelves";
 import type { LibraryItemRow } from "@/lib/types/library-item";
 
 export const LIBRARY_ITEM_COLUMNS =
@@ -23,6 +23,7 @@ export function applyShelfFilter<
     neq: (c: string, v: string) => Q;
     in: (c: string, v: string[]) => Q;
     lt: (c: string, v: string) => Q;
+    or: (filters: string) => Q;
   },
 >(query: Q, shelf: ShelfDefinition): Q {
   if (shelf.filter.status) {
@@ -43,7 +44,7 @@ export function applyShelfFilter<
   }
 
   if (shelf.filter.olderThanDays !== undefined) {
-    query = query.lt("created_at", olderThanCutoff(shelf.filter.olderThanDays).toISOString());
+    query = applyOlderThan(query, shelf.filter.olderThanDays);
   }
 
   return query;
