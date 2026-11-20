@@ -1,11 +1,12 @@
 import { Star } from "lucide-react";
 import { Link } from "next-view-transitions";
 
-import { CoverImg, type CoverUrls } from "@/components/items/CoverImg";
+import type { CoverUrls } from "@/components/items/CoverImg";
 import type { TimelineMonth } from "@/lib/diary/diary";
 import { cn } from "@/lib/utils";
 
 import type { CalendarBook } from "./DiaryCalendar";
+import { DiaryCover } from "./DiaryCover";
 
 /** One timeline row. The page decrypts `verdict` before it gets here. */
 export type DiaryEntry = CalendarBook & {
@@ -58,12 +59,7 @@ export function DiaryTimeline({ months }: { months: TimelineMonth<DiaryEntry>[] 
                   href={`/item/${entry.id}`}
                   className="-mx-2 flex gap-4 rounded-xl p-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <div
-                    className="h-[84px] w-14 shrink-0 overflow-hidden rounded-md bg-muted shadow-sm"
-                    style={!entry.cover && entry.color ? { backgroundColor: entry.color } : undefined}
-                  >
-                    {entry.cover ? <CoverImg urls={entry.cover} className="size-full object-cover" /> : null}
-                  </div>
+                  <DiaryCover cover={entry.cover} color={entry.color} />
                   <div className="min-w-0 flex-1 py-0.5">
                     <p className="font-serif text-lg leading-snug text-foreground">{entry.title}</p>
                     {entry.authors.length ? (

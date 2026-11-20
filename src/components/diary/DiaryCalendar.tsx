@@ -34,9 +34,18 @@ function dayLabel(day: CalendarDay<CalendarBook>): string {
 
 /**
  * A year of small month grids. A day with a finished book takes the colour of
- * that book's cover. A month with books links to its part of the timeline.
+ * that book's cover. A month in the timeline links to its part of it.
  */
-export function DiaryCalendar({ calendar, year }: { calendar: Calendar<CalendarBook>; year: number }) {
+export function DiaryCalendar({
+  calendar,
+  year,
+  linkedMonths,
+}: {
+  calendar: Calendar<CalendarBook>;
+  year: number;
+  /** Months (0 = January) that the timeline shows. Only these months get a link. */
+  linkedMonths: number[];
+}) {
   const [hover, setHover] = useState<CalendarDay<CalendarBook> | null>(null);
 
   return (
@@ -82,7 +91,7 @@ export function DiaryCalendar({ calendar, year }: { calendar: Calendar<CalendarB
           );
           return (
             <li key={month.month}>
-              {month.count ? (
+              {linkedMonths.includes(month.month) ? (
                 <a
                   href={`#month-${month.month + 1}`}
                   aria-label={`${label}. Go to the books.`}

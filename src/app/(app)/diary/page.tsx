@@ -71,16 +71,18 @@ export default async function ReadingDiaryPage({ searchParams }: { searchParams:
     createClient(),
     searchParams,
   ]);
-  // The goal is in the session JWT claims; the save action refreshes the token.
-  const { data: claims } = await supabase.auth.getClaims();
-  const goal = readingGoalFromMetadata(claims?.claims?.user_metadata);
+  // Read the goal from the Auth server, not from the JWT claims. A goal that
+  // another device saves then shows at once.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const goal = readingGoalFromMetadata(user?.user_metadata);
 
   const now = requestTime();
   const currentYear = new Date(now).getUTCFullYear();
   const years = diaryYears(items, currentYear);
   const askedYear = Number(first(params.year));
   const year = years.includes(askedYear) ? askedYear : currentYear;
-  const onlyVerdicts = first(params.verdicts) === "1";
   const isCurrentYear = year === currentYear;
 
   const entries: DiaryEntry[] = items
@@ -109,6 +111,8 @@ export default async function ReadingDiaryPage({ searchParams }: { searchParams:
   const calendar = buildCalendar(calendarBooks, year);
   const timeline = buildTimeline(entries, year);
   const withVerdict = timeline.reduce((n, m) => n + m.entries.filter((e) => e.verdict).length, 0);
+  // Ignore the verdict filter when no book in the year has a verdict.
+  const onlyVerdicts = first(params.verdicts) === "1" && withVerdict > 0;
   const shownTimeline = onlyVerdicts
     ? timeline
         .map((m) => ({ ...m, entries: m.entries.filter((e) => e.verdict) }))
@@ -158,7 +162,7 @@ export default async function ReadingDiaryPage({ searchParams }: { searchParams:
                   : "No books finished"}
             </p>
           </div>
-          <DiaryCalendar calendar={calendar} year={year} />
+          <DiaryCalendar calendar={calendar} year={year} linkedMonths={shownTimeline.map((m) => m.month)} />
         </Card>
       )}
 
@@ -170,8 +174,8 @@ export default async function ReadingDiaryPage({ searchParams }: { searchParams:
                 <div>
                   <h2 className="font-heading text-xl tracking-tight">{paceHeadline(pace)}</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {pace.finished} of {books(pace.goal)} so far. A steady pace needs {pace.expected} by today. At
-                    this rate you finish {year} with {pace.projected}.
+                    {pace.finished} of {books(pace.goal)} so far. A steady pace needs {pace.expected} by today.
+                    {pace.projected != null ? ` At this rate you finish ${year} with ${pace.projected}.` : null}
                   </p>
                 </div>
               </div>

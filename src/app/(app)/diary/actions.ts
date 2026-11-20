@@ -29,7 +29,8 @@ export async function saveReadingGoal(prev: GoalFormState, formData: FormData): 
   if (error) return { error: "The goal did not save. Try again.", saved: prev.saved };
 
   // Get a new access token, so that its claims carry the new metadata.
-  await supabase.auth.refreshSession();
+  const { error: refreshError } = await supabase.auth.refreshSession();
   revalidatePath("/diary");
+  if (refreshError) return { error: "The goal saved. Reload the page to see it.", saved: prev.saved };
   return { error: null, saved: prev.saved + 1 };
 }

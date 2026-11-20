@@ -18,6 +18,15 @@ export function GoalForm({ goal, year }: { goal: number | null; year: number }) 
   const [open, setOpen] = useState(false);
   // A controlled value, so the typed number stays after a failed save.
   const [value, setValue] = useState(String(goal ?? 24));
+  // The action state when the field opened. An error from before that is old.
+  const [stateAtOpen, setStateAtOpen] = useState(state);
+  const error = state !== stateAtOpen ? state.error : null;
+
+  function openForm() {
+    setValue(String(goal ?? 24));
+    setStateAtOpen(state);
+    setOpen(true);
+  }
   const inputId = useId();
   const errorId = useId();
 
@@ -29,7 +38,7 @@ export function GoalForm({ goal, year }: { goal: number | null; year: number }) 
 
   if (!open) {
     return (
-      <Button type="button" variant="outline" size="lg" onClick={() => setOpen(true)}>
+      <Button type="button" variant="outline" size="lg" onClick={openForm}>
         {goal == null ? `Set a goal for ${year}` : "Change goal"}
       </Button>
     );
@@ -53,8 +62,8 @@ export function GoalForm({ goal, year }: { goal: number | null; year: number }) 
           autoFocus
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          aria-invalid={state.error ? true : undefined}
-          aria-describedby={state.error ? errorId : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           className="h-9 w-24 tabular-nums"
         />
       </div>
@@ -78,9 +87,9 @@ export function GoalForm({ goal, year }: { goal: number | null; year: number }) 
           Remove goal
         </Button>
       ) : null}
-      {state.error ? (
+      {error ? (
         <p id={errorId} role="alert" className="basis-full text-sm text-destructive">
-          {state.error}
+          {error}
         </p>
       ) : null}
     </form>

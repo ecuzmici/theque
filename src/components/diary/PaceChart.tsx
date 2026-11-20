@@ -97,7 +97,7 @@ export function PaceChart({ pace, year }: { pace: Pace; year: number }) {
           <div
             role="img"
             tabIndex={0}
-            aria-label={`${finished} books finished by ${dateOf(year, Math.max(1, today))}. A steady pace to ${goal} needs ${pace.expected}.`}
+            aria-label={`${finished} books finished by ${dateOf(year, Math.max(1, today))}. A steady pace to ${goal} needs ${pace.expected}. Use the arrow keys to move by a week.`}
             onPointerMove={onPointerMove}
             onPointerLeave={() => setDay(null)}
             onKeyDown={onKeyDown}
@@ -186,6 +186,12 @@ export function PaceChart({ pace, year }: { pace: Pace; year: number }) {
           </div>
         </div>
       </div>
+      {/* Screen readers hear the point that the arrow keys select. */}
+      <p className="sr-only" aria-live="polite">
+        {day != null
+          ? `${dateOf(year, day)}: ${day <= today ? `${countOn(pace, day)} finished, ` : ""}${steadyAt(day)} on a steady pace.`
+          : ""}
+      </p>
     </figure>
   );
 }
