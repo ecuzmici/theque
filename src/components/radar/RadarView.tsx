@@ -26,6 +26,7 @@ function sourceNote(kind: "books" | "films", state: SourceState): string | null 
   const source = kind === "books" ? "Hardcover" : "TMDB";
   if (state === "no_key") return `${kind === "books" ? "Books" : "Films"} are off: the server has no ${source} API key.`;
   if (state === "error") return `${source} did not answer, so ${kind} are missing. Try again later.`;
+  if (state === "partial") return `${source} did not answer for every ${kind === "books" ? "author" : "director"}, so some ${kind} are missing.`;
   return null;
 }
 
@@ -53,9 +54,14 @@ export function RadarView({ radar }: { radar: Radar }) {
     );
   }
 
-  if (entries.length === 0 && notes.length > 0 && sources.books !== "ok" && sources.films !== "ok") {
+  // "Nothing new" is true only when every source with people to follow gave an answer.
+  const incomplete =
+    (watching.authors > 0 && sources.books !== "ok") || (watching.directors > 0 && sources.films !== "ok");
+  const keysMissing = [sources.books, sources.films].every((state) => state === "no_key");
+
+  if (entries.length === 0 && incomplete) {
     return (
-      <EmptyCard title="Release lookups are off">
+      <EmptyCard title={keysMissing ? "Release lookups are off" : "No releases to show"}>
         {notes.map((note) => (
           <p key={note}>{note}</p>
         ))}
@@ -199,7 +205,7 @@ function RadarCover({ entry }: { entry: RadarEntry }) {
 }
 
 function RadarCard({ entry }: { entry: RadarEntry }) {
-  const kindLabel = entry.kind === "book" ? "Book" : entry.url.includes("/tv/") ? "TV" : "Film";
+  const kindLabel = entry.kind === "book" ? "Book" : "Film";
   return (
     <li className="flex min-w-0 gap-3 rounded-2xl sm:gap-4 border border-border bg-card/60 p-3">
       <RadarCover entry={entry} />
@@ -211,7 +217,7 @@ function RadarCard({ entry }: { entry: RadarEntry }) {
         <p className="mt-1 break-words font-heading text-lg leading-tight text-foreground">{entry.title}</p>
         <p className="truncate text-xs text-muted-foreground">
           {entry.creator}
-          {entry.series ? ` · ${entry.series.name}${entry.series.position ? ` #${entry.series.position}` : ""}` : ""}
+          {entry.series ? ` · ${entry.series.name}${entry.series.position != null ? ` #${entry.series.position}` : ""}` : ""}
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
           You gave{" "}

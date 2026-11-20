@@ -53,4 +53,26 @@ describe("RadarView", () => {
     const text = await render({ entries: [], watching: { authors: 2, directors: 1 }, sources: OK });
     expect(text).toContain("Nothing new");
   });
+
+  it("does not say nothing is new when a source with people to follow did not answer", async () => {
+    const text = await render({
+      entries: [],
+      watching: { authors: 3, directors: 0 },
+      sources: { books: "error", films: "ok" },
+    });
+    expect(text).not.toContain("Nothing new");
+    expect(text).toContain("No releases to show");
+    expect(text).toContain("Hardcover did not answer");
+  });
+
+  it("notes the missing films when some director lookups fail", async () => {
+    const text = await render({
+      entries: [],
+      watching: { authors: 0, directors: 3 },
+      sources: { books: "ok", films: "partial" },
+    });
+    expect(text).toContain("some films are missing");
+    expect(text).not.toContain("Nothing new");
+  });
 });
+
