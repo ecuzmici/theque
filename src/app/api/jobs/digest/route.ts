@@ -2,6 +2,7 @@ import { parseBearerToken } from "@/lib/auth/capture-token";
 import { hasValidCronSecret } from "@/lib/auth/cron-secret";
 import { formatDateMedium } from "@/lib/format-timestamp";
 import { formatCategory } from "@/lib/item-labels";
+import { applyOlderThan } from "@/lib/shelves";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DIGEST_SIZE = 5;
@@ -66,14 +67,14 @@ async function handleDigestJob(req: Request) {
     return Response.json({ code: "digest_not_configured" }, { status: 503 });
   }
 
-  const cutoff = new Date(Date.now() - STALE_AFTER_DAYS * 86_400_000).toISOString();
   const admin = createAdminClient();
-  const { data, error } = await admin
+  // The age rule of shelves.ts: an item that the user kept lately is not stale.
+  const query = admin
     .from("items")
     .select("id, title, domain, category, created_at")
     .eq("user_id", userId)
-    .eq("status", "want")
-    .lt("created_at", cutoff)
+    .eq("status", "want");
+  const { data, error } = await applyOlderThan(query, STALE_AFTER_DAYS)
     .order("created_at", { ascending: true })
     .limit(DIGEST_SIZE);
 

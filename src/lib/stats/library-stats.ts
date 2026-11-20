@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database, ItemCategory } from "@/lib/database.types";
-import { FORGOTTEN_AFTER_DAYS, getShelf, olderThanCutoff } from "@/lib/shelves";
+import { applyShelfFilter } from "@/lib/library-items-for-shelf";
+import { getShelf } from "@/lib/shelves";
 
 /**
  * "Your taste in numbers" — a private, read-only aggregation of the signed-in
@@ -198,16 +199,11 @@ export function samplePalette(rows: StatsItemRow[], max = PALETTE_SAMPLE): strin
 export async function fetchLibraryStats(
   supabase: SupabaseClient<Database>,
 ): Promise<LibraryStats> {
-  const forgotten = getShelf("forgotten").filter;
-  const forgottenCutoff = olderThanCutoff(
-    forgotten.olderThanDays ?? FORGOTTEN_AFTER_DAYS,
-  ).toISOString();
-
-  let forgottenQuery = supabase
-    .from("items")
-    .select("id", { count: "exact", head: true });
-  if (forgotten.status) forgottenQuery = forgottenQuery.eq("status", forgotten.status);
-  forgottenQuery = forgottenQuery.lt("created_at", forgottenCutoff);
+  // The Forgotten shelf rule (shelves.ts) gives the count, so it agrees with the library.
+  const forgottenQuery = applyShelfFilter(
+    supabase.from("items").select("id", { count: "exact", head: true }),
+    getShelf("forgotten"),
+  );
 
   const [totalRes, doneRes, forgottenRes, projectionRes] = await Promise.all([
     supabase.from("items").select("id", { count: "exact", head: true }).neq("status", "dismissed"),

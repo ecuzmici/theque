@@ -7,10 +7,11 @@ import { AppShell } from "./AppShell";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const router = { push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), prefetch: vi.fn() };
+let pathname = "/library";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
-  usePathname: () => "/library",
+  usePathname: () => pathname,
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -70,6 +71,18 @@ describe("AppShell", () => {
     expect(document.querySelector('a[href="/library"]')).not.toBeNull();
     expect(button("You").textContent).toBe("E");
     expect(button("Save a link")).toBeDefined();
+  });
+
+  it("hides the floating + on /cleanup, where the pass buttons sit at the bottom", async () => {
+    pathname = "/cleanup";
+    try {
+      await act(async () => {
+        root?.render(<AppShell>content</AppShell>);
+      });
+      expect(document.querySelector('button[aria-label="Save a link"]')).toBeNull();
+    } finally {
+      pathname = "/library";
+    }
   });
 
   it("reads the clipboard when + opens the capture sheet", async () => {

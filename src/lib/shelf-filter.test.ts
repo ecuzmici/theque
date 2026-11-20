@@ -77,6 +77,13 @@ describe("itemMatchesShelf", () => {
     expect(itemMatchesShelf(recent, "forgotten")).toBe(false);
     expect(itemMatchesShelf({ ...old, status: "done" }, "forgotten")).toBe(false);
   });
+
+  it("drops a forgotten item that the user kept lately", () => {
+    const old = { ...item({ status: "want", created_at: "2020-01-01T00:00:00.000Z" }) };
+    expect(itemMatchesShelf({ ...old, kept_at: new Date().toISOString() }, "forgotten")).toBe(false);
+    expect(itemMatchesShelf({ ...old, kept_at: "2020-06-01T00:00:00.000Z" }, "forgotten")).toBe(true);
+    expect(itemMatchesShelf({ ...old, kept_at: null }, "forgotten")).toBe(true);
+  });
 });
 
 describe("parseShelfParam", () => {

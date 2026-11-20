@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const eqCalls: Array<[string, unknown]> = [];
+  const orCalls: string[] = [];
   const chain = {
     select: vi.fn(() => chain),
     eq: vi.fn((column: string, value: unknown) => {
@@ -10,10 +11,14 @@ const mocks = vi.hoisted(() => {
       return chain;
     }),
     lt: vi.fn(() => chain),
+    or: vi.fn((filters: string) => {
+      orCalls.push(filters);
+      return chain;
+    }),
     order: vi.fn(() => chain),
     limit: vi.fn(async () => ({ data: [], error: null })),
   };
-  return { chain, eqCalls, from: vi.fn(() => chain) };
+  return { chain, eqCalls, orCalls, from: vi.fn(() => chain) };
 });
 
 vi.mock("server-only", () => ({}));
@@ -29,6 +34,7 @@ describe("GET /api/jobs/digest", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", "cron-secret");
     mocks.eqCalls.length = 0;
+    mocks.orCalls.length = 0;
     mocks.from.mockClear();
   });
 
@@ -55,5 +61,15 @@ describe("GET /api/jobs/digest", () => {
 
     expect(res.status).toBe(200);
     expect(mocks.eqCalls).toContainEqual(["user_id", "user-1"]);
+  });
+
+  it("skips an item that the user kept after the cutoff", async () => {
+    vi.stubEnv("DIGEST_USER_ID", "user-1");
+    const { GET } = await import("./route");
+
+    await GET(request());
+
+    expect(mocks.orCalls).toHaveLength(1);
+    expect(mocks.orCalls[0]).toMatch(/^kept_at\.is\.null,kept_at\.lt\./);
   });
 });

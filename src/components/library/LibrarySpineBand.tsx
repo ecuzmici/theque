@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
-import { FORGOTTEN_AFTER_DAYS, getShelf, olderThanCutoff } from "@/lib/shelves";
+import { applyShelfFilter } from "@/lib/library-items-for-shelf";
+import { getShelf } from "@/lib/shelves";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -91,19 +92,11 @@ export function LibrarySpineBand() {
           .select("id", { count: "exact", head: true })
           .eq("status", "inbox");
 
-        // Forgotten: `want` items older than FORGOTTEN_AFTER_DAYS. Mirrors the
-        // `forgotten` shelf filter (status + olderThanCutoff) so the age rule has
-        // a single source — no duplicated 180-day logic.
-        const forgottenFilter = getShelf("forgotten").filter;
-        let forgottenQuery = supabase
-          .from("items")
-          .select("id", { count: "exact", head: true });
-        if (forgottenFilter.status) {
-          forgottenQuery = forgottenQuery.eq("status", forgottenFilter.status);
-        }
-        forgottenQuery = forgottenQuery.lt(
-          "created_at",
-          olderThanCutoff(forgottenFilter.olderThanDays ?? FORGOTTEN_AFTER_DAYS).toISOString(),
+        // Forgotten: the Forgotten shelf rule (shelves.ts), so the count agrees
+        // with the shelf and with /cleanup.
+        const forgottenQuery = applyShelfFilter(
+          supabase.from("items").select("id", { count: "exact", head: true }),
+          getShelf("forgotten"),
         );
         const { count: forgotten } = await forgottenQuery;
 

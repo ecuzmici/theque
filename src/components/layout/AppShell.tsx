@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 import { CaptureProvider, useCapture } from "@/components/capture/CaptureProvider";
 import { SaveErrorRegion } from "@/components/feedback/SaveErrorRegion";
@@ -33,8 +34,13 @@ function useSessionEmail(): string | null {
   return email;
 }
 
+/** Routes that use the bottom of the screen for their own controls. */
+const NO_FAB_ROUTES = ["/cleanup"];
+
 function CaptureButton() {
   const { open, openCapture } = useCapture();
+  const pathname = usePathname();
+  if (NO_FAB_ROUTES.some((route) => pathname === route || pathname?.startsWith(`${route}/`))) return null;
   return (
     <button
       type="button"
