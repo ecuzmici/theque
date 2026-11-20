@@ -148,8 +148,8 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
 
   return (
     // The pass fills the screen under the header: 3.5rem header, 1.75rem top
-    // padding, and 4.5rem at the bottom for the undo toast.
-    <div className="mx-auto flex h-[calc(100dvh-9.75rem-env(safe-area-inset-bottom))] min-h-[28rem] w-full max-w-md flex-col gap-3 lg:max-h-[44rem]">
+    // padding, and 5rem at the bottom for the undo toast.
+    <div className="mx-auto flex h-[calc(100dvh-10.25rem-env(safe-area-inset-bottom))] min-h-[28rem] w-full max-w-md flex-col gap-3 lg:max-h-[44rem]">
       <header className="shrink-0">
         <div className="flex items-baseline justify-between gap-3">
           <h1 className="font-heading text-3xl tracking-tight text-foreground">Spring cleaning</h1>
@@ -181,23 +181,26 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
 
       {current ? (
         <>
-          <div className="relative min-h-0 flex-1">
-            {next ? (
-              <div
-                aria-hidden
-                className="absolute inset-0 translate-y-2 scale-[0.96] overflow-hidden rounded-2xl border border-border bg-card opacity-70 shadow-sm"
-              >
-                <CardFace item={next} now={now} />
-              </div>
-            ) : null}
-            <SwipeCard
-              key={current.id}
-              item={current}
-              now={now}
-              leaving={leaving}
-              reducedMotion={reducedMotion}
-              onSwipe={commit}
-            />
+          {/* The clip stops a dragged card from adding a horizontal scroll. */}
+          <div className="-mx-4 min-h-0 flex-1 overflow-x-clip px-4 lg:-mx-24 lg:px-24">
+            <div className="relative h-full">
+              {next ? (
+                <div
+                  aria-hidden
+                  className="absolute inset-0 translate-y-2 scale-[0.96] overflow-hidden rounded-2xl border border-border bg-card opacity-70 shadow-sm"
+                >
+                  <CardFace item={next} now={now} />
+                </div>
+              ) : null}
+              <SwipeCard
+                key={current.id}
+                item={current}
+                now={now}
+                leaving={leaving}
+                reducedMotion={reducedMotion}
+                onSwipe={commit}
+              />
+            </div>
           </div>
 
           <div className="grid shrink-0 grid-cols-2 gap-3">
@@ -222,6 +225,9 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
               Keep <ArrowRight aria-hidden />
             </Button>
           </div>
+          <p className="-mt-1 hidden shrink-0 text-center text-xs text-muted-foreground lg-fine:block">
+            Keys: ← to let go, → to keep.
+          </p>
         </>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-card px-6 text-center">
