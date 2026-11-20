@@ -37,7 +37,8 @@ export type RadarEntry = {
   because: { id: string; title: string; rating: number };
 };
 
-export type SourceState = "ok" | "no_key" | "error";
+/** "partial" means that some lookups failed and the others gave entries. */
+export type SourceState = "ok" | "partial" | "no_key" | "error";
 
 export type Radar = {
   /** Upcoming releases soonest first, then recent releases newest first, then undated announcements. */
@@ -55,6 +56,8 @@ export type LoadRadarOptions = {
 
 const MONTHS_BACK = 18;
 const MAX_DIRECTORS = 14;
+/** One Hardcover query holds all authors. The cap keeps the query small. */
+const MAX_AUTHORS = 50;
 const MIN_RATING = 4;
 /** A released book with fewer readers is a stray edition or a translation. */
 const MIN_READERS_RELEASED = 5;
@@ -62,6 +65,10 @@ const DAY_MS = 86_400_000;
 
 /** Teasers, placeholders and audio dramas. None of them is a new book or film. */
 const NOT_A_RELEASE = /^(untitled|sneak peek|excerpt|sampler|preview)\b|dramatized|dramatised|\baudio drama\b/i;
+
+/** Words in a parenthesis or a subtitle that name an edition, not a new work. */
+const EDITION_NOISE =
+  /\b(a novel|novel|novella|edition|deluxe|anniversary|illustrated|collector'?s|reissue|unabridged|paperback|hardcover|hardback)\b/i;
 
 /** Hardcover lists translations as their own books. Some of them use another script. */
 const NON_LATIN = /[^\p{Script=Latin}\p{N}\p{P}\p{Zs}\p{S}]/u;
@@ -86,7 +93,7 @@ export async function loadRadar(items: RadarLibraryItem[], options: LoadRadarOpt
   since.setUTCMonth(since.getUTCMonth() - MONTHS_BACK);
   const sinceIso = since.toISOString().slice(0, 10);
 
-  const authors = lovedCreators(items, "books", (i) => i.authors[0]);
+  const authors = lovedCreators(items, "books", (i) => i.authors[0], MAX_AUTHORS);
   const directors = lovedCreators(items, "movies_and_tv", (i) => i.directors[0], MAX_DIRECTORS);
 
   const [books, films] = await Promise.all([
@@ -99,7 +106,7 @@ export async function loadRadar(items: RadarLibraryItem[], options: LoadRadarOpt
   ]);
 
   return {
-    entries: sortEntries([...books.entries, ...films.entries], now),
+    entries: sortEntries([...books.entries, ...films.entries]),
     watching: { authors: authors.size, directors: directors.size },
     sources: { books: books.state, films: films.state },
   };
@@ -122,7 +129,7 @@ function lovedCreators(
   const sorted = [...best.entries()]
     .sort((a, b) => (b[1].rating ?? 0) - (a[1].rating ?? 0))
     .slice(0, limit)
-    .map(([name, item]) => [name, { id: item.id, title: item.title, rating: item.rating ?? 0 }] as const);
+    .map(([name, item]) => [name, { id: item.id, title: shortTitle(item.title), rating: item.rating ?? 0 }] as const);
   return new Map(sorted);
 }
 
@@ -140,34 +147,37 @@ async function findBooks(
   if (result.state !== "ok") return { state: result.state, entries: [] };
 
   const library = items.filter((i) => i.category === "books");
+  const savedUrls = new Set(items.map((i) => i.url));
+  // One set for all authors, so a book by two followed authors shows once.
+  const seenIds = new Set<number>();
+  const seenWorks = new Set<string>();
   const entries: RadarEntry[] = [];
-  for (const author of result.data) {
-    const because = authors.get(author.name);
-    if (!because) continue;
-    const seen = new Set<string>();
-    // Most-read first, so a duplicate record of a book loses to the main record.
-    const books = author.contributions.map((c) => c.book).sort((a, b) => (b.users_count ?? 0) - (a.users_count ?? 0));
-    for (const book of books) {
-      const key = baseTitle(book.title).toLowerCase();
-      if (seen.has(key) || !isNewBook(book, now) || bookInLibrary(library, book)) continue;
-      seen.add(key);
-      const url = book.slug ? `https://hardcover.app/books/${book.slug}` : null;
-      if (!url) continue;
-      entries.push({
-        key: `book-${book.id}`,
-        kind: "book",
-        title: book.title,
-        creator: author.name,
-        date: book.release_date,
-        release: releaseLabel(book.release_date, now),
-        image: book.image?.url ?? null,
-        series: null,
-        url,
-        source: "Hardcover",
-        goodreadsUrl: `https://www.goodreads.com/search?q=${encodeURIComponent(`${book.title} ${author.name}`)}`,
-        because,
-      });
-    }
+  // Most-read first, so a duplicate record of a book loses to the main record.
+  const books = result.data
+    .flatMap((author) => author.contributions.map((c) => ({ author: author.name, book: c.book })))
+    .sort((a, b) => (b.book.users_count ?? 0) - (a.book.users_count ?? 0));
+  for (const { author, book } of books) {
+    const because = authors.get(author);
+    const url = book.slug ? `https://hardcover.app/books/${book.slug}` : null;
+    const work = workKey(book.title);
+    if (!because || !url || seenIds.has(book.id) || seenWorks.has(work)) continue;
+    if (!isNewBook(book, now) || savedUrls.has(url) || library.some((item) => workKey(item.title) === work)) continue;
+    seenIds.add(book.id);
+    seenWorks.add(work);
+    entries.push({
+      key: `book-${book.id}`,
+      kind: "book",
+      title: book.title,
+      creator: author,
+      date: book.release_date,
+      release: releaseLabel(book.release_date, now),
+      image: bookCover(book),
+      series: null,
+      url,
+      source: "Hardcover",
+      goodreadsUrl: `https://www.goodreads.com/search?q=${encodeURIComponent(`${book.title} ${author}`)}`,
+      because,
+    });
   }
 
   const rows = await booksByTitles(fetchFn, key, [...new Set(entries.map((e) => e.title))]);
@@ -191,17 +201,43 @@ function isEnglishOrUnknown(book: HcBook): boolean {
   return codes.length === 0 || codes.includes("en");
 }
 
-/** "Station Eleven: a post-apocalyptic tale" gives "Station Eleven". */
-function baseTitle(title: string): string {
-  return title.split(/\s*[:([]/)[0]!.trim();
+/**
+ * The title without edition words. "Project Hail Mary (Deluxe Edition): A
+ * Novel" gives "Project Hail Mary". "Dune: The Heir" stays as it is.
+ */
+export function editionBase(title: string): string {
+  let out = title.replace(/\s*[([]([^)\]]*)[)\]]/g, (match, inner: string) => (EDITION_NOISE.test(inner) ? "" : match));
+  const colon = out.indexOf(":");
+  if (colon > 0 && EDITION_NOISE.test(out.slice(colon + 1))) out = out.slice(0, colon);
+  return out.trim();
 }
 
-/** A book matches on its base title, so a re-edition with a long subtitle drops out. */
-function bookInLibrary(library: RadarLibraryItem[], book: HcBook): boolean {
-  const url = book.slug ? `https://hardcover.app/books/${book.slug}` : null;
-  return library.some(
-    (item) => item.url === url || titleScore(baseTitle(item.title), baseTitle(book.title)) === 2,
-  );
+/**
+ * The rated title for display. It drops edition words, and a subtitle when
+ * the title is long. "Dune: Part Two" stays as it is.
+ */
+function shortTitle(title: string): string {
+  const base = editionBase(title);
+  const colon = base.indexOf(":");
+  return base.length > 40 && colon > 0 ? base.slice(0, colon).trim() : base;
+}
+
+/** One key for each work: a re-edition gives the same key, a new subtitle does not. */
+function workKey(title: string): string {
+  return editionBase(title)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** A print or ebook cover. An audiobook cover is square art, so the card shows the title instead. */
+function bookCover(book: HcBook): string | null {
+  const print = book.print_cover?.[0]?.image?.url;
+  if (print) return print;
+  const cover = book.image?.url ?? null;
+  const audio = book.default_audio_edition?.image?.url;
+  return cover && cover === audio ? null : cover;
 }
 
 /** The first featured series of the most-read book with this title and author. */
@@ -231,26 +267,26 @@ async function findFilms(
   const results = await Promise.all(
     [...directors.entries()].map(async ([name, because]) => ({ because, result: await directorCredits(fetchFn, key, name) })),
   );
-  const failed = results.find((r) => r.result.state !== "ok");
-  if (failed && results.every((r) => r.result.state !== "ok")) {
-    return { state: failed.result.state as SourceState, entries: [] };
+  const failed = results.filter((r) => r.result.state !== "ok");
+  if (failed.length === results.length) {
+    return { state: failed[0]!.result.state as SourceState, entries: [] };
   }
 
   const library = items.filter((i) => i.category === "movies_and_tv");
-  const seen = new Set<string>();
+  const savedUrls = new Set(items.map((i) => i.url));
+  const seen = new Set<number>();
   const entries: RadarEntry[] = [];
   for (const { because, result } of results) {
     if (result.state !== "ok" || !result.data) continue;
     for (const credit of result.data.credits) {
-      const url = `https://www.themoviedb.org/${credit.media}/${credit.id}`;
-      const key = `${credit.media}-${credit.id}`;
-      if (seen.has(key)) continue;
+      const url = `https://www.themoviedb.org/movie/${credit.id}`;
+      if (seen.has(credit.id)) continue;
       if ((credit.date && credit.date < since) || NOT_A_RELEASE.test(credit.title)) continue;
       // A film matches on its full title, so "Dune: Part Three" stays next to "Dune: Part Two".
-      if (library.some((item) => item.url === url || titleScore(item.title, credit.title) === 2)) continue;
-      seen.add(key);
+      if (savedUrls.has(url) || library.some((item) => titleScore(item.title, credit.title) === 2)) continue;
+      seen.add(credit.id);
       entries.push({
-        key: `film-${key}`,
+        key: `film-${credit.id}`,
         kind: "film",
         title: credit.title,
         creator: result.data.person,
@@ -265,25 +301,26 @@ async function findFilms(
       });
     }
   }
-  return { state: "ok", entries };
+  return { state: failed.length > 0 ? "partial" : "ok", entries };
 }
 
 function releaseLabel(date: string | null, now: Date): RadarEntry["release"] {
   const time = date ? Date.parse(date) : Number.NaN;
   if (!date || Number.isNaN(time)) return { label: "Announced", upcoming: true };
-  const days = Math.round((time - now.getTime()) / DAY_MS);
   const d = new Date(time);
   const monthYear = `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
-  if (days > 0) {
+  // One rule for the label, the filter and the sort: upcoming means a later time than now.
+  if (time > now.getTime()) {
+    const days = Math.ceil((time - now.getTime()) / DAY_MS);
     if (days === 1) return { label: "Tomorrow", upcoming: true };
     return { label: days < 45 ? `In ${days} days` : `Out ${monthYear}`, upcoming: true };
   }
-  if (days > -60) return { label: "Just out", upcoming: false };
+  if (now.getTime() - time < 60 * DAY_MS) return { label: "Just out", upcoming: false };
   return { label: monthYear, upcoming: false };
 }
 
-function sortEntries(entries: RadarEntry[], now: Date): RadarEntry[] {
-  const rank = (e: RadarEntry) => (!e.date ? 2 : Date.parse(e.date) > now.getTime() ? 0 : 1);
+function sortEntries(entries: RadarEntry[]): RadarEntry[] {
+  const rank = (e: RadarEntry) => (!e.date ? 2 : e.release.upcoming ? 0 : 1);
   return entries.sort((a, b) => {
     const byRank = rank(a) - rank(b);
     if (byRank) return byRank;

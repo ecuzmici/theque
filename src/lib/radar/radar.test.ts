@@ -49,7 +49,21 @@ const LIBRARY: RadarLibraryItem[] = [
 type Call = { url: string; body: string | null };
 
 /** Answers each request with the recorded response. Tests never reach the network. */
-function recordedFetch(overrides: { hardcoverStatus?: number; extraBooks?: HcAuthor["contributions"] } = {}) {
+type Overrides = {
+  hardcoverStatus?: number;
+  /** Books added to the first author (John Scalzi). */
+  extraBooks?: HcAuthor["contributions"];
+  /** Changes a copy of the recorded authors response. */
+  editAuthors?: (authors: HcAuthor[]) => void;
+  /** Changes a copy of the recorded Villeneuve credits. */
+  editVilleneuve?: (credits: typeof tmdbCreditsVilleneuve) => void;
+  /** TMDB answers 500 for this person search. */
+  tmdbFailFor?: string;
+  /** TMDB person search results for a query that has no recorded response. */
+  otherSearch?: { results: Array<{ id: number; name: string; known_for_department?: string }> };
+}
+
+function recordedFetch(overrides: Overrides = {}) {
   const calls: Call[] = [];
   const json = (data: unknown, status = 200) =>
     new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
@@ -60,9 +74,9 @@ function recordedFetch(overrides: { hardcoverStatus?: number; extraBooks?: HcAut
     if (url.startsWith("https://api.hardcover.app/")) {
       if (overrides.hardcoverStatus) return json({}, overrides.hardcoverStatus);
       if (body?.includes("RadarAuthors")) {
-        if (!overrides.extraBooks) return json(hardcoverAuthors);
         const copy = structuredClone(hardcoverAuthors);
-        copy.data.authors[0]!.contributions.push(...overrides.extraBooks);
+        if (overrides.extraBooks) copy.data.authors[0]!.contributions.push(...overrides.extraBooks);
+        overrides.editAuthors?.(copy.data.authors);
         return json(copy);
       }
       if (body?.includes("RadarSeriesForTitles")) return json(hardcoverSeries);
@@ -70,21 +84,40 @@ function recordedFetch(overrides: { hardcoverStatus?: number; extraBooks?: HcAut
     const parsed = new URL(url);
     if (parsed.pathname === "/3/search/person") {
       const query = parsed.searchParams.get("query");
+      if (query === overrides.tmdbFailFor) return json({}, 500);
       if (query === "Denis Villeneuve") return json(tmdbSearchVilleneuve);
       if (query === "Ari Aster") return json(tmdbSearchAster);
-      return json({ results: [] });
+      return json(overrides.otherSearch ?? { results: [] });
     }
-    if (parsed.pathname === "/3/person/137427/combined_credits") return json(tmdbCreditsVilleneuve);
+    if (parsed.pathname === "/3/person/137427/combined_credits") {
+      const copy = structuredClone(tmdbCreditsVilleneuve);
+      overrides.editVilleneuve?.(copy);
+      return json(copy);
+    }
     if (parsed.pathname === "/3/person/1145520/combined_credits") return json(tmdbCreditsAster);
     return json({}, 404);
   });
   return { fetchFn: fetchFn as unknown as typeof fetch, calls };
 }
 
-async function radarWith(options: Parameters<typeof recordedFetch>[0] = {}, library = LIBRARY) {
+async function radarWith(options: Overrides = {}, library = LIBRARY, now = NOW) {
   const { fetchFn, calls } = recordedFetch(options);
-  const radar = await loadRadar(library, { now: NOW, fetch: fetchFn, keys: KEYS });
+  const radar = await loadRadar(library, { now, fetch: fetchFn, keys: KEYS });
   return { radar, calls };
+}
+
+function book(partial: Partial<HcAuthor["contributions"][number]["book"]> & { id: number; title: string }) {
+  return {
+    book: {
+      slug: `slug-${partial.id}`,
+      release_date: "2027-02-01",
+      users_count: 50,
+      image: null,
+      default_physical_edition: null,
+      default_ebook_edition: null,
+      ...partial,
+    },
+  };
 }
 
 function titles(radar: Awaited<ReturnType<typeof loadRadar>>, kind?: "book" | "film") {
@@ -260,4 +293,114 @@ describe("loadRadar", () => {
     expect(radar.watching).toEqual({ authors: 0, directors: 0 });
     expect(radar.entries).toEqual([]);
   });
+
+  it("treats a release a few hours away as upcoming in the label and the order", async () => {
+    // Maggot Road comes out on 2026-12-03, 9 hours after this time.
+    const now = new Date("2026-12-02T15:00:00Z");
+    const { radar } = await radarWith({}, LIBRARY, now);
+    const maggot = radar.entries.find((e) => e.title === "Maggot Road");
+    expect(maggot?.release).toEqual({ label: "Tomorrow", upcoming: true });
+    expect(radar.entries[0]?.title).toBe("Maggot Road");
+  });
+
+  it("shows a book by two followed authors once", async () => {
+    const shared = book({ id: 777, title: "A Shared Story" });
+    const { radar } = await radarWith({
+      editAuthors: (authors) => {
+        authors.find((a) => a.name === "John Scalzi")!.contributions.push(shared);
+        authors.find((a) => a.name === "James Islington")!.contributions.push(shared);
+      },
+    });
+    expect(titles(radar).filter((t) => t === "A Shared Story")).toHaveLength(1);
+    expect(new Set(radar.entries.map((e) => e.key)).size).toBe(radar.entries.length);
+  });
+
+  it("keeps two books that share a series name before the colon", async () => {
+    const library = [...LIBRARY, item({ title: "Dune", category: "books", status: "done", rating: 3 })];
+    const { radar } = await radarWith(
+      { extraBooks: [book({ id: 801, title: "Dune: The Heir" }), book({ id: 802, title: "Dune: The Exile" })] },
+      library,
+    );
+    expect(titles(radar)).toEqual(expect.arrayContaining(["Dune: The Heir", "Dune: The Exile"]));
+  });
+
+  it("drops a re-edition of a book in the library", async () => {
+    const { radar } = await radarWith({
+      extraBooks: [
+        book({ id: 803, title: "The Last Colony (10th Anniversary Edition)" }),
+        book({ id: 804, title: "Old Man's War: A Novel" }),
+      ],
+    });
+    expect(titles(radar)).not.toContain("The Last Colony (10th Anniversary Edition)");
+    expect(titles(radar)).not.toContain("Old Man's War: A Novel");
+  });
+
+  it("drops a release that was just saved, before enrichment sets its category", async () => {
+    const library = [
+      ...LIBRARY,
+      item({ title: "", category: null, url: "https://hardcover.app/books/scion-2026" }),
+      item({ title: "", category: null, url: "https://www.themoviedb.org/movie/1170608" }),
+    ];
+    const { radar } = await radarWith({}, library);
+    expect(titles(radar)).not.toContain("Scion");
+    expect(titles(radar)).not.toContain("Dune: Part Three");
+  });
+
+  it("shows the rated title without edition words", async () => {
+    const library = LIBRARY.map((i) =>
+      i.title === "Project Hail Mary" ? { ...i, title: "Project Hail Mary (Deluxe Edition): A Novel" } : i,
+    );
+    const { radar } = await radarWith({}, library);
+    expect(radar.entries.find((e) => e.title === "Exoplanet")?.because.title).toBe("Project Hail Mary");
+  });
+
+  it("uses a print cover and skips a cover that only an audiobook has", async () => {
+    const { radar } = await radarWith();
+    expect(radar.entries.find((e) => e.title === "Scion")?.image).toBe(
+      "https://assets.hardcover.app/edition/32742717/7e7d6779-2003-447a-a902-9980632b5caf.jpg",
+    );
+    expect(radar.entries.find((e) => e.title === "Exoplanet")?.image).toBeNull();
+  });
+
+  it("drops TV credits, where a director made only some episodes", async () => {
+    const { radar } = await radarWith({
+      editVilleneuve: (credits) => {
+        credits.crew.push({ ...credits.crew[0]!, id: 990001, media_type: "tv", job: "Director", name: "Some Show", first_air_date: "2027-01-01" } as never);
+      },
+    });
+    expect(titles(radar)).not.toContain("Some Show");
+  });
+
+  it("reports films as partial when one director lookup fails", async () => {
+    const { radar } = await radarWith({ tmdbFailFor: "Ari Aster" });
+    expect(radar.sources.films).toBe("partial");
+    expect(titles(radar, "film")).toContain("Dune: Part Three");
+    expect(titles(radar, "film")).not.toContain("Scapegoat");
+  });
+
+  it("asks Hardcover for at most 50 authors", async () => {
+    const library = Array.from({ length: 60 }, (_, i) =>
+      item({ title: `Book ${i}`, category: "books", status: "done", rating: 5, authors: [`Author ${i}`] }),
+    );
+    const { radar, calls } = await radarWith({}, library);
+    expect(radar.watching.authors).toBe(50);
+    const names = JSON.parse(calls.find((c) => c.body?.includes("RadarAuthors"))!.body!).variables.names;
+    expect(names).toHaveLength(50);
+  });
+
+  it("does not match two names in another script", async () => {
+    const library = [item({ title: "Spirited Away", category: "movies_and_tv", status: "done", rating: 5, directors: ["宮崎駿"] })];
+    const { radar, calls } = await radarWith({ otherSearch: { results: [{ id: 137427, name: "黒澤明", known_for_department: "Directing" }] } }, library);
+    expect(radar.entries).toEqual([]);
+    expect(calls.some((c) => c.url.includes("combined_credits"))).toBe(false);
+  });
+
+  it("drops a long subtitle from the rated title", async () => {
+    const long = "The Last Colony: A Long Subtitle About Space And Farming";
+    const library = LIBRARY.map((i) => (i.title === "The Last Colony" ? { ...i, title: long } : i));
+    const { radar } = await radarWith({}, library);
+    expect(radar.entries.find((e) => e.title === "Monsters of Ohio")?.because.title).toBe("The Last Colony");
+    expect(radar.entries.find((e) => e.title === "Dune: Part Three")?.because.title).toBe("Dune: Part Two");
+  });
 });
+

@@ -26,6 +26,10 @@ export type HcBook = {
   image: { url: string | null } | null;
   default_physical_edition: EditionLanguage;
   default_ebook_edition: EditionLanguage;
+  /** Absent in old fixtures. */
+  default_audio_edition?: { image: { url: string | null } | null } | null;
+  /** The cover of the most-read edition that is not audio, if any. */
+  print_cover?: Array<{ image: { url: string | null } | null }>;
 };
 
 export type HcAuthor = { id: number; name: string; contributions: Array<{ book: HcBook }> };
@@ -86,6 +90,12 @@ export const AUTHORS_QUERY = `query RadarAuthors($names: [String!]!, $since: dat
         id title slug release_date users_count image { url }
         default_physical_edition { language { code2 } }
         default_ebook_edition { language { code2 } }
+        default_audio_edition { image { url } }
+        print_cover: editions(
+          where: {reading_format_id: {_neq: 2}, image_id: {_is_null: false}}
+          order_by: {users_count: desc}
+          limit: 1
+        ) { image { url } }
       }
     }
   }
@@ -185,19 +195,20 @@ async function tmdb<T>(
 
 function sameName(a: string, b: string): boolean {
   const norm = (v: string) => v.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
-  return norm(a) === norm(b);
+  const left = norm(a);
+  // Two names in another script both give "". They are not a match.
+  return left !== "" && left === norm(b);
 }
 
 export type DirectorCredit = {
   id: number;
-  media: "movie" | "tv";
   title: string;
   date: string | null;
   poster: string | null;
 };
 
 /**
- * The films and shows that a person directed, newest first. The person must
+ * The films that a person directed, newest first. The person must
  * have the same name. A person known for directing wins over a namesake.
  */
 export async function directorCredits(
@@ -214,16 +225,14 @@ export async function directorCredits(
 
   const credits = await tmdb<TmdbCombinedCredits>(fetchFn, key, `/person/${person.id}/combined_credits`);
   if (credits.state !== "ok") return credits;
-  const seen = new Set<string>();
+  const seen = new Set<number>();
   const list: DirectorCredit[] = [];
   for (const c of credits.data.crew ?? []) {
-    const media = c.media_type === "tv" ? "tv" : "movie";
-    const id = `${media}-${c.id}`;
-    if (c.job !== "Director" || seen.has(id)) continue;
-    seen.add(id);
+    // A TV "Director" credit is for some episodes only. Keep the films.
+    if (c.media_type === "tv" || c.job !== "Director" || seen.has(c.id)) continue;
+    seen.add(c.id);
     list.push({
       id: c.id,
-      media,
       title: c.title ?? c.name ?? "Untitled",
       date: c.release_date || c.first_air_date || null,
       poster: c.poster_path ? `https://image.tmdb.org/t/p/w342${c.poster_path}` : null,
