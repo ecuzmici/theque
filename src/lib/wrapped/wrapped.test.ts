@@ -67,6 +67,16 @@ describe("computeWrapped", () => {
     ]);
   });
 
+  it("counts finishes without a category in an Other bucket, so the parts add up to the total", () => {
+    const items = [item({ category: "books" }), item({ category: "books" }), item({ category: null })];
+    const wrapped = computeWrapped(items, 2026, { now });
+    expect(wrapped.total).toBe(3);
+    expect(wrapped.categories).toEqual([
+      { category: "books", label: "Books", count: 2 },
+      { category: null, label: "Other", count: 1 },
+    ]);
+  });
+
   it("marks the current year as partial and says up to which day it counts", () => {
     expect(computeWrapped([], 2026, { now })).toMatchObject({ partial: true, throughLabel: "20 November" });
     expect(computeWrapped([], 2025, { now })).toMatchObject({ partial: false, throughLabel: null });

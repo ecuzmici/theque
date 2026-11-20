@@ -66,7 +66,8 @@ export function finishedYears(items: WrappedSourceItem[], timeZone = WRAPPED_TIM
   return [...years].sort((a, b) => b - a);
 }
 
-export type WrappedCategory = { category: ItemCategory; label: string; count: number };
+/** One part of the year. `category` is null for finishes without a category ("Other"). */
+export type WrappedCategory = { category: ItemCategory | null; label: string; count: number };
 
 /** The year recap. All values are plain data, so a server page can pass them to a client component. */
 export type Wrapped = {
@@ -225,9 +226,9 @@ export function computeWrapped(
   const finished = items.filter((item) => finishedYear(item, timeZone) === year);
   const partial = yearOf(now.toISOString(), timeZone) === year;
 
-  const categories = [...countBy(finished.map((item) => item.category).filter((c): c is ItemCategory => !!c))]
-    .map(([category, count]) => ({ category, label: CATEGORY_LABELS[category], count }))
-    .sort((a, b) => b.count - a.count);
+  const categories = [...countBy(finished.map((item) => item.category ?? null))]
+    .map(([category, count]) => ({ category, label: category ? CATEGORY_LABELS[category] : "Other", count }))
+    .sort((a, b) => b.count - a.count || Number(a.category == null) - Number(b.category == null));
 
   const books = finished.filter((item) => item.category === "books");
   const longestBook = maxBy(books, (b) => b.pages);
