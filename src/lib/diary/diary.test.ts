@@ -134,6 +134,16 @@ describe("computePace", () => {
     expect(pace.projected).toBe(50);
   });
 
+  it("gives no projection in the first 13 days of the year", () => {
+    const early = computePace(finishes(1, "2026-01-01T09:00:00Z"), 2026, 40, Date.parse("2026-01-01T12:00:00Z"));
+    expect(early.projected).toBeNull();
+    const day13 = computePace(finishes(1, "2026-01-01T09:00:00Z"), 2026, 40, Date.parse("2026-01-13T12:00:00Z"));
+    expect(day13.projected).toBeNull();
+    // 14 January is day 14: 2 books in 14 days is 52 a year.
+    const day14 = computePace(finishes(2, "2026-01-01T09:00:00Z"), 2026, 40, Date.parse("2026-01-14T12:00:00Z"));
+    expect(day14.projected).toBe(52);
+  });
+
   it("uses the full year for a year that is over", () => {
     const pace = computePace(finishes(30, "2025-02-01T12:00:00Z"), 2025, 40, Date.parse("2026-11-20T12:00:00Z"));
     expect(pace).toMatchObject({ finished: 30, expected: 40, status: "behind", by: 10, projected: 30 });

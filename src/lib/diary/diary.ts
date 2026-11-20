@@ -37,6 +37,8 @@ export type Calendar<T extends DiaryInput = DiaryInput> = {
 };
 
 const DAY_MS = 86_400_000;
+/** The first day of the year that gives a projection. */
+const PROJECTION_MIN_DAYS = 14;
 
 function dayKey(time: number): string {
   return new Date(time).toISOString().slice(0, 10);
@@ -132,8 +134,11 @@ export type Pace = {
   /** The gap to `expected`, always zero or more. */
   by: number;
   reached: boolean;
-  /** The year-end count if the pace so far continues. */
-  projected: number;
+  /**
+   * The year-end count if the pace so far continues. Null before day 14,
+   * because a few days give a wild projection.
+   */
+  projected: number | null;
   daysInYear: number;
   /** Days of the year that have started: 0 before the year, `daysInYear` after it. */
   today: number;
@@ -174,7 +179,7 @@ export function computePace(items: DiaryInput[], year: number, goal: number, now
     status: delta > 0 ? "ahead" : delta < 0 ? "behind" : "on-pace",
     by: Math.abs(delta),
     reached: finished >= goal,
-    projected: today > 0 ? Math.round((finished * daysInYear) / today) : 0,
+    projected: today >= PROJECTION_MIN_DAYS ? Math.round((finished * daysInYear) / today) : null,
     daysInYear,
     today,
     points,
