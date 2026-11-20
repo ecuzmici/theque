@@ -5,8 +5,12 @@ import { createPass, decide, passQueue, passSummary, revertDecision, savedAgo, u
 const NOW = Date.parse("2026-11-20T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(NOW - days * 86_400_000).toISOString();
 
-function item(id: string, created: number, patch: Partial<{ status: string; kept_at: string | null }> = {}) {
-  return { id, status: "want", created_at: daysAgo(created), kept_at: null, ...patch };
+function item(
+  id: string,
+  created: number,
+  patch: Partial<{ status: string; kept_at: string | null; pinned_at: string | null }> = {},
+) {
+  return { id, status: "want", created_at: daysAgo(created), kept_at: null, pinned_at: null, ...patch };
 }
 
 describe("passQueue", () => {
@@ -28,20 +32,20 @@ describe("decide", () => {
   const at = new Date(NOW).toISOString();
 
   it("takes a kept item out of the queue and stamps kept_at", () => {
-    const pass = decide(items(), "a", "keep", at);
+    const pass = decide(items(), "a", "keep", at, 1);
     expect(passQueue(pass, 180, NOW).map((i) => i.id)).toEqual(["b", "c"]);
     expect(pass.items.find((i) => i.id === "a")?.kept_at).toBe(at);
   });
 
   it("takes a let-go item out of the queue and dismisses it", () => {
-    const pass = decide(items(), "a", "let_go", at);
+    const pass = decide(items(), "a", "let_go", at, 2);
     expect(passQueue(pass, 180, NOW).map((i) => i.id)).toEqual(["b", "c"]);
     expect(pass.items.find((i) => i.id === "a")?.status).toBe("dismissed");
   });
 
   it("ignores an unknown item", () => {
     const pass = items();
-    expect(decide(pass, "zzz", "keep", at)).toBe(pass);
+    expect(decide(pass, "zzz", "keep", at, 3)).toBe(pass);
   });
 });
 
@@ -50,8 +54,8 @@ describe("undoLast", () => {
 
   it("puts the last decision back at the front of the queue", () => {
     let pass = createPass([item("a", 900), item("b", 800, { kept_at: daysAgo(750) }), item("c", 700)]);
-    pass = decide(pass, "a", "let_go", at);
-    pass = decide(pass, "b", "keep", at);
+    pass = decide(pass, "a", "let_go", at, 4);
+    pass = decide(pass, "b", "keep", at, 5);
     const { state, undone } = undoLast(pass);
     expect(undone).toMatchObject({ id: "b", choice: "keep", before: { status: "want", kept_at: daysAgo(750) } });
     expect(passQueue(state, 180, NOW).map((i) => i.id)).toEqual(["b", "c"]);
@@ -70,14 +74,37 @@ describe("undoLast", () => {
 });
 
 describe("revertDecision", () => {
+  const at = new Date(NOW).toISOString();
+
   it("undoes one decision that is not the last, for a failed save", () => {
-    const at = new Date(NOW).toISOString();
     let pass = createPass([item("a", 900), item("b", 800)]);
-    pass = decide(pass, "a", "let_go", at);
-    pass = decide(pass, "b", "keep", at);
-    pass = revertDecision(pass, "a");
+    pass = decide(pass, "a", "let_go", at, 1);
+    pass = decide(pass, "b", "keep", at, 2);
+    pass = revertDecision(pass, 1);
     expect(passQueue(pass, 180, NOW).map((i) => i.id)).toEqual(["a"]);
     expect(passSummary(pass)).toEqual({ kept: 1, letGo: 0 });
+  });
+
+  it("leaves a later decision on the same item alone", () => {
+    let pass = createPass([item("a", 900)]);
+    pass = decide(pass, "a", "let_go", at, 1);
+    pass = undoLast(pass).state;
+    pass = decide(pass, "a", "keep", at, 2);
+    const after = revertDecision(pass, 1);
+    expect(after).toBe(pass);
+    expect(passSummary(after)).toEqual({ kept: 1, letGo: 0 });
+  });
+});
+
+describe("pins", () => {
+  it("clears the pin on let go and gives it back on undo", () => {
+    const pinned = "2026-11-01T00:00:00.000Z";
+    let pass = createPass([item("a", 900, { pinned_at: pinned })]);
+    pass = decide(pass, "a", "let_go", new Date(NOW).toISOString(), 1);
+    expect(pass.items[0]?.pinned_at).toBeNull();
+    const { state, undone } = undoLast(pass);
+    expect(undone?.before.pinned_at).toBe(pinned);
+    expect(state.items[0]?.pinned_at).toBe(pinned);
   });
 });
 
@@ -97,9 +124,9 @@ describe("passSummary", () => {
     const at = new Date(NOW).toISOString();
     let pass = createPass([item("a", 900), item("b", 800), item("c", 700)]);
     expect(passSummary(pass)).toEqual({ kept: 0, letGo: 0 });
-    pass = decide(pass, "a", "let_go", at);
-    pass = decide(pass, "b", "keep", at);
-    pass = decide(pass, "c", "let_go", at);
+    pass = decide(pass, "a", "let_go", at, 8);
+    pass = decide(pass, "b", "keep", at, 9);
+    pass = decide(pass, "c", "let_go", at, 10);
     expect(passSummary(pass)).toEqual({ kept: 1, letGo: 2 });
     expect(passSummary(undoLast(pass).state)).toEqual({ kept: 1, letGo: 1 });
   });

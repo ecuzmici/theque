@@ -2,7 +2,7 @@ import { FORGOTTEN_AFTER_DAYS, isForgotten } from "@/lib/shelves";
 
 /** The "Saved more than" choices. The first one is the Forgotten shelf age. */
 export const AGE_CHOICES = [
-  { days: FORGOTTEN_AFTER_DAYS, label: "6 months" },
+  { days: FORGOTTEN_AFTER_DAYS, label: "All forgotten" },
   { days: 365, label: "1 year" },
   { days: 730, label: "2 years" },
 ] as const;
@@ -13,15 +13,20 @@ export type PassItem = {
   status: string;
   created_at: string;
   kept_at: string | null;
+  pinned_at?: string | null;
 };
 
 export type PassChoice = "keep" | "let_go";
 
-/** One decision, with the item fields from before it, so an undo can restore them. */
+/**
+ * One decision, with the item fields from before it, so an undo can restore
+ * them. `key` is unique for each decision, also for two decisions on one item.
+ */
 export type PassDecision = {
+  key: number;
   id: string;
   choice: PassChoice;
-  before: { status: string; kept_at: string | null };
+  before: { status: string; kept_at: string | null; pinned_at: string | null };
 };
 
 /** The items of one spring-cleaning pass and the decisions in order. */
@@ -49,32 +54,34 @@ export function passQueue<T extends PassItem>(state: PassState<T>, days: number,
 }
 
 /**
- * Records a decision. "Keep" sets `kept_at` to `at`, so the item is not
- * forgotten any more. "Let go" sets the status to `dismissed`.
+ * Records a decision with the unique `key`. "Keep" sets `kept_at` to `at`, so
+ * the item is not forgotten any more. "Let go" sets the status to `dismissed`
+ * and clears the pin, as the server does.
  */
 export function decide<T extends PassItem>(
   state: PassState<T>,
   id: string,
   choice: PassChoice,
   at: string,
+  key: number,
 ): PassState<T> {
   const target = state.items.find((item) => item.id === id);
   if (!target) return state;
-  const change = choice === "keep" ? { kept_at: at } : { status: "dismissed" };
+  const change = choice === "keep" ? { kept_at: at } : { status: "dismissed", pinned_at: null };
+  const before = { status: target.status, kept_at: target.kept_at, pinned_at: target.pinned_at ?? null };
   return {
     items: state.items.map((item) => (item.id === id ? { ...item, ...change } : item)),
-    history: [...state.history, { id, choice, before: { status: target.status, kept_at: target.kept_at } }],
+    history: [...state.history, { key, id, choice, before }],
   };
 }
 
-/** Removes the decision on `id` and puts the item fields back. */
-export function revertDecision<T extends PassItem>(state: PassState<T>, id: string): PassState<T> {
-  const index = state.history.findLastIndex((d) => d.id === id);
-  if (index < 0) return state;
-  const { before } = state.history[index]!;
+/** Removes the decision with `key` and puts the item fields back. It does nothing when the decision is gone. */
+export function revertDecision<T extends PassItem>(state: PassState<T>, key: number): PassState<T> {
+  const decision = state.history.find((d) => d.key === key);
+  if (!decision) return state;
   return {
-    items: state.items.map((item) => (item.id === id ? { ...item, ...before } : item)),
-    history: state.history.filter((_, i) => i !== index),
+    items: state.items.map((item) => (item.id === decision.id ? { ...item, ...decision.before } : item)),
+    history: state.history.filter((d) => d !== decision),
   };
 }
 
@@ -84,7 +91,7 @@ export function undoLast<T extends PassItem>(
 ): { state: PassState<T>; undone: PassDecision | null } {
   const undone = state.history.at(-1) ?? null;
   if (!undone) return { state, undone: null };
-  return { state: revertDecision(state, undone.id), undone };
+  return { state: revertDecision(state, undone.key), undone };
 }
 
 /** How long ago the user saved an item, in plain words: "7 months ago". */

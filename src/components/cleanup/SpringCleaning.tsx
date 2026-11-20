@@ -15,6 +15,7 @@ import {
   revertDecision,
   undoLast,
   type PassChoice,
+  type PassDecision,
   type PassItem,
 } from "@/lib/cleanup/pass";
 import { patchItemRequest, reportSaveError } from "@/lib/save-error";
@@ -40,10 +41,11 @@ async function saveDecision(id: string, choice: PassChoice): Promise<boolean> {
   return patchItemRequest(id, { status: "dismissed" });
 }
 
-/** Reverses a saved decision. */
-async function saveUndo(id: string, choice: PassChoice, keptAt: string | null): Promise<boolean> {
-  if (choice === "keep") return (await restoreKeptAt(id, keptAt)).ok;
-  return patchItemRequest(id, { status: "want" });
+/** Reverses a saved decision. The undo of Let go also gives back a pin that the dismiss cleared. */
+async function saveUndo(decision: PassDecision): Promise<boolean> {
+  const { id, choice, before } = decision;
+  if (choice === "keep") return (await restoreKeptAt(id, before.kept_at)).ok;
+  return patchItemRequest(id, before.pinned_at ? { status: "want", pinned: true } : { status: "want" });
 }
 
 function isTyping(target: EventTarget | null): boolean {
@@ -67,7 +69,8 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
   const [notice, setNotice] = useState<UndoNotice | null>(null);
   const reducedMotion = useReducedMotion();
   const writes = useRef<Promise<unknown>>(Promise.resolve());
-  const noticeKey = useRef(0);
+  /** One key for each decision and its toast. */
+  const decisionKey = useRef(0);
 
   const queue = passQueue(pass, age, now);
   const current = queue[0] ?? null;
@@ -85,14 +88,16 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
   const dismissNotice = useCallback(() => setNotice(null), []);
 
   function apply(item: CleanupItem, choice: PassChoice) {
-    setPass((state) => decide(state, item.id, choice, new Date().toISOString()));
+    decisionKey.current += 1;
+    const key = decisionKey.current;
+    setPass((state) => decide(state, item.id, choice, new Date().toISOString(), key));
     setLeaving(null);
-    noticeKey.current += 1;
-    setNotice({ key: noticeKey.current, text: choice === "keep" ? `Kept ${item.title}` : `Let go of ${item.title}` });
+    setNotice({ key, text: choice === "keep" ? `Kept ${item.title}` : `Let go of ${item.title}` });
     enqueue(async () => {
       if (await saveDecision(item.id, choice)) return;
-      setPass((state) => revertDecision(state, item.id));
-      setNotice(null);
+      // Revert only this decision, and hide only its own toast.
+      setPass((state) => revertDecision(state, key));
+      setNotice((shown) => (shown?.key === key ? null : shown));
       reportSaveError();
     });
   }
@@ -111,8 +116,8 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
     setPass(state);
     setNotice(null);
     enqueue(async () => {
-      if (await saveUndo(undone.id, undone.choice, undone.before.kept_at)) return;
-      setPass((s) => decide(s, undone.id, undone.choice, new Date().toISOString()));
+      if (await saveUndo(undone)) return;
+      setPass((s) => decide(s, undone.id, undone.choice, new Date().toISOString(), undone.key));
       reportSaveError();
     });
   }
@@ -159,10 +164,9 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
         </div>
         <div
           role="radiogroup"
-          aria-label="Saved more than"
+          aria-label="Item age"
           className="-mx-4 mt-3 flex items-center gap-1.5 overflow-x-auto px-4 py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <span className="mr-0.5 shrink-0 text-[13px] text-muted-foreground">Saved more than</span>
           {AGE_CHOICES.map((choice) => (
             <button
               key={choice.days}
@@ -173,7 +177,7 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
               onClick={() => setAge(choice.days)}
               className={cn(CHIP_BASE, age === choice.days ? CHIP_ACTIVE : CHIP_IDLE)}
             >
-              {choice.label}
+              {choice.days === AGE_CHOICES[0].days ? choice.label : `Over ${choice.label}`}
             </button>
           ))}
         </div>
@@ -256,7 +260,7 @@ export function SpringCleaning({ items, now }: { items: CleanupItem[]; now: numb
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {otherAge ? (
               <Button type="button" variant="outline" size="lg" onClick={() => setAge(otherAge.days)}>
-                Switch to {otherAge.label}
+                {otherAge.days === AGE_CHOICES[0].days ? "Show all forgotten" : `Show over ${otherAge.label}`}
               </Button>
             ) : null}
             {decided > 0 ? (

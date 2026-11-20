@@ -106,6 +106,14 @@ export function SwipeCard({
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
     if (start.current === null || leaving) return;
+    // The button went up outside the card: stop the drag and put the card back.
+    if (e.pointerType === "mouse" && e.buttons === 0) {
+      start.current = null;
+      moved.current = false;
+      setDragging(false);
+      setDx(0);
+      return;
+    }
     const next = e.clientX - start.current;
     if (!dragging) {
       if (Math.abs(next) < DRAG_START_PX) return;
@@ -118,6 +126,11 @@ export function SwipeCard({
 
   function onPointerEnd() {
     start.current = null;
+    // The click after a drag comes after this event, so clear the flag one task later.
+    // Then a key press (Enter on the title link) works again after a snap-back.
+    window.setTimeout(() => {
+      moved.current = false;
+    }, 0);
     if (!dragging) return;
     setDragging(false);
     if (dx > COMMIT_PX) onSwipe("keep");
