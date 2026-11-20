@@ -1,0 +1,825 @@
+{
+ "data": {
+  "books": [
+   {
+    "title": "The Strength of the Few",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 238975,
+       "slug": "james-islington",
+       "name": "James Islington",
+       "image": {
+        "id": 5141330,
+        "url": "https://assets.hardcover.app/author/238975/372a1761-5098-40ab-9e89-873a0ef15437.jpg",
+        "color": "#464646",
+        "width": 1080,
+        "height": 930,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 2,
+      "series": {
+       "name": "Hierarchy"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Scion",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 238975,
+       "slug": "james-islington",
+       "name": "James Islington",
+       "image": {
+        "id": 5141330,
+        "url": "https://assets.hardcover.app/author/238975/372a1761-5098-40ab-9e89-873a0ef15437.jpg",
+        "color": "#464646",
+        "width": 1080,
+        "height": 930,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 1,
+      "series": {
+       "name": "Scion"
+      }
+     }
+    ]
+   },
+   {
+    "title": "The Shattering Peace",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 126561,
+       "slug": "john-scalzi",
+       "name": "John Scalzi",
+       "image": {
+        "id": 6749141,
+        "url": "https://assets.hardcover.app/author/126561/0ccf3497-a322-46b4-9703-98a1663effa7.jpg",
+        "color": "#a9a47d",
+        "width": 2436,
+        "height": 3052,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 7,
+      "series": {
+       "name": "Old Man's War"
+      }
+     }
+    ]
+   },
+   {
+    "title": "The Justice of One",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 238975,
+       "slug": "james-islington",
+       "name": "James Islington",
+       "image": {
+        "id": 5141330,
+        "url": "https://assets.hardcover.app/author/238975/372a1761-5098-40ab-9e89-873a0ef15437.jpg",
+        "color": "#464646",
+        "width": 1080,
+        "height": 930,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 3,
+      "series": {
+       "name": "Hierarchy"
+      }
+     }
+    ]
+   },
+   {
+    "title": "3 Days, 9 Months, 27 Years",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 126561,
+       "slug": "john-scalzi",
+       "name": "John Scalzi",
+       "image": {
+        "id": 6749141,
+        "url": "https://assets.hardcover.app/author/126561/0ccf3497-a322-46b4-9703-98a1663effa7.jpg",
+        "color": "#a9a47d",
+        "width": 2436,
+        "height": 3052,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 1,
+      "series": {
+       "name": "The Time Traveler's Passport"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Monsters of Ohio",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 126561,
+       "slug": "john-scalzi",
+       "name": "John Scalzi",
+       "image": {
+        "id": 6749141,
+        "url": "https://assets.hardcover.app/author/126561/0ccf3497-a322-46b4-9703-98a1663effa7.jpg",
+        "color": "#a9a47d",
+        "width": 2436,
+        "height": 3052,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Exoplanet",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 193662,
+       "slug": "benjamin-percy",
+       "name": "Benjamin Percy",
+       "image": {
+        "id": 5475936,
+        "url": "https://assets.hardcover.app/author/193662/0ab8cdaf-6a78-4a6d-b3a5-18a6f0d23116.png",
+        "color": "#5c4329",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Brown"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     },
+     {
+      "author": {
+       "id": 831779,
+       "slug": "anthony-mackie",
+       "name": "Anthony Mackie",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 1284118,
+       "slug": "ariana-debose",
+       "name": "Ariana DeBose",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 93668,
+       "slug": "john-leguizamo",
+       "name": "John Leguizamo",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 1539580,
+       "slug": "sufe-bradshaw",
+       "name": "Sufe Bradshaw",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 255746,
+       "slug": "cherry-jones",
+       "name": "Cherry Jones",
+       "image": {
+        "id": 7836963,
+        "url": "https://assets.hardcover.app/author/255746/a82d38c0-6332-4401-87ef-5a46ef666b8a.jpg",
+        "color": "#955028",
+        "width": 1018,
+        "height": 1324,
+        "color_name": "Brown"
+       }
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 1539581,
+       "slug": "aida-osman",
+       "name": "Aida Osman",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 1539582,
+       "slug": "charlie-plummer",
+       "name": "Charlie Plummer",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 250716,
+       "slug": "ray-porter",
+       "name": "Ray Porter",
+       "image": {
+        "id": 6769293,
+        "url": "https://assets.hardcover.app/author/250716/f121fae9-1200-482f-ab6f-44ec33219623.jpg",
+        "color": "#a27559",
+        "width": 495,
+        "height": 619,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 435116,
+       "slug": "full-cast",
+       "name": "Full Cast",
+       "image": {}
+      },
+      "contribution": "Narrator",
+      "contributor_role_id": 96,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Narrator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Provides narrative voice for an audio or spoken work.",
+      "contributor_specialization_blurb": null,
+      "primary": false
+     },
+     {
+      "author": {
+       "id": 123645,
+       "slug": "andy-weir",
+       "name": "Andy Weir",
+       "image": {
+        "id": 5806596,
+        "url": "https://assets.hardcover.app/author/123645/179054cb-312e-4ff3-876d-e6eea15cbe2a.jpg",
+        "color": "#a2a2a2",
+        "width": 2751,
+        "height": 2751,
+        "color_name": "Silver"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "The Suffering",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 173778,
+       "slug": "rin-chupeco",
+       "name": "Rin Chupeco",
+       "image": {
+        "id": 4774597,
+        "url": "https://assets.hardcover.app/author/173778/05e3f33b-9cca-48d4-8628-8cd40ef1ded0.jpg",
+        "color": "#957a76",
+        "width": 400,
+        "height": 400,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 2,
+      "series": {
+       "name": "The Girl from the Well"
+      }
+     }
+    ]
+   },
+   {
+    "title": "The Suffering",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 296974,
+       "slug": "david-sodergren",
+       "name": "David Sodergren",
+       "image": {
+        "id": 5231377,
+        "url": "https://assets.hardcover.app/author/296974/b94d801c-40d2-42d1-b6b6-128c7748fa87.jpg",
+        "color": "#d4d4c4",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Beige"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "The Suffering",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 533232,
+       "slug": "mj-mars",
+       "name": "MJ Mars",
+       "image": {
+        "id": 6192834,
+        "url": "https://assets.hardcover.app/author/533232/3b1076bf-a5f3-4de8-b2e3-9f53db5e810b.jpg",
+        "color": "#d7c6c2",
+        "width": 450,
+        "height": 450,
+        "color_name": "Silver"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Hard Luck Jenny",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 296974,
+       "slug": "david-sodergren",
+       "name": "David Sodergren",
+       "image": {
+        "id": 5231377,
+        "url": "https://assets.hardcover.app/author/296974/b94d801c-40d2-42d1-b6b6-128c7748fa87.jpg",
+        "color": "#d4d4c4",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Beige"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "The Suffering",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 296974,
+       "slug": "david-sodergren",
+       "name": "David Sodergren",
+       "image": {
+        "id": 5231377,
+        "url": "https://assets.hardcover.app/author/296974/b94d801c-40d2-42d1-b6b6-128c7748fa87.jpg",
+        "color": "#d4d4c4",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Beige"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Scion",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 259641,
+       "slug": "kelly-oram",
+       "name": "Kelly Oram",
+       "image": {}
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 3,
+      "series": {
+       "name": "Supernaturals"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Scion",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 667624,
+       "slug": "murray-mcdonald",
+       "name": "Murray McDonald",
+       "image": {}
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The principal author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Psychic Teenage Bloodbath: The Collection",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 296974,
+       "slug": "david-sodergren",
+       "name": "David Sodergren",
+       "image": {
+        "id": 5231377,
+        "url": "https://assets.hardcover.app/author/296974/b94d801c-40d2-42d1-b6b6-128c7748fa87.jpg",
+        "color": "#d4d4c4",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Beige"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Maggot Road",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 296974,
+       "slug": "david-sodergren",
+       "name": "David Sodergren",
+       "image": {
+        "id": 5231377,
+        "url": "https://assets.hardcover.app/author/296974/b94d801c-40d2-42d1-b6b6-128c7748fa87.jpg",
+        "color": "#d4d4c4",
+        "width": 1080,
+        "height": 1080,
+        "color_name": "Beige"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "SCION",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 1576139,
+       "slug": "em-peck",
+       "name": "E.M. Peck",
+       "image": {}
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "Vástago",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 238975,
+       "slug": "james-islington",
+       "name": "James Islington",
+       "image": {
+        "id": 5141330,
+        "url": "https://assets.hardcover.app/author/238975/372a1761-5098-40ab-9e89-873a0ef15437.jpg",
+        "color": "#464646",
+        "width": 1080,
+        "height": 930,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     },
+     {
+      "author": {
+       "id": 322419,
+       "slug": "carlos-loscertales",
+       "name": "Carlos Loscertales",
+       "image": {}
+      },
+      "contribution": "Translator",
+      "contributor_role_id": 64,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Translator",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "Renders written content from one language into another.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 1,
+      "series": {
+       "name": "Scion"
+      }
+     }
+    ]
+   },
+   {
+    "title": "Monsters of Ohio",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 126561,
+       "slug": "john-scalzi",
+       "name": "John Scalzi",
+       "image": {
+        "id": 6749141,
+        "url": "https://assets.hardcover.app/author/126561/0ccf3497-a322-46b4-9703-98a1663effa7.jpg",
+        "color": "#a9a47d",
+        "width": 2436,
+        "height": 3052,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": []
+   },
+   {
+    "title": "The Strength of the Few",
+    "cached_contributors": [
+     {
+      "author": {
+       "id": 238975,
+       "slug": "james-islington",
+       "name": "James Islington",
+       "image": {
+        "id": 5141330,
+        "url": "https://assets.hardcover.app/author/238975/372a1761-5098-40ab-9e89-873a0ef15437.jpg",
+        "color": "#464646",
+        "width": 1080,
+        "height": 930,
+        "color_name": "Gray"
+       }
+      },
+      "contribution": "Author",
+      "contributor_role_id": 1,
+      "contributor_specialization_id": null,
+      "contributor_role_name": "Author",
+      "contributor_specialization_name": null,
+      "contributor_role_blurb": "The author of a written work.",
+      "contributor_specialization_blurb": null,
+      "primary": true
+     }
+    ],
+    "book_series": [
+     {
+      "position": 2,
+      "series": {
+       "name": "Hierarchy"
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

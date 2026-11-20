@@ -1,0 +1,85 @@
+{
+ "page": 1,
+ "results": [
+  {
+   "adult": false,
+   "gender": 2,
+   "id": 1145520,
+   "known_for_department": "Directing",
+   "name": "Ari Aster",
+   "original_name": "Ari Aster",
+   "popularity": 1.2376,
+   "profile_path": "/3j6cVjnqTjx8TJbbTdBlLXYy5yU.jpg",
+   "known_for": [
+    {
+     "adult": false,
+     "backdrop_path": "/pS9Aub8MPyQbENblGD8mHeaqMuv.jpg",
+     "id": 493922,
+     "title": "Hereditary",
+     "original_title": "Hereditary",
+     "overview": "When the matriarch of the Graham family passes away, her daughter begins to unravel cryptic and increasingly terrifying secrets about her ancestry.",
+     "poster_path": "/4GFPuL14eXi66V96xBWY73Y9PfR.jpg",
+     "media_type": "movie",
+     "original_language": "en",
+     "genre_ids": [
+      27,
+      9648,
+      53
+     ],
+     "popularity": 13.0625,
+     "release_date": "2018-06-07",
+     "softcore": false,
+     "video": false,
+     "vote_average": 7.298,
+     "vote_count": 9124
+    },
+    {
+     "adult": false,
+     "backdrop_path": "/pYgj8e2Y6RufnSyOA6OnzmxFXxZ.jpg",
+     "id": 530385,
+     "title": "Midsommar",
+     "original_title": "Midsommar",
+     "overview": "Several friends travel to Sweden to study as anthropologists a summer festival that is held every ninety years in the remote hometown of one of them. What begins as a dream vacation in a place where the sun never sets, gradually turns into a dark nightmare as the mysterious inhabitants invite them to participate in their disturbing festive activities.",
+     "poster_path": "/7LEI8ulZzO5gy9Ww2NVCrKmHeDZ.jpg",
+     "media_type": "movie",
+     "original_language": "en",
+     "genre_ids": [
+      27,
+      18,
+      9648
+     ],
+     "popularity": 13.0691,
+     "release_date": "2019-07-03",
+     "softcore": false,
+     "video": false,
+     "vote_average": 7.139,
+     "vote_count": 8651
+    },
+    {
+     "adult": false,
+     "backdrop_path": "/atvEgnjjXN5QvFDThXVz4nyU9yi.jpg",
+     "id": 798286,
+     "title": "Beau Is Afraid",
+     "original_title": "Beau Is Afraid",
+     "overview": "Following the sudden death of his mother, a mild-mannered but anxiety-ridden man confronts his darkest fears as he embarks on an epic odyssey back home.",
+     "poster_path": "/wgVkkjigF31r1nZV80uV0xNIoun.jpg",
+     "media_type": "movie",
+     "original_language": "en",
+     "genre_ids": [
+      35,
+      12,
+      14
+     ],
+     "popularity": 4.3575,
+     "release_date": "2023-04-14",
+     "softcore": false,
+     "video": false,
+     "vote_average": 6.734,
+     "vote_count": 1459
+    }
+   ]
+  }
+ ],
+ "total_pages": 1,
+ "total_results": 1
+}
