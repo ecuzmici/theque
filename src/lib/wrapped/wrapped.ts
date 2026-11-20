@@ -37,6 +37,20 @@ function yearOf(iso: string, timeZone: string): number | null {
   return Number.parseInt(year, 10);
 }
 
+/** The year of an instant in the time zone. The page uses it to find the current year. */
+export function currentWrappedYear(now: Date, timeZone = WRAPPED_TIME_ZONE): number {
+  return yearOf(now.toISOString(), timeZone)!;
+}
+
+/** 1 for 1 January, 365 or 366 for 31 December, in the time zone. */
+function dayOfYear(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "numeric", day: "numeric", timeZone })
+    .formatToParts(date)
+    .reduce<Record<string, number>>((acc, p) => ({ ...acc, [p.type]: Number.parseInt(p.value, 10) }), {});
+  const start = Date.UTC(parts.year!, 0, 1);
+  return Math.round((Date.UTC(parts.year!, parts.month! - 1, parts.day!) - start) / 86_400_000) + 1;
+}
+
 function finishedYear(item: WrappedSourceItem, timeZone: string): number | null {
   if (item.status !== "done" || !item.doneAt) return null;
   return yearOf(item.doneAt, timeZone);
@@ -61,6 +75,8 @@ export type Wrapped = {
   partial: boolean;
   /** The last day that the recap counts, as "20 November", for a partial year. */
   throughLabel: string | null;
+  /** The days that the recap covers: up to today for a partial year, else 365 or 366. */
+  days: number;
   total: number;
   categories: WrappedCategory[];
   reading: {
@@ -80,7 +96,7 @@ export type Wrapped = {
   };
   /** The finishes with the top rating (5, or 4 when no item has 5). Null below 4 stars. */
   favourites: { stars: number; count: number; items: WrappedCover[] } | null;
-  /** One verdict to quote: the best-rated finish (4 stars or more) with a short verdict. */
+  /** One verdict to quote: the best-rated finish (4 stars or more), the longest verdict that fits a slide. */
   verdict: { id: string; title: string; rating: number; text: string } | null;
   /** Finishes per month, January first. */
   months: number[];
@@ -228,7 +244,7 @@ export function computeWrapped(
       const text = item.verdict?.trim() ?? "";
       return (item.rating ?? 0) >= 4 && text.length > 0 && text.length <= VERDICT_MAX_LENGTH;
     })
-    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+    .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.verdict!.trim().length - a.verdict!.trim().length)[0];
 
   const months = Array.from({ length: 12 }, () => 0);
   for (const item of finished) months[monthOf(item.doneAt!, timeZone)]! += 1;
@@ -259,6 +275,7 @@ export function computeWrapped(
     throughLabel: partial
       ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone }).format(now)
       : null,
+    days: partial ? dayOfYear(now, timeZone) : dayOfYear(new Date(Date.UTC(year, 11, 31, 12)), "UTC"),
     total: finished.length,
     categories,
     reading: {

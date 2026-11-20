@@ -72,6 +72,12 @@ describe("computeWrapped", () => {
     expect(computeWrapped([], 2025, { now })).toMatchObject({ partial: false, throughLabel: null });
   });
 
+  it("counts the days in the span: up to today for the current year, the full year before", () => {
+    expect(computeWrapped([], 2026, { now }).days).toBe(324);
+    expect(computeWrapped([], 2025, { now }).days).toBe(365);
+    expect(computeWrapped([], 2024, { now }).days).toBe(366);
+  });
+
   it("adds up the pages of finished books and says how many books had a page count", () => {
     const longest = item({ title: "Swan Song", pages: 880 });
     const items = [
@@ -140,6 +146,14 @@ describe("computeWrapped", () => {
       rating: 5,
       text: "Perfect mix of fantasy and mystery.",
     });
+  });
+
+  it("prefers the longer verdict when two finishes share the top rating", () => {
+    const items = [
+      item({ rating: 5, verdict: "Dark." }),
+      item({ rating: 5, verdict: "Great time travel, and dark in the best way." }),
+    ];
+    expect(computeWrapped(items, 2026, { now }).verdict?.text).toBe("Great time travel, and dark in the best way.");
   });
 
   it("skips verdicts below four stars and verdicts too long for a slide", () => {
