@@ -5,11 +5,13 @@ import {
   decadeBuckets,
   edgeLift,
   emptySky,
-  layoutGraph,
   libraryHref,
+  meanRating,
+  oftenWith,
   packGrid,
+  shrunkRating,
+  sortByRating,
   spanningTree,
-  strongestEdges,
   tagStats,
   type TasteItem,
 } from "./taste-map";
@@ -133,12 +135,25 @@ describe("emptySky", () => {
       ...many(9, { genres: ["horror"] }),
       ...many(1, { genres: ["horror"], status: "done", rating: 4 }),
     ]);
-    expect(emptySky(stats)).toEqual([expect.objectContaining({ key: "horror", reason: "unfinished" })]);
+    expect(emptySky(stats, 4)).toEqual([expect.objectContaining({ key: "horror", reason: "unfinished" })]);
   });
 
-  it("flags a genre you finish but rate low", () => {
-    const stats = tagStats(many(3, { genres: ["romance"], status: "done", rating: 2 }));
-    expect(emptySky(stats)).toEqual([expect.objectContaining({ key: "romance", reason: "low" })]);
+  it("flags a genre rated 0.75 star or more below your usual, with 3 or more ratings", () => {
+    const stats = tagStats(many(3, { genres: ["romance"], status: "done", rating: 3 }));
+    expect(emptySky(stats, 4)).toEqual([expect.objectContaining({ key: "romance", reason: "low" })]);
+  });
+
+  it("does not flag a 3★ genre when 3★ is your usual", () => {
+    const stats = tagStats(many(3, { genres: ["romance"], status: "done", rating: 3 }));
+    expect(emptySky(stats, 3.5)).toEqual([]);
+  });
+
+  it("needs 3 ratings before it calls a genre low", () => {
+    const stats = tagStats([
+      ...many(2, { genres: ["romance"], status: "done", rating: 1 }),
+      ...many(2, { genres: ["romance"], status: "done", rating: null }),
+    ]);
+    expect(emptySky(stats, 4)).toEqual([]);
   });
 
   it("ignores small genres and genres you finish and like", () => {
@@ -146,55 +161,71 @@ describe("emptySky", () => {
       ...many(2, { genres: ["horror"] }),
       ...many(4, { genres: ["fantasy"], status: "done", rating: 5 }),
     ]);
-    expect(emptySky(stats)).toEqual([]);
+    expect(emptySky(stats, 4)).toEqual([]);
   });
 });
 
-describe("layoutGraph", () => {
-  const nodes = ["a", "b", "c", "d", "e", "f"].map((key) => ({ key, r: 10 }));
-  const edges = [
-    { a: "a", b: "b", weight: 5 },
-    { a: "c", b: "d", weight: 5 },
-  ];
-
-  it("returns the same positions on each run", () => {
-    expect(layoutGraph(nodes, edges, { width: 400, height: 300 })).toEqual(
-      layoutGraph(nodes, edges, { width: 400, height: 300 }),
-    );
+describe("meanRating", () => {
+  it("averages the stars of finished, rated items", () => {
+    expect(
+      meanRating([
+        item({ status: "done", rating: 5 }),
+        item({ status: "done", rating: 3 }),
+        item({ status: "want", rating: 1 }),
+        item({ status: "done", rating: null }),
+      ]),
+    ).toBe(4);
   });
 
-  it("keeps each node and its radius inside the box", () => {
-    const placed = layoutGraph(nodes, edges, { width: 400, height: 300 });
-    for (const node of placed) {
-      expect(node.x - node.r).toBeGreaterThanOrEqual(0);
-      expect(node.x + node.r).toBeLessThanOrEqual(400);
-      expect(node.y - node.r).toBeGreaterThanOrEqual(0);
-      expect(node.y + node.r).toBeLessThanOrEqual(300);
-    }
-  });
-
-  it("pulls linked nodes closer than unlinked nodes", () => {
-    const placed = new Map(layoutGraph(nodes, edges, { width: 400, height: 300 }).map((n) => [n.key, n]));
-    const dist = (p: string, q: string) =>
-      Math.hypot(placed.get(p)!.x - placed.get(q)!.x, placed.get(p)!.y - placed.get(q)!.y);
-    expect(dist("a", "b")).toBeLessThan(dist("a", "e"));
-    expect(dist("c", "d")).toBeLessThan(dist("c", "f"));
+  it("returns null when nothing has a rating", () => {
+    expect(meanRating([item()])).toBeNull();
   });
 });
 
-describe("strongestEdges", () => {
-  it("keeps the heaviest edges of each kept node and drops edges to other nodes", () => {
-    const edges = [
-      { a: "a", b: "b", weight: 9 },
-      { a: "a", b: "c", weight: 5 },
-      { a: "a", b: "d", weight: 1 },
-      { a: "c", b: "x", weight: 8 },
-    ];
-    expect(strongestEdges(edges, ["a", "b", "c", "d"], 2)).toEqual([
-      { a: "a", b: "b", weight: 9 },
-      { a: "a", b: "c", weight: 5 },
-      { a: "a", b: "d", weight: 1 },
+describe("sortByRating", () => {
+  const many = (n: number, over: Partial<TasteItem>) => Array.from({ length: n }, () => item(over));
+
+  it("ranks a genre with many good ratings above one with two perfect ratings", () => {
+    const stats = tagStats([
+      ...many(2, { genres: ["nonfiction"], status: "done", rating: 5 }),
+      ...many(10, { genres: ["horror"], status: "done", rating: 5 }),
+      ...many(2, { genres: ["horror"], status: "done", rating: 4 }),
     ]);
+    // Owner mean 3: nonfiction shrinks to (10 + 9) / 5 = 3.8, horror to (58 + 9) / 15 = 4.47.
+    expect(sortByRating(stats, 3).map((s) => s.key)).toEqual(["horror", "nonfiction"]);
+  });
+
+  it("puts tags without ratings last, largest first", () => {
+    const stats = tagStats([
+      item({ genres: ["literary"] }),
+      ...many(2, { genres: ["classics"] }),
+      item({ genres: ["fantasy"], status: "done", rating: 2 }),
+    ]);
+    expect(sortByRating(stats, 4).map((s) => s.key)).toEqual(["fantasy", "classics", "literary"]);
+  });
+
+  it("pulls the average toward your mean with the weight of 3 ratings", () => {
+    const [stat] = tagStats(many(3, { genres: ["horror"], status: "done", rating: 5 }));
+    expect(shrunkRating(stat!, 3)).toBe(4);
+  });
+});
+
+describe("oftenWith", () => {
+  it("lists 3 tags by lift, drops pairs with 1 shared item, and breaks ties on shared items", () => {
+    const items = [
+      ...Array.from({ length: 4 }, () => item({ genres: ["horror"], moods: ["eerie", "tense"] })),
+      ...Array.from({ length: 3 }, () => item({ genres: ["horror"], moods: ["dark"] })),
+      item({ genres: ["horror"], moods: ["funny"] }),
+      ...Array.from({ length: 20 }, () => item({ genres: ["fantasy"], moods: ["tense"] })),
+    ];
+    const result = oftenWith("horror", items);
+    // Lift: eerie 3.5 (4 shared), dark 3.5 (3 shared), tense 0.58. Funny shares 1 item only.
+    expect(result.map((r) => r.key)).toEqual(["eerie", "dark", "tense"]);
+    expect(result[1]).toMatchObject({ label: "Dark", shared: 3 });
+  });
+
+  it("returns nothing for a tag on no item", () => {
+    expect(oftenWith("horror", [item({ genres: ["fantasy"] })])).toEqual([]);
   });
 });
 
@@ -205,16 +236,6 @@ describe("edgeLift", () => {
       ["b", 10],
     ]);
     expect(edgeLift({ a: "a", b: "b", weight: 5 }, counts, 100)).toBe(5);
-  });
-
-  it("lets strongestEdges rank by a custom score", () => {
-    const edges = [
-      { a: "a", b: "b", weight: 9 },
-      { a: "a", b: "c", weight: 2 },
-    ];
-    const score = (e: { b: string }) => (e.b === "c" ? 10 : 1);
-    expect(strongestEdges(edges, ["a", "b", "c"], 1, score)).toEqual(edges);
-    expect(strongestEdges(edges, ["a"], 1, score)).toEqual([]);
   });
 });
 

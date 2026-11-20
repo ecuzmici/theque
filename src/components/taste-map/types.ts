@@ -1,4 +1,4 @@
-import type { EmptySkyTag, PlacedNode, TagEdge, TagStat } from "@/lib/taste-map/taste-map";
+import type { EmptySkyTag, OftenWith, TagStat } from "@/lib/taste-map/taste-map";
 
 /** One book or film, in the small shape that the client variants read. */
 export type MapStar = {
@@ -14,16 +14,12 @@ export type MapStar = {
   tags: string[];
 };
 
-export type GraphData = {
-  stats: TagStat[];
-  edges: TagEdge[];
-  wide: PlacedNode[];
-  tall: PlacedNode[];
-};
-
 export type TasteMapData = {
   stars: MapStar[];
   stats: TagStat[];
   sky: EmptySkyTag[];
-  graph: GraphData;
+  /** Your mean rating over the items on the map, or null. */
+  mean: number | null;
+  /** For each tag key, the tags that occur with it more often than chance. */
+  often: Record<string, OftenWith[]>;
 };

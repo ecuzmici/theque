@@ -1,36 +1,20 @@
-// Sequential blue scale for a mean rating (dataviz reference ramp). Low ratings
-// sit near the surface and high ratings stand out, in light and in dark mode.
+// Sequential amber scale for counts, built on the app accent (ADR 0019). The
+// dataviz ordinal validator passes both ramps: monotone lightness, a step gap
+// of 0.06 or more, one hue, and 2:1 or more for the faint end on the card.
+// Light mode goes from light to dark. Dark mode goes from dark to light, so a
+// large count stands out on both surfaces. Each step has its own text color,
+// picked by APCA (white or ink, whichever is stronger).
 
-/** Sets the five --tm-N steps and --tm-none on a wrapper element. */
-export const RATING_SCALE_VARS = [
-  "[--tm-0:#b7d3f6] [--tm-1:#86b6ef] [--tm-2:#5598e7] [--tm-3:#2a78d6] [--tm-4:#104281] [--tm-none:#e7e5e4]",
-  "dark:[--tm-0:#184f95] dark:[--tm-1:#1c5cab] dark:[--tm-2:#3987e5] dark:[--tm-3:#6da7ec] dark:[--tm-4:#b7d3f6] dark:[--tm-none:#44403c]",
+/** Sets --tm-N (fill) and --tm-N-ink (text) for steps 0-4 on a wrapper element. */
+export const COUNT_SCALE_VARS = [
+  "[--tm-0:#f59e0b] [--tm-1:#d97706] [--tm-2:#b45309] [--tm-3:#8f3f0d] [--tm-4:#6a2c09]",
+  "[--tm-0-ink:#1c1917] [--tm-1-ink:#fff] [--tm-2-ink:#fff] [--tm-3-ink:#fff] [--tm-4-ink:#fff]",
+  "dark:[--tm-0:#8f3f0d] dark:[--tm-1:#b45309] dark:[--tm-2:#d97706] dark:[--tm-3:#f59e0b] dark:[--tm-4:#fdc86a]",
+  "dark:[--tm-0-ink:#fff] dark:[--tm-1-ink:#fff] dark:[--tm-2-ink:#fff] dark:[--tm-3-ink:#1c1917] dark:[--tm-4-ink:#1c1917]",
 ].join(" ");
 
-export const RATING_STEPS = ["under 3", "3 to 3.5", "3.5 to 4", "4 to 4.5", "4.5 and up"] as const;
-
-/** The scale step (0-4) of a mean rating, or null when nothing has a rating. */
-export function ratingStep(avg: number | null): number | null {
-  if (avg === null) return null;
-  if (avg < 3) return 0;
-  if (avg < 3.5) return 1;
-  if (avg < 4) return 2;
-  if (avg < 4.5) return 3;
-  return 4;
-}
-
-export function ratingFill(avg: number | null): string {
-  const step = ratingStep(avg);
-  return step === null ? "var(--tm-none)" : `var(--tm-${step})`;
-}
-
-/** Same scale for a count, against the largest count on screen. */
-export function countFill(count: number, max: number): string {
-  if (count <= 0 || max <= 0) return "transparent";
-  const step = Math.min(4, Math.floor((Math.sqrt(count) / Math.sqrt(max)) * 4.999));
-  return `var(--tm-${step})`;
-}
-
-export function formatRating(avg: number | null): string {
-  return avg === null ? "no ratings" : `${avg.toFixed(1)}★`;
+/** The scale step (0-4) of a count against the largest count on screen, or null for 0. */
+export function countStep(count: number, max: number): number | null {
+  if (count <= 0 || max <= 0) return null;
+  return Math.min(4, Math.floor((Math.sqrt(count) / Math.sqrt(max)) * 4.999));
 }

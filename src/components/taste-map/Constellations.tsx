@@ -15,8 +15,8 @@ const BANDS = [
   { key: "3", label: "★★★", short: "3★" },
   { key: "2", label: "★★", short: "2★" },
   { key: "1", label: "★", short: "1★" },
-  { key: "done", label: "No stars", short: "Done" },
-  { key: "later", label: "Not yet", short: "Later" },
+  { key: "done", label: "Unrated", short: "Unrated" },
+  { key: "later", label: "Want", short: "Want" },
 ] as const;
 
 function bandOf(star: MapStar): string {
@@ -43,7 +43,12 @@ function layout(stars: MapStar[], orientation: "wide" | "tall"): Layout {
   const buckets = decadeBuckets(stars);
   const bandCount = new Map<string, number>();
   for (const s of stars) bandCount.set(bandOf(s), (bandCount.get(bandOf(s)) ?? 0) + 1);
-  const bandWeight = BANDS.map((b) => wide ? Math.max(0.6, Math.sqrt(bandCount.get(b.key) ?? 0)) : Math.min(5, Math.max(1.8, Math.sqrt(bandCount.get(b.key) ?? 0))));
+  // Tall: the Unrated label is long, so its column gets more room.
+  const bandWeight = BANDS.map((b) =>
+    wide
+      ? Math.max(0.6, Math.sqrt(bandCount.get(b.key) ?? 0))
+      : Math.min(5, Math.max(b.key === "done" ? 3 : 1.8, Math.sqrt(bandCount.get(b.key) ?? 0))),
+  );
   const decadeWeight = buckets.map((b) => Math.max(0.6, Math.sqrt(b.items.length)));
 
   const width = wide ? 1000 : 360;
@@ -139,6 +144,12 @@ export function Constellations({ data }: { data: TasteMapData }) {
         })}
       </div>
 
+      <p className="flex flex-wrap justify-between gap-x-4 text-xs text-muted-foreground">
+        <span className="sm:hidden">Across: your rating, best on the left. Down: decade.</span>
+        <span className="hidden sm:inline">Across: decade. Down: your rating, best at the top.</span>
+        {undated ? <span>{undated} without a year are not shown.</span> : null}
+      </p>
+
       <div className="overflow-hidden rounded-2xl bg-[#0b0d16] ring-1 ring-white/10">
         <Sky className="hidden sm:block" layout={wide} focus={focus} picked={picked} onPick={setPicked} orientation="wide" />
         <Sky className="sm:hidden" layout={tall} focus={focus} picked={picked} onPick={setPicked} orientation="tall" />
@@ -168,7 +179,6 @@ export function Constellations({ data }: { data: TasteMapData }) {
               </>
             ) : null}
             Each dot is a book or film, colored by its cover. Tap one to see it.
-            {undated ? ` ${undated} without a year are not shown.` : ""}
           </p>
         )}
       </div>

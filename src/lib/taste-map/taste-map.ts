@@ -185,24 +185,85 @@ export type EmptySkyTag = TagStat & { reason: EmptySkyReason };
 export const EMPTY_SKY_MIN_SAVED = 3;
 /** Below this share of finished items, a tag counts as saved but not finished. */
 export const EMPTY_SKY_MAX_DONE_SHARE = 0.25;
-/** At or below this mean rating (with 2 or more ratings), a tag counts as rated low. */
-export const EMPTY_SKY_LOW_RATING = 3;
+/** A tag needs this many ratings before the empty sky can call it rated low. */
+export const EMPTY_SKY_MIN_RATED = 3;
+/** A tag is rated low when its mean is this many stars or more below your mean. */
+export const EMPTY_SKY_LOW_GAP = 0.75;
 
 /**
- * The "empty sky": tags you save but rarely finish, or finish and rate low.
- * A low rating wins over a low finish rate. Largest backlog first.
+ * The "empty sky": tags you save but rarely finish, or rate below your usual.
+ * `mean` is your mean rating over all items (see `meanRating`). A low rating
+ * wins over a low finish rate. Largest backlog first.
  */
-export function emptySky(stats: TagStat[]): EmptySkyTag[] {
+export function emptySky(stats: TagStat[], mean: number | null): EmptySkyTag[] {
   const out: EmptySkyTag[] = [];
   for (const stat of stats) {
     if (stat.count < EMPTY_SKY_MIN_SAVED) continue;
-    if (stat.rated >= 2 && stat.avgRating !== null && stat.avgRating <= EMPTY_SKY_LOW_RATING) {
+    if (
+      mean !== null &&
+      stat.rated >= EMPTY_SKY_MIN_RATED &&
+      stat.avgRating !== null &&
+      stat.avgRating <= mean - EMPTY_SKY_LOW_GAP + 1e-9
+    ) {
       out.push({ ...stat, reason: "low" });
     } else if (stat.done / stat.count < EMPTY_SKY_MAX_DONE_SHARE) {
       out.push({ ...stat, reason: "unfinished" });
     }
   }
   return out.sort((a, b) => b.backlog - a.backlog || b.count - a.count);
+}
+
+/** Your mean star rating over finished, rated items, or null when none has a rating. */
+export function meanRating(items: TasteItem[]): number | null {
+  const stars = items.map(starsOf).filter((s): s is number => s !== null);
+  return stars.length ? stars.reduce((a, b) => a + b, 0) / stars.length : null;
+}
+
+/** The weight of your mean in a shrunk rating, counted in ratings. */
+export const SHRINK_WEIGHT = 3;
+
+/**
+ * The tag's mean rating, pulled toward your mean as if the tag had
+ * SHRINK_WEIGHT more ratings at your mean. Two 5★ ratings then do not beat
+ * twenty 4★ ratings. Null when the tag has no rating.
+ */
+export function shrunkRating(stat: Pick<TagStat, "avgRating" | "rated">, mean: number): number | null {
+  if (stat.avgRating === null || stat.rated === 0) return null;
+  return (stat.avgRating * stat.rated + mean * SHRINK_WEIGHT) / (stat.rated + SHRINK_WEIGHT);
+}
+
+/** Best shrunk rating first. Tags without a rating go last, largest count first. */
+export function sortByRating<T extends TagStat>(stats: T[], mean: number | null): T[] {
+  const m = mean ?? 0;
+  return [...stats].sort((a, b) => {
+    const ra = shrunkRating(a, m);
+    const rb = shrunkRating(b, m);
+    if (ra === null && rb === null) return b.count - a.count;
+    if (ra === null) return 1;
+    if (rb === null) return -1;
+    return rb - ra || b.rated - a.rated;
+  });
+}
+
+export type OftenWith = { key: string; label: string; kind: TagKind; shared: number; lift: number };
+
+/**
+ * The tags that occur with `key` more often than chance (highest lift first).
+ * A pair needs 2 or more shared items. Ties go to more shared items.
+ */
+export function oftenWith(key: string, items: TasteItem[], limit = 3): OftenWith[] {
+  const counts = new Map<string, number>();
+  for (const item of items) for (const k of tagsOf(item)) counts.set(k, (counts.get(k) ?? 0) + 1);
+  if (!counts.has(key)) return [];
+  return coOccurrence(items, { minWeight: 2 })
+    .filter((e) => e.a === key || e.b === key)
+    .map((e) => {
+      const other = e.a === key ? e.b : e.a;
+      const meta = LABELS.get(other)!;
+      return { key: other, label: meta.label, kind: meta.kind, shared: e.weight, lift: edgeLift(e, counts, items.length) };
+    })
+    .sort((x, y) => y.lift - x.lift || y.shared - x.shared || x.label.localeCompare(y.label))
+    .slice(0, limit);
 }
 
 /**
@@ -215,27 +276,6 @@ export function edgeLift(edge: TagEdge, counts: Map<string, number>, total: numb
   const cb = counts.get(edge.b) ?? 0;
   if (!ca || !cb || !total) return 0;
   return (edge.weight * total) / (ca * cb);
-}
-
-/**
- * Thins a dense graph: each kept node keeps its `perNode` best edges to other
- * kept nodes. `score` ranks the edges (default: the weight). The result keeps
- * the input order.
- */
-export function strongestEdges(
-  edges: TagEdge[],
-  keys: string[],
-  perNode = 2,
-  score: (edge: TagEdge) => number = (e) => e.weight,
-): TagEdge[] {
-  const kept = new Set(keys);
-  const inside = edges.filter((e) => kept.has(e.a) && kept.has(e.b));
-  const chosen = new Set<TagEdge>();
-  for (const key of keys) {
-    const own = inside.filter((e) => e.a === key || e.b === key).sort((x, y) => score(y) - score(x));
-    for (const e of own.slice(0, perNode)) chosen.add(e);
-  }
-  return inside.filter((e) => chosen.has(e));
 }
 
 /**
@@ -266,79 +306,6 @@ export function packGrid(
     y: top + (Math.floor(i / cols) + 0.5) * cell,
     r,
   }));
-}
-
-export type GraphNodeInput = { key: string; r: number };
-export type PlacedNode = GraphNodeInput & { x: number; y: number };
-
-/**
- * Places graph nodes with a force layout (Fruchterman-Reingold). Linked nodes
- * pull together, all nodes push apart. The start positions sit on a circle in
- * input order, so the result is the same on each run. Each node and its
- * radius stay inside the box.
- */
-export function layoutGraph(
-  nodes: GraphNodeInput[],
-  edges: TagEdge[],
-  { width, height, iterations = 400 }: { width: number; height: number; iterations?: number },
-): PlacedNode[] {
-  const n = nodes.length;
-  if (n === 0) return [];
-  const index = new Map(nodes.map((node, i) => [node.key, i]));
-  const pos = nodes.map((_, i) => {
-    const angle = (2 * Math.PI * i) / n;
-    const ring = 0.35 + 0.1 * (i % 2);
-    return { x: width / 2 + Math.cos(angle) * width * ring, y: height / 2 + Math.sin(angle) * height * ring };
-  });
-  const links = edges
-    .map((e) => ({ s: index.get(e.a), t: index.get(e.b), w: e.weight }))
-    .filter((l): l is { s: number; t: number; w: number } => l.s !== undefined && l.t !== undefined);
-  const maxW = Math.max(1, ...links.map((l) => l.w));
-  const k = Math.sqrt((width * height) / n) * 0.75;
-  let temp = Math.min(width, height) / 8;
-  const cool = temp / (iterations + 1);
-
-  for (let step = 0; step < iterations; step++) {
-    const disp = pos.map(() => ({ x: 0, y: 0 }));
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        const dx = pos[i]!.x - pos[j]!.x || 0.01;
-        const dy = pos[i]!.y - pos[j]!.y || 0.01;
-        const d = Math.max(0.01, Math.hypot(dx, dy));
-        const gap = Math.max(1, d - nodes[i]!.r - nodes[j]!.r);
-        const force = (k * k) / gap;
-        disp[i]!.x += (dx / d) * force;
-        disp[i]!.y += (dy / d) * force;
-        disp[j]!.x -= (dx / d) * force;
-        disp[j]!.y -= (dy / d) * force;
-      }
-    }
-    for (const { s, t, w } of links) {
-      const dx = pos[s]!.x - pos[t]!.x;
-      const dy = pos[s]!.y - pos[t]!.y;
-      const d = Math.max(0.01, Math.hypot(dx, dy));
-      const force = ((d * d) / k) * (0.3 + w / maxW);
-      disp[s]!.x -= (dx / d) * force;
-      disp[s]!.y -= (dy / d) * force;
-      disp[t]!.x += (dx / d) * force;
-      disp[t]!.y += (dy / d) * force;
-    }
-    for (let i = 0; i < n; i++) {
-      // A weak pull to the center keeps unlinked nodes on the page.
-      disp[i]!.x += (width / 2 - pos[i]!.x) * 0.05;
-      disp[i]!.y += (height / 2 - pos[i]!.y) * 0.05;
-      const len = Math.max(0.01, Math.hypot(disp[i]!.x, disp[i]!.y));
-      const r = nodes[i]!.r;
-      pos[i]!.x = clamp(pos[i]!.x + (disp[i]!.x / len) * Math.min(len, temp), r, width - r);
-      pos[i]!.y = clamp(pos[i]!.y + (disp[i]!.y / len) * Math.min(len, temp), r, height - r);
-    }
-    temp = Math.max(0.5, temp - cool);
-  }
-  return nodes.map((node, i) => ({ ...node, x: pos[i]!.x, y: pos[i]!.y }));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
 
 /**
