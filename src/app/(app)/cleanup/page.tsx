@@ -1,16 +1,8 @@
-import { redirect } from "next/navigation";
+import { SpringCleaning } from "@/components/cleanup/SpringCleaning";
+import { loadCleanupPass } from "@/lib/cleanup/load";
 
-import { PageHeader } from "@/components/layout/PageHeader";
-import { getSessionUserOrNull } from "@/lib/auth/session-user";
-
-/** Skeleton route. The cleanup feature branch replaces this page. */
+/** Spring cleaning: one forgotten item at a time, keep it or let it go. */
 export default async function SpringCleaningPage() {
-  const user = await getSessionUserOrNull();
-  if (!user) redirect("/login?next=/cleanup");
-
-  return (
-    <div>
-      <PageHeader title="Spring cleaning" description="Keep it or let it go, one forgotten save at a time." />
-    </div>
-  );
+  const { items, now } = await loadCleanupPass();
+  return <SpringCleaning items={items} now={now} />;
 }

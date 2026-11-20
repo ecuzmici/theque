@@ -87,6 +87,15 @@ export function undoLast<T extends PassItem>(
   return { state: revertDecision(state, undone.id), undone };
 }
 
+/** How long ago the user saved an item, in plain words: "7 months ago". */
+export function savedAgo(createdAt: string, now: number): string {
+  const days = Math.max(0, Math.round((now - Date.parse(createdAt)) / 86_400_000));
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"} ago`;
+  if (days < 45) return plural(days, "day");
+  if (days < 700) return plural(Math.round(days / 30.44), "month");
+  return plural(Math.round(days / 365.25), "year");
+}
+
 /** The count of each decision that stands. */
 export function passSummary(state: PassState<PassItem>): { kept: number; letGo: number } {
   const kept = state.history.filter((d) => d.choice === "keep").length;

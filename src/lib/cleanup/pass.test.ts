@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createPass, decide, passQueue, passSummary, revertDecision, undoLast } from "./pass";
+import { createPass, decide, passQueue, passSummary, revertDecision, savedAgo, undoLast } from "./pass";
 
 const NOW = Date.parse("2026-11-20T12:00:00.000Z");
 const daysAgo = (days: number) => new Date(NOW - days * 86_400_000).toISOString();
@@ -78,6 +78,17 @@ describe("revertDecision", () => {
     pass = revertDecision(pass, "a");
     expect(passQueue(pass, 180, NOW).map((i) => i.id)).toEqual(["a"]);
     expect(passSummary(pass)).toEqual({ kept: 1, letGo: 0 });
+  });
+});
+
+describe("savedAgo", () => {
+  it("says days, then months, then years", () => {
+    expect(savedAgo(daysAgo(1), NOW)).toBe("1 day ago");
+    expect(savedAgo(daysAgo(30), NOW)).toBe("30 days ago");
+    expect(savedAgo(daysAgo(200), NOW)).toBe("7 months ago");
+    expect(savedAgo(daysAgo(400), NOW)).toBe("13 months ago");
+    expect(savedAgo(daysAgo(730), NOW)).toBe("2 years ago");
+    expect(savedAgo(daysAgo(1200), NOW)).toBe("3 years ago");
   });
 });
 
