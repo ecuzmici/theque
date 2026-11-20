@@ -50,3 +50,12 @@ export function topTen<T extends RankableItem>(items: T[], category: RankCategor
     )
     .slice(0, 10);
 }
+
+/** One row of a top 10, as the pages show it. */
+export type TopTenEntry = {
+  id: string;
+  title: string;
+  rating: number;
+  cover: { src: string; fallback: string | null } | null;
+  color: string | null;
+};
