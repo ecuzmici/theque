@@ -227,16 +227,20 @@ function GridSection({
 }) {
   if (!rows.length) return null;
   return (
-    <section aria-label={title}>
-      <div className={cn(GRID, "mb-1 text-[11px] text-muted-foreground")} aria-hidden>
+    <section>
+      <div className={cn(GRID, "mb-1 text-[11px] text-muted-foreground")}>
         <h2 className="text-sm font-medium text-foreground">{title}</h2>
-        <span className="text-center">Want</span>
+        <span className="text-center" aria-hidden>
+          Want
+        </span>
         {STAR_COLUMNS.map((n) => (
-          <span key={n} className="text-center tabular-nums">
+          <span key={n} className="text-center tabular-nums" aria-hidden>
             {n}★
           </span>
         ))}
-        <span className="text-right">Avg</span>
+        <span className="text-right" aria-hidden>
+          Avg
+        </span>
       </div>
       <ul className="space-y-1">
         {rows.map((row) => (
@@ -247,7 +251,7 @@ function GridSection({
               onClick={() => onPick(row.key)}
               className={cn(
                 GRID,
-                "w-full rounded-lg py-0.5 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "w-full rounded-lg py-0.5 text-left transition pointer-coarse:min-h-[var(--tap-target-min)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 selected === row.key && "bg-muted",
               )}
               aria-label={`${row.label}: ${row.count} saved, ${row.done} finished, ${

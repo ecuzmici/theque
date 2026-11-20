@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Constellations } from "@/components/taste-map/Constellations";
 import { TasteGrid } from "@/components/taste-map/TasteGrid";
@@ -6,7 +8,7 @@ import { VariantSwitcher } from "@/components/taste-map/VariantSwitcher";
 import { loadLibrarySnapshot } from "@/lib/library-snapshot/load";
 import { emptySky, meanRating, oftenWith, starsOf, tagStats, tagsOf } from "@/lib/taste-map/taste-map";
 
-// Round 2 prototype: the taste grid by default, the constellations at ?v=2.
+// Prototype variants: the taste grid by default, the constellations at ?v=2.
 const VARIANTS = [
   { key: "3", name: "Taste grid" },
   { key: "2", name: "Constellations" },
@@ -71,7 +73,9 @@ export default async function TasteMapPage({
     <div className="pb-36">
       {header}
       {variant === "3" ? <TasteGrid data={data} /> : <Constellations data={data} />}
-      <VariantSwitcher variants={VARIANTS} current={variant} />
+      <Suspense fallback={null}>
+        <VariantSwitcher variants={VARIANTS} current={variant} />
+      </Suspense>
     </div>
   );
 }

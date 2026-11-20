@@ -151,8 +151,10 @@ export type DecadeBucket<T> = {
  */
 export function decadeBuckets<T extends Pick<TasteItem, "year">>(
   items: T[],
-  { earliest = 1950 }: { earliest?: number } = {},
+  { earliest: cutoff = 1950 }: { earliest?: number } = {},
 ): DecadeBucket<T>[] {
+  // The Earlier bucket ends where a decade starts, so the next label is correct.
+  const earliest = Math.floor(cutoff / 10) * 10;
   const dated = items.filter((i): i is T & { year: number } => typeof i.year === "number");
   if (dated.length === 0) return [];
   const old = dated.filter((i) => i.year < earliest);
@@ -248,8 +250,8 @@ export function sortByRating<T extends TagStat>(stats: T[], mean: number | null)
 export type OftenWith = { key: string; label: string; kind: TagKind; shared: number; lift: number };
 
 /**
- * The tags that occur with `key` more often than chance (highest lift first).
- * A pair needs 2 or more shared items. Ties go to more shared items.
+ * The tags that occur with `key` more often than chance: lift above 1,
+ * highest lift first. A pair needs 2 or more shared items. Ties go to more shared items.
  */
 export function oftenWith(key: string, items: TasteItem[], limit = 3): OftenWith[] {
   const counts = new Map<string, number>();
@@ -262,6 +264,7 @@ export function oftenWith(key: string, items: TasteItem[], limit = 3): OftenWith
       const meta = LABELS.get(other)!;
       return { key: other, label: meta.label, kind: meta.kind, shared: e.weight, lift: edgeLift(e, counts, items.length) };
     })
+    .filter((o) => o.lift > 1)
     .sort((x, y) => y.lift - x.lift || y.shared - x.shared || x.label.localeCompare(y.label))
     .slice(0, limit);
 }
@@ -281,13 +284,13 @@ export function edgeLift(edge: TagEdge, counts: Map<string, number>, total: numb
 /**
  * Packs n equal dots in a grid inside a box, row by row from the top left.
  * The function picks the column count that gives the largest dots. Dots never
- * overlap, and the radius is at most `maxR`.
+ * overlap, and the radius is at most `maxR`. A box without room gives no dots.
  */
 export function packGrid(
   n: number,
   { width, height, maxR }: { width: number; height: number; maxR: number },
 ): { x: number; y: number; r: number }[] {
-  if (n <= 0) return [];
+  if (n <= 0 || width <= 0 || height <= 0) return [];
   let cols = 1;
   let cell = 0;
   for (let c = 1; c <= n; c++) {

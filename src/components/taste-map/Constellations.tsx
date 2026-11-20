@@ -57,19 +57,23 @@ function layout(stars: MapStar[], orientation: "wide" | "tall"): Layout {
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
 
-  const spans = (weights: number[], total: number, start: number) => {
-    const sum = weights.reduce((a, b) => a + b, 0);
+  // Each span gets `min` pixels first, then a share of the rest by weight, so
+  // a small band always has room for its dots inside the cell inset.
+  const spans = (weights: number[], total: number, start: number, min: number) => {
+    const sum = weights.reduce((a, b) => a + b, 0) || 1;
+    const floor = Math.min(min, total / Math.max(1, weights.length));
+    const rest = Math.max(0, total - floor * weights.length);
     let at = start;
     return weights.map((w) => {
-      const size = (w / sum) * total;
+      const size = floor + (w / sum) * rest;
       const span = { at, size };
       at += size;
       return span;
     });
   };
   // Wide: decades across, bands down. Tall: bands across, decades down.
-  const decadeSpans = wide ? spans(decadeWeight, plotW, pad.left) : spans(decadeWeight, plotH, pad.top);
-  const bandSpans = wide ? spans(bandWeight, plotH, pad.top) : spans(bandWeight, plotW, pad.left);
+  const decadeSpans = wide ? spans(decadeWeight, plotW, pad.left, 28) : spans(decadeWeight, plotH, pad.top, 24);
+  const bandSpans = wide ? spans(bandWeight, plotH, pad.top, 24) : spans(bandWeight, plotW, pad.left, 22);
 
   const placed: Placed[] = [];
   buckets.forEach((bucket, di) => {
@@ -86,7 +90,8 @@ function layout(stars: MapStar[], orientation: "wide" | "tall"): Layout {
       const inset = 3;
       const dots = packGrid(cell.length, { width: box.w - inset * 2, height: box.h - inset * 2, maxR: wide ? 7 : 5 });
       cell.forEach((star, i) => {
-        const p = dots[i]!;
+        const p = dots[i];
+        if (!p) return;
         placed.push({ star, x: box.x + inset + p.x, y: box.y + inset + p.y, r: Math.max(1.5, p.r) });
       });
     });
@@ -108,7 +113,8 @@ function layout(stars: MapStar[], orientation: "wide" | "tall"): Layout {
 export function Constellations({ data }: { data: TasteMapData }) {
   const stars = useMemo(() => data.stars.filter((s) => s.year), [data.stars]);
   const facets = data.stats.slice(0, 10);
-  const firstGenre = data.stats.find((s) => s.kind === "genre")?.key ?? null;
+  // The first focus comes from the chips on screen, so it always has a chip.
+  const firstGenre = (facets.find((s) => s.kind === "genre") ?? facets[0])?.key ?? null;
   const [focus, setFocus] = useState<string | null>(firstGenre);
   const [picked, setPicked] = useState<MapStar | null>(null);
   const wide = useMemo(() => layout(stars, "wide"), [stars]);

@@ -117,6 +117,11 @@ describe("decadeBuckets", () => {
     expect(buckets[0]).toMatchObject({ start: null, from: 1890, to: 1949 });
   });
 
+  it("rounds a cutoff that is not a decade start down to the decade start", () => {
+    const buckets = decadeBuckets([item({ year: 1951 }), item({ year: 1957 })], { earliest: 1955 });
+    expect(buckets.map((b) => [b.label, b.items.length])).toEqual([["1950s", 2]]);
+  });
+
   it("skips items without a year", () => {
     expect(decadeBuckets([item({ year: null })])).toEqual([]);
   });
@@ -211,7 +216,7 @@ describe("sortByRating", () => {
 });
 
 describe("oftenWith", () => {
-  it("lists 3 tags by lift, drops pairs with 1 shared item, and breaks ties on shared items", () => {
+  it("lists tags with a lift above 1, drops pairs with 1 shared item, and breaks ties on shared items", () => {
     const items = [
       ...Array.from({ length: 4 }, () => item({ genres: ["horror"], moods: ["eerie", "tense"] })),
       ...Array.from({ length: 3 }, () => item({ genres: ["horror"], moods: ["dark"] })),
@@ -220,7 +225,8 @@ describe("oftenWith", () => {
     ];
     const result = oftenWith("horror", items);
     // Lift: eerie 3.5 (4 shared), dark 3.5 (3 shared), tense 0.58. Funny shares 1 item only.
-    expect(result.map((r) => r.key)).toEqual(["eerie", "dark", "tense"]);
+    // Tense occurs with horror less often than chance, so the list drops it.
+    expect(result.map((r) => r.key)).toEqual(["eerie", "dark"]);
     expect(result[1]).toMatchObject({ label: "Dark", shared: 3 });
   });
 
@@ -252,6 +258,11 @@ describe("packGrid", () => {
         expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThanOrEqual(p.r + q.r - 1e-9);
       }
     }
+  });
+
+  it("returns no dots for a box without room", () => {
+    expect(packGrid(3, { width: 100, height: 0, maxR: 5 })).toEqual([]);
+    expect(packGrid(3, { width: -4, height: 20, maxR: 5 })).toEqual([]);
   });
 
   it("fills left to right first, so the input order reads across", () => {
