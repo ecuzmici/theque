@@ -16,6 +16,8 @@ const INITIAL: GoalFormState = { error: null, saved: 0 };
 export function GoalForm({ goal, year }: { goal: number | null; year: number }) {
   const [state, action, pending] = useActionState(saveReadingGoal, INITIAL);
   const [open, setOpen] = useState(false);
+  // A controlled value, so the typed number stays after a failed save.
+  const [value, setValue] = useState(String(goal ?? 24));
   const inputId = useId();
   const errorId = useId();
 
@@ -49,7 +51,8 @@ export function GoalForm({ goal, year }: { goal: number | null; year: number }) 
           step={1}
           required
           autoFocus
-          defaultValue={goal ?? 24}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
           aria-invalid={state.error ? true : undefined}
           aria-describedby={state.error ? errorId : undefined}
           className="h-9 w-24 tabular-nums"

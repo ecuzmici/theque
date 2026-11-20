@@ -87,7 +87,7 @@ export function PaceChart({ pace, year }: { pace: Pace; year: number }) {
       </div>
       <div className="flex gap-2">
         {/* y-axis: 0 and the goal */}
-        <div className="relative w-6 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground" aria-hidden>
+        <div className="relative h-40 w-6 shrink-0 self-start text-right sm:h-52 text-[11px] tabular-nums text-muted-foreground" aria-hidden>
           <span className="absolute right-0 -translate-y-1/2" style={{ top: `${y(goal)}%` }}>
             {goal}
           </span>
