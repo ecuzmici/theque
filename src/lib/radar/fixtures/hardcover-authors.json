@@ -1,0 +1,452 @@
+{
+ "data": {
+  "authors": [
+   {
+    "id": 126561,
+    "name": "John Scalzi",
+    "contributions": [
+     {
+      "book": {
+       "id": 3020703,
+       "title": "Monsters of Ohio",
+       "slug": "monsters-of-ohio-199986ca-5362-4679-a85a-1610887a4062",
+       "release_date": "2026-11-03",
+       "users_count": 1,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4353179/62701488c9bfbd20555c432f965e3e2d42a1bec4.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 2509265,
+       "title": "Monsters of Ohio",
+       "slug": "monsters-of-ohio-2026",
+       "release_date": "2026-11-03",
+       "users_count": 149,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/32802270/5c6a1d85-5f58-4544-8e0f-3b87d159b36a.jpg"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/edition/33367125/58134780-9eed-4da7-951c-11b9ac4461f1.jpg"
+        }
+       },
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/32802270/5c6a1d85-5f58-4544-8e0f-3b87d159b36a.jpg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 2994045,
+       "title": "Sneak Peek for Monsters of Ohio",
+       "slug": "sneak-peek-for-monsters-of-ohio",
+       "release_date": "2026-08-25",
+       "users_count": 0,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4311988/be1c421b99e9cdc20e566eaabd1168b7874eda00.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 2191247,
+       "title": "3 Days, 9 Months, 27 Years: The Time Traveler's Passport",
+       "slug": "3-days-9-months-27-years-the-time-travelers-passport",
+       "release_date": "2025-11-01",
+       "users_count": 0,
+       "image": null,
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 2073786,
+       "title": "3 Days, 9 Months, 27 Years",
+       "slug": "3-days-9-months-27-years",
+       "release_date": "2025-11-01",
+       "users_count": 195,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/32261552/2817b9e1-389e-4ab1-b3fa-422873d9a948.jpg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/edition/32411760/af9a0e80-382c-467c-a5b1-e77fc44c4844.jpg"
+        }
+       },
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/32261552/2817b9e1-389e-4ab1-b3fa-422873d9a948.jpg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 2883006,
+       "title": "Viser la lune",
+       "slug": "viser-la-lune-2025",
+       "release_date": "2025-09-18",
+       "users_count": 0,
+       "image": null,
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 1838734,
+       "title": "The Shattering Peace",
+       "slug": "the-shattering-peace",
+       "release_date": "2025-09-16",
+       "users_count": 467,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/31967136/d6028b52850a1c507c2a4a82e4d2860ededbf792.jpeg"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/external_data/4176921/cd85424de60d44ec886f55f3d38c18ca373cc488.jpeg"
+        }
+       },
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/31967136/d6028b52850a1c507c2a4a82e4d2860ededbf792.jpeg"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "id": 123645,
+    "name": "Andy Weir",
+    "contributions": [
+     {
+      "book": {
+       "id": 2868884,
+       "title": "Exoplanet",
+       "slug": "exoplanet",
+       "release_date": "2026-11-05",
+       "users_count": 108,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/33198143/4a969b64371bca1bde24a1bef11180b83e64085f.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/edition/33198143/4a969b64371bca1bde24a1bef11180b83e64085f.jpeg"
+        }
+       },
+       "print_cover": []
+      }
+     }
+    ]
+   },
+   {
+    "id": 296974,
+    "name": "David Sodergren",
+    "contributions": [
+     {
+      "book": {
+       "id": 3111598,
+       "title": "Maggot Road",
+       "slug": "maggot-road",
+       "release_date": "2026-12-03",
+       "users_count": 1,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4629328/d4b43d25d06d1ff821adc26f5d7d69323d9b13aa.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": null,
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/external_data/4629328/d4b43d25d06d1ff821adc26f5d7d69323d9b13aa.jpeg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 2462839,
+       "title": "The Suffering",
+       "slug": "the-suffering-2026",
+       "release_date": "2026-05-01",
+       "users_count": 8,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/32746670/259a598e-cf45-4e84-a30f-2265517ab9c1.jpg"
+       },
+       "default_physical_edition": {
+        "language": null
+       },
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/32746670/259a598e-cf45-4e84-a30f-2265517ab9c1.jpg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 2573746,
+       "title": "The Suffering",
+       "slug": "the-suffering-992002f3-f6e1-4a15-8444-8e22f0c09024",
+       "release_date": "2026-05-01",
+       "users_count": 41,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/32873578/09335da8-b2aa-4570-825e-764a63210bae.jpg"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/external_data/4022874/6b9ee0ed968701beefa3756047694aeead50cb06.jpeg"
+        }
+       },
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/32873578/09335da8-b2aa-4570-825e-764a63210bae.jpg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 3053885,
+       "title": "Psychic Teenage Bloodbath: The Collection",
+       "slug": "psychic-teenage-bloodbath-the-collection",
+       "release_date": "2025-12-05",
+       "users_count": 2,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4431458/92a14d1fb99191180d6b5a827840574474e8dc38.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": null,
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/external_data/4431458/92a14d1fb99191180d6b5a827840574474e8dc38.jpeg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 2700848,
+       "title": "Hard Luck Jenny",
+       "slug": "hard-luck-jenny",
+       "release_date": "2025-10-03",
+       "users_count": 13,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/33011891/fcff69d3-04cb-4c33-975c-953343b620ce.jpg"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": null,
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/33011891/fcff69d3-04cb-4c33-975c-953343b620ce.jpg"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "id": 238975,
+    "name": "James Islington",
+    "contributions": [
+     {
+      "book": {
+       "id": 2333013,
+       "title": "The Justice of One",
+       "slug": "the-justice-of-one",
+       "release_date": "2027-05-01",
+       "users_count": 387,
+       "image": null,
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 3029444,
+       "title": "Vástago",
+       "slug": "vastago",
+       "release_date": "2026-09-28",
+       "users_count": 1,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4373032/3f170e9c01fda9a5b5c303475cae236782cdcc08.jpeg"
+       },
+       "default_physical_edition": null,
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": []
+      }
+     },
+     {
+      "book": {
+       "id": 2460032,
+       "title": "Scion",
+       "slug": "scion-2026",
+       "release_date": "2026-09-01",
+       "users_count": 707,
+       "image": {
+        "url": "https://assets.hardcover.app/edition/32742717/7e7d6779-2003-447a-a902-9980632b5caf.jpg"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_audio_edition": {
+        "image": {
+         "url": "https://assets.hardcover.app/book/2460032/970d7ea1-401a-4d35-830a-a6cf93605b74.jpg"
+        }
+       },
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/edition/32742717/7e7d6779-2003-447a-a902-9980632b5caf.jpg"
+         }
+        }
+       ]
+      }
+     },
+     {
+      "book": {
+       "id": 3110838,
+       "title": "The Strength of the Few",
+       "slug": "the-strength-of-the-few-2025",
+       "release_date": "2025-11-11",
+       "users_count": 1,
+       "image": {
+        "url": "https://assets.hardcover.app/external_data/4625885/6d34e337d8a6454547059db2ef959634ea4b355a.png"
+       },
+       "default_physical_edition": {
+        "language": {
+         "code2": "en"
+        }
+       },
+       "default_ebook_edition": null,
+       "default_audio_edition": null,
+       "print_cover": [
+        {
+         "image": {
+          "url": "https://assets.hardcover.app/external_data/4625885/6d34e337d8a6454547059db2ef959634ea4b355a.png"
+         }
+        }
+       ]
+      }
+     }
+    ]
+   },
+   {
+    "id": 188554,
+    "name": "Andy Weir",
+    "contributions": []
+   },
+   {
+    "id": 1350329,
+    "name": "Andy Weir",
+    "contributions": []
+   }
+  ]
+ }
+}

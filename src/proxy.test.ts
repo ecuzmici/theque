@@ -13,6 +13,14 @@ describe("proxy", () => {
     vi.unstubAllEnvs();
   });
 
+  it("runs the proxy on every protected route", async () => {
+    const { config, PROTECTED_PREFIXES } = await import("./proxy");
+
+    for (const prefix of PROTECTED_PREFIXES) {
+      expect(config.matcher).toContain(`${prefix}/:path*`);
+    }
+  });
+
   it("derives all Supabase auth cookie names that can hold stale sessions", async () => {
     const { getSupabaseAuthCookieNames } = await import("./proxy");
 

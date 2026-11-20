@@ -250,6 +250,7 @@ export type Database = {
       claim_pending_enrichment_items:
         | { Args: { batch_size?: number }; Returns: string[] }
         | { Args: { batch_size?: number; per_user_cap?: number }; Returns: string[] };
+      set_item_rank_orders: { Args: { writes: Json }; Returns: number };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
