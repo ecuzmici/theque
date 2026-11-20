@@ -231,7 +231,7 @@ export function LibrarySpineBand() {
             ) : null}
             {showInboxNudge && showForgottenNudge ? <span aria-hidden="true">·</span> : null}
             {showForgottenNudge ? (
-              <Link href="/library?shelf=forgotten" className={NUDGE_LINK_CLASSES}>
+              <Link href="/cleanup" className={NUDGE_LINK_CLASSES}>
                 {counts.forgotten} forgotten
               </Link>
             ) : null}

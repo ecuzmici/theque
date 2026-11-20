@@ -79,6 +79,8 @@ export type Database = {
           file_sha256: string | null;
           file_uploaded_at: string | null;
           pinned_at: string | null;
+          rank_order: number | null;
+          kept_at: string | null;
           search_vector: unknown;
           created_at: string;
           updated_at: string;
@@ -122,6 +124,8 @@ export type Database = {
           file_sha256?: string | null;
           file_uploaded_at?: string | null;
           pinned_at?: string | null;
+          rank_order?: number | null;
+          kept_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -164,6 +168,8 @@ export type Database = {
           file_sha256?: string | null;
           file_uploaded_at?: string | null;
           pinned_at?: string | null;
+          rank_order?: number | null;
+          kept_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

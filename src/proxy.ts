@@ -12,6 +12,12 @@ const PROTECTED_PREFIXES = [
   "/item",
   "/search",
   "/add",
+  "/radar",
+  "/rank",
+  "/wrapped",
+  "/diary",
+  "/map",
+  "/cleanup",
 ] as const;
 
 function isProtectedPath(pathname: string): boolean {
