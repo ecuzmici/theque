@@ -5,7 +5,7 @@ import { sanitizeRedirectPath } from "@/app/login/login-utils";
 import type { Database } from "@/lib/database.types";
 
 /** Routes that require a session; must stay in sync with matcher (excluding public entries). */
-const PROTECTED_PREFIXES = [
+export const PROTECTED_PREFIXES = [
   "/library",
   "/stats",
   "/settings",
@@ -141,5 +141,17 @@ export const config = {
     "/search/:path*",
     "/add",
     "/add/:path*",
+    "/radar",
+    "/radar/:path*",
+    "/rank",
+    "/rank/:path*",
+    "/wrapped",
+    "/wrapped/:path*",
+    "/diary",
+    "/diary/:path*",
+    "/map",
+    "/map/:path*",
+    "/cleanup",
+    "/cleanup/:path*",
   ],
 };
