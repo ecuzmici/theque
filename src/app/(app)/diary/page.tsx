@@ -26,6 +26,11 @@ function diaryHref(year: number, currentYear: number, verdicts: boolean): string
   return query ? `/diary?${query}` : "/diary";
 }
 
+/** The request time. The page is dynamic, so each request reads the clock. */
+function requestTime(): number {
+  return Date.now();
+}
+
 function books(n: number): string {
   return `${n} ${n === 1 ? "book" : "books"}`;
 }
@@ -70,7 +75,7 @@ export default async function ReadingDiaryPage({ searchParams }: { searchParams:
   const { data: claims } = await supabase.auth.getClaims();
   const goal = readingGoalFromMetadata(claims?.claims?.user_metadata);
 
-  const now = Date.now();
+  const now = requestTime();
   const currentYear = new Date(now).getUTCFullYear();
   const years = diaryYears(items, currentYear);
   const askedYear = Number(first(params.year));
